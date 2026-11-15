@@ -13,8 +13,9 @@ It holds, in this order:
     THE RUN'S MODEL       MODEL, SERVICE, THINKING; describe and model_label
                           for the run's record and report; cache_identity;
                           the LiteLLM answer cache bypass (answer_cache_control)
-    THE ASK SAGE CLIENT and THE LITELLM CLIENT: one request each
-    EITHER SERVICE
+    THE ASK SAGE CLIENT, THE LITELLM CLIENT, and THE MAKERS' OWN APIS (Anthropic's, OpenAI's, Google's, each
+                          through its maker's official Python SDK): one request each
+    EVERY SERVICE
         list_models       the model names the service lists (free; see py helpers/models.py)
         call_llm          send a prompt, get the reply text; retries rate
                           limits and server errors with backoff; a used-up
@@ -50,8 +51,11 @@ common/common_helpers/extraction.py and common/common_prompts/.
     data = llm.call_llm_json(prompt)                  # a dict, or raises
 
 Needs a .env in the repository folder with ASKSAGE_EMAIL and
-ASKSAGE_API_KEY (Ask Sage) or LITELLM_API_KEY (LiteLLM), and the packages
-requests and python-dotenv.
+ASKSAGE_API_KEY (Ask Sage), LITELLM_API_KEY (LiteLLM), ANTHROPIC_API_KEY
+(Anthropic), OPENAI_API_KEY (OpenAI) or GEMINI_API_KEY (Google), and the
+packages requests and python-dotenv; a maker's own API also needs its SDK
+(requirements.txt: anthropic, openai, google-genai), imported only when that
+service is used.
 """
 
 import datetime as dt
@@ -93,10 +97,13 @@ DRAFTING_MODEL = "gemini-2.5-pro"
 
 #: The service that reaches the model: the default of every step's `service` setting, which paid_calls() puts here
 #: for the run. "asksage": NASA's Ask Sage (ASKSAGE_EMAIL and ASKSAGE_API_KEY in .env); "litellm": NASA's LiteLLM
-#: proxy (LITELLM_API_KEY in .env). A model's name is the service's own: Ask Sage's "google-claude-sonnet-5" is
-#: LiteLLM's "claude-sonnet-5".
+#: proxy (LITELLM_API_KEY in .env); "anthropic", "openai", "google": the model maker's own API, reached directly
+#: through the maker's official Python SDK (DIRECT_SERVICES: ANTHROPIC_API_KEY, OPENAI_API_KEY or GEMINI_API_KEY in
+#: .env), for the baseline of three makers' models (docs/improvements.md, 2026-11-14). A model's name is the
+#: service's own: Ask Sage's "google-claude-sonnet-5" is LiteLLM's "claude-sonnet-5".
 SERVICE = "litellm"
-SERVICES = {"asksage": "Ask Sage", "litellm": "LiteLLM"}
+SERVICES = {"asksage": "Ask Sage", "litellm": "LiteLLM", "anthropic": "Anthropic's API", "openai": "OpenAI's API",
+            "google": "Google's Gemini API"}
 
 #: Every call to a model that takes it asks for the model's most likely answer (temperature 0), the same each time
 #: as far as the model allows: only where temperature_sent says so. Anthropic's Claude Opus 5.5 takes no sampling
@@ -160,7 +167,8 @@ READ_TIMEOUT = 1200
 #: The effort level a model runs at when none is sent, where its maker documents one: on Claude Opus 5.5 adaptive
 #: thinking is always on (the model decides whether and how much to think, and effort is the main control of how
 #: much), and "A request that omits `effort` runs at `medium`" (https://platform.claude.com/docs/en/models/opus-5-5/whats-new-opus-5-5;
-#: https://platform.claude.com/docs/en/build-with-claude/effort). For the run's record only: no effort is sent.
+#: https://platform.claude.com/docs/en/build-with-claude/effort). For the run's record only, where no effort is sent
+#: (every service but Anthropic's own, which sends the step's thinking level as the effort: effort_note).
 DEFAULT_EFFORT = {"claude-opus-5.5": "medium", "claude-opus-5-5": "medium",
                   "claude-haiku-5.5": "medium", "claude-haiku-5-5": "medium"}
 
@@ -251,16 +259,24 @@ def call_settings(model: str | None = None, service: str | None = None) -> dict:
             "not sent (the model does not accept it, or its maker advises against changing it)",
             "max_answer_tokens": max_tokens_sent(service) or
             "not sent (Ask Sage takes no answer limit, and gives no reason an answer ended, so a cut-off can't be "
-            "detected)", "thinking": thinking, "thinking_sent": sent, "effort": effort_note(model)}
+            "detected)", "thinking": thinking, "thinking_sent": sent, "effort": effort_note(model, service)}
 
 
-def answer_limit_name(model: str | None = None) -> str:
-    """The name the answer limit is sent under, through LiteLLM: `max_completion_tokens` for OpenAI's GPT-6 models
+def answer_limit_name(model: str | None = None, service: str | None = None) -> str:
+    """The name the answer limit is sent under. Through LiteLLM: `max_completion_tokens` for OpenAI's GPT-6 models
     (OpenAI's Chat Completions reference: `max_tokens` "is now deprecated in favor of `max_completion_tokens`, and is
     not compatible with o-series models", and `max_completion_tokens` includes the reasoning tokens; LiteLLM: for
     gpt-6-astra, "`max_completion_tokens` instead of `max_tokens`", and a LiteLLM version before its fix sends
     `max_tokens` on unchanged, which OpenAI rejects: https://docs.litellm.ai/blog/gpt_6_astra, read 2026-11-02);
-    `max_tokens` for every other model, as before."""
+    `max_tokens` for every other model, as before. Through a maker's own API, the maker's name for it: OpenAI's
+    `max_completion_tokens` for every model (the deprecation above;
+    https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create, read
+    2026-11-14), Anthropic's `max_tokens` (https://platform.claude.com/docs/en/api/messages), Google's
+    `max_output_tokens` (GenerateContentConfig in google-genai's google/genai/types.py; maxOutputTokens in
+    https://aistudio.google.com/api-reference/generate-content; both read 2026-11-14)."""
+    service = service or SERVICE
+    if service in DIRECT_SERVICES:
+        return DIRECT_SERVICES[service]["answer_limit"]
     return "max_completion_tokens" if _gpt_version(model or MODEL) >= 6 else "max_tokens"
 
 
@@ -274,17 +290,20 @@ def _gpt_version(model: str) -> float:
 
 
 def max_tokens_sent(service: str | None = None) -> int | None:
-    """The answer limit a call sends (MAX_ANSWER_TOKENS), or None when it sends none: LiteLLM takes it; Ask Sage's
-    query has no such parameter (_ask_asksage)."""
-    return MAX_ANSWER_TOKENS if (service or SERVICE) == "litellm" else None
+    """The answer limit a call sends (MAX_ANSWER_TOKENS), or None when it sends none: LiteLLM and the makers' own APIs
+    take it (answer_limit_name); Ask Sage's query has no such parameter (_ask_asksage)."""
+    return None if (service or SERVICE) == "asksage" else MAX_ANSWER_TOKENS
 
 
-def effort_note(model: str | None = None) -> str | None:
-    """The effort a Claude model ran at, in words (None for other makers' models): the pipeline sends none, so it is
-    the model's default (DEFAULT_EFFORT, where documented)."""
+def effort_note(model: str | None = None, service: str | None = None) -> str | None:
+    """The effort a Claude model ran at, in words (None for other makers' models): the level sent, through Anthropic's
+    own API (thinking_sent); else none is sent, so it is the model's default (DEFAULT_EFFORT, where documented)."""
     model = model or MODEL
     if maker(model) != "Anthropic":
         return None
+    sent = thinking_sent(model, service)
+    if sent:
+        return f"sent as {thinking_parameter(model, service)} {sent}"
     default = DEFAULT_EFFORT.get(model.lower().removeprefix("google-"))
     return f"not sent (model default, {default})" if default else "not sent (model default)"
 
@@ -302,27 +321,44 @@ def temperature_sent(model: str | None = None, service: str | None = None) -> bo
 
 
 def thinking_sent(model: str | None = None, service: str | None = None) -> str | None:
-    """The `reasoning_effort` a call sends (THINKING), or None when it sends none. Sent only through LiteLLM, and only
-    to the models LiteLLM documents it for: Google's Gemini 2.5 and later (https://docs.litellm.ai/docs/providers/gemini),
-    and OpenAI's GPT-6 models (THINKING cites OpenAI's and LiteLLM's pages).
-    Not to Anthropic's Claude models: on Claude Opus 5.5 adaptive thinking is always on, and the model decides whether
-    and how much to think, at the effort sent, or at its default, medium, when none is sent (https://platform.claude.com/docs/en/models/opus-5-5/whats-new-opus-5-5), and whether LiteLLM
-    passes an effort setting on to it isn't shown yet (py helpers/check_effort.py; docs/running_on_nasa_laptop.md,
-    "Checking that LiteLLM passes Claude's effort on"). Not to other models either, which might refuse a parameter they don't take. Ask Sage's query takes
-    no such parameter."""
+    """The thinking level a call sends (THINKING), under the service's name for it (thinking_parameter), or None when
+    it sends none.
+    Through LiteLLM, as `reasoning_effort`, only to the models LiteLLM documents it for: Google's Gemini 2.5 and later
+    (https://docs.litellm.ai/docs/providers/gemini), and OpenAI's GPT-6 models (THINKING cites OpenAI's and LiteLLM's
+    pages). Not to Anthropic's Claude models through LiteLLM: on Claude Opus 5.5 adaptive thinking is always on, and the
+    model decides whether and how much to think, at the effort sent, or at its default, medium, when none is sent
+    (https://platform.claude.com/docs/en/models/opus-5-5/whats-new-opus-5-5), and whether LiteLLM passes an effort
+    setting on to it isn't shown yet (py helpers/check_effort.py; docs/running_on_nasa_laptop.md, "Checking that
+    LiteLLM passes Claude's effort on"). Not to other models either, which might refuse a parameter they don't take.
+    Through a maker's own API, as the maker's own setting (takes_thinking_cap says to which models): Anthropic's
+    `output_config.effort`, OpenAI's `reasoning_effort`, Google's `thinking_config.thinking_level` (DIRECT_SERVICES
+    cites each). Ask Sage's query takes no such parameter."""
     return None if THINKING == "model_default" or not takes_thinking_cap(model, service) else THINKING
+
+
+def thinking_parameter(model: str | None = None, service: str | None = None) -> str:
+    """The name the thinking level is sent under through this service (thinking_sent), for messages and the report."""
+    service = service or SERVICE
+    return DIRECT_SERVICES[service]["thinking"] if service in DIRECT_SERVICES else "reasoning_effort"
 
 
 def takes_thinking_cap(model: str | None = None, service: str | None = None) -> bool:
     """Whether the thinking cap is sent to this model through this service, whatever `thinking` is (thinking_sent
-    says where, and why)."""
+    says where, and why). Through a maker's own API: to Anthropic's Claude models (effort: every current Claude model
+    takes it, https://platform.claude.com/docs/en/build-with-claude/effort; an older one that doesn't refuses the test
+    call, whose message says to give `--thinking model_default`), to OpenAI's GPT-6 models, and to Google's Gemini 3
+    and later (thinkingLevel: "Recommended for Gemini 3 or later models", and "Use with earlier models results in an
+    error": https://aistudio.google.com/api-reference/generate-content, read 2026-11-14)."""
     model, service = model or MODEL, service or SERVICE
-    if service == "litellm" and _gpt_version(model) >= 6:
-        return True
-    if service != "litellm" or maker(model) != "Google":
-        return False
     version = re.search(r"gemini-(\d+(?:\.\d+)?)", model.lower())
-    return bool(version and float(version.group(1)) >= 2.5)
+    gemini = float(version.group(1)) if version and maker(model) == "Google" else 0
+    if service == "anthropic":
+        return maker(model) == "Anthropic"
+    if service in ("litellm", "openai") and _gpt_version(model) >= 6:
+        return True
+    if service == "google":
+        return gemini >= 3
+    return service == "litellm" and gemini >= 2.5
 
 
 def model_label() -> str:
@@ -935,39 +971,391 @@ def _ask_litellm(prompt: str, model: str, read_timeout: int, cache_until: str | 
     url, headers = _litellm("/v1/chat/completions")
     if SESSION_ID:
         headers[SESSION_HEADER] = SESSION_ID                # one deployment per run, where the proxy pins sessions
-    payload = {"model": model, "messages": _messages(prompt, model, cache_until),
-               answer_limit_name(model): max_tokens_sent("litellm")}
-    if temperature_sent(model, "litellm"):
-        payload["temperature"] = TEMPERATURE
-    if thinking_sent(model, "litellm"):
-        payload["reasoning_effort"] = thinking_sent(model, "litellm")
+    payload = _chat_payload(prompt, model, cache_until, "litellm")
     payload.update(answer_cache_control())                  # a fresh answer, where the proxy caches answers
-    _last.reply = {"settings_sent": {k: v for k, v in payload.items() if k != "messages"},
-                   "request_bytes": len(json.dumps(payload).encode("utf-8"))}
+    _note_request(payload, ("messages",))
     resp = litellm_post(url, headers=headers, json=payload, timeout=(5, read_timeout))
     _http_reply(resp)
     if resp.status_code in RETRY_STATUSES:
         raise RetryLater(_litellm_error(resp), _retry_after(resp))   # worth retrying
     if resp.status_code >= 400:
         raise ApiError(_litellm_error(resp))                # will not fix itself (key, model, request)
-    body = resp.json()
-    _count_tokens(body.get("usage"))
-    _last.reply["usage"] = body.get("usage") if isinstance(body.get("usage"), dict) else {}
+    return _read_chat_reply(resp.json(), "litellm")
+
+
+def _chat_payload(prompt: str, model: str, cache_until: str | None, service: str) -> dict:
+    """The body of a chat completions request (the OpenAI API, which LiteLLM speaks too): the messages, the answer
+    limit under its name (answer_limit_name), the temperature and the thinking level only where they are sent
+    (temperature_sent, thinking_sent). The one builder of LiteLLM's requests and OpenAI's own."""
+    payload = {"model": model, "messages": _messages(prompt, model, cache_until),
+               answer_limit_name(model, service): max_tokens_sent(service)}
+    if temperature_sent(model, service):
+        payload["temperature"] = TEMPERATURE
+    if thinking_sent(model, service):
+        payload["reasoning_effort"] = thinking_sent(model, service)
+    return payload
+
+
+def _note_request(params: dict, words: tuple) -> None:
+    """Start this request's _last.reply: every setting sent but the words of the prompt (the keys in words), and the
+    request's size."""
+    _last.reply = {"settings_sent": {k: v for k, v in params.items() if k not in words},
+                   "request_bytes": len(json.dumps(params, default=str).encode("utf-8"))}
+
+
+def _read_chat_reply(body: dict, service: str) -> str:
+    """The answer of a chat completions reply (LiteLLM's, or OpenAI's own as its SDK returns it, model_dump'ed):
+    the text, judged by _finish_reply with the reply's finish reason, token counts and served model."""
     try:
         choice = body["choices"][0]
         text = choice["message"]["content"]
     except (KeyError, IndexError, TypeError):
-        raise RuntimeError(f"LiteLLM's reply has no answer in it: {str(body)[:300]}") from None
-    if body.get("model"):
-        SERVED.add(str(body["model"]))
-        _last.reply["served_as"] = str(body["model"])
-    reason = choice.get("finish_reason")
-    _last.reply["finish_reason"] = reason
+        usage = body.get("usage") if isinstance(body, dict) and isinstance(body.get("usage"), dict) else {}
+        _count_tokens(usage)                                # billed all the same
+        _last.reply["usage"] = usage
+        raise RuntimeError(f"{SERVICES.get(service, service)}'s reply has no answer in it: {str(body)[:300]}") from None
     # The model maker's own reason (e.g. Gemini's "MAX_TOKENS" or "SAFETY"), when LiteLLM passes it on: at the choice's
     # top level, or among its provider_specific_fields.
     extra = choice.get("provider_specific_fields") if isinstance(choice.get("provider_specific_fields"), dict) else {}
-    _last.reply["native_finish_reason"] = choice.get("native_finish_reason") or extra.get("native_finish_reason")
-    return _raise_unless_complete(text, body, "litellm", reason, _last.reply["native_finish_reason"])
+    return _finish_reply(service, text, body.get("usage"), choice.get("finish_reason"),
+                         choice.get("native_finish_reason") or extra.get("native_finish_reason"), body.get("model"))
+
+
+def _finish_reply(service: str, text, usage, reason, native, served) -> str:
+    """What every service client but Ask Sage's does with a reply: count its tokens (usage in OpenAI's shape, which
+    LiteLLM uses and the makers' own replies are put into: _count_tokens), note the served model (SERVED), the finish
+    reasons and the usage in _last.reply, and judge it (_raise_unless_complete)."""
+    usage = usage if isinstance(usage, dict) else {}
+    _count_tokens(usage)
+    _last.reply["usage"] = usage
+    if served:
+        SERVED.add(str(served))
+        _last.reply["served_as"] = str(served)
+    _last.reply["finish_reason"], _last.reply["native_finish_reason"] = reason, native
+    return _raise_unless_complete(text, {"usage": usage}, service, reason, native)
+
+
+# ------------------------------ the makers' own APIs -------------------------
+
+#: The services that reach a model maker's own API directly, through the maker's official Python SDK: the key each
+#: reads from .env, the SDK's package (requirements.txt; imported only when the service is used, _sdk), the maker
+#: whose models it serves, and the names its request gives the answer limit and the thinking level. Each parameter
+#: name is the maker's documented one:
+#:   Anthropic (https://platform.claude.com/docs/en/build-with-claude/effort, read 2026-11-14): "Set
+#:     `output_config.effort` on the request", values low, medium, high, xhigh, max; on Claude Opus 5.5 "Adaptive
+#:     thinking is always on and can't be turned off, so effort is the primary control", and `medium` is its default,
+#:     so `thinking` is never sent and the effort always is (unless the step's thinking is model_default).
+#:     ANTHROPIC_API_KEY is the key the SDK reads first (the claude-api reference, "Authentication"); it is passed to
+#:     the client explicitly, like the other two.
+#:   OpenAI (https://developers.openai.com/api/docs/guides/latest-model; the Chat Completions reference,
+#:     https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create, read
+#:     2026-11-14): `reasoning_effort` and `max_completion_tokens`; GPT-6.1 Sol takes "`low`, `medium` (default),
+#:     `high`, `xhigh`, and `max`" and Chat Completions (https://developers.openai.com/api/docs/models/gpt-6.1-sol,
+#:     read 2026-11-14). OPENAI_API_KEY is the key the SDK reads (https://github.com/openai/openai-python, README).
+#:   Google (google-genai's google/genai/types.py: GenerateContentConfig's `max_output_tokens` and `thinking_config`,
+#:     ThinkingConfig's `thinking_level`, ThinkingLevel's values LOW, MEDIUM, HIGH; the REST reference,
+#:     https://aistudio.google.com/api-reference/generate-content; both read 2026-11-14): Gemini 4 Argon takes the
+#:     levels "low, medium, high", medium its default (https://aistudio.google.com/docs/models/gemini-4-argon).
+#:     GEMINI_API_KEY is the name Google's docs use ("Set the GEMINI_API_KEY or GOOGLE_API_KEY. It will automatically
+#:     be picked up by the client", and "if both are set, GOOGLE_API_KEY takes precedence":
+#:     https://googleapis.github.io/python-genai/); the key is passed to the client explicitly, so a GOOGLE_API_KEY
+#:     set elsewhere on the computer doesn't take its place.
+#: No sampling parameter is sent where temperature_sent says not (TEMPERATURE cites the three makers).
+DIRECT_SERVICES = {
+    "anthropic": {"key": "ANTHROPIC_API_KEY", "package": "anthropic", "maker": "Anthropic",
+                  "answer_limit": "max_tokens", "thinking": "output_config.effort"},
+    "openai": {"key": "OPENAI_API_KEY", "package": "openai", "maker": "OpenAI",
+               "answer_limit": "max_completion_tokens", "thinking": "reasoning_effort"},
+    "google": {"key": "GEMINI_API_KEY", "package": "google-genai", "maker": "Google",
+               "answer_limit": "max_output_tokens", "thinking": "thinking_config.thinking_level"},
+}
+
+#: The SDK clients made so far in this process, by (service, read timeout): one client serves every thread.
+_clients = {}
+
+
+class NoAnswerInTime(Exception):
+    """A maker's SDK gave up waiting for the answer (its read timeout, READ_TIMEOUT): call_llm treats it as it treats
+    requests' ReadTimeout, never asking again, since the service may still be writing, and billing, the first answer."""
+
+
+def _sdk(service: str):
+    """The SDK module of a maker's own API, imported only here, when the service is used: every other service and
+    command runs without these packages installed. A missing package stops the run with what to install."""
+    try:
+        if service == "anthropic":
+            import anthropic
+            return anthropic
+        if service == "openai":
+            import openai
+            return openai
+        from google import genai
+        return genai
+    except ImportError:
+        package = DIRECT_SERVICES[service]["package"]
+        sys.exit(f"The package {package} isn't installed, so no model can be called through {SERVICES[service]} (the "
+                 f"setting service is {service}). Run `pip install -r requirements.txt` in the repository folder "
+                 f"(docs/running_on_nasa_laptop.md), then run the command again.")
+
+
+def _new_client(service: str, api_key: str, read_timeout: int):
+    """A client of the maker's SDK, with its own retries turned off (call_llm retries, and counts every request sent),
+    and a timeout of read_timeout seconds. Anthropic's and OpenAI's clients take `api_key`, `max_retries` (0 turns
+    retries off) and `timeout` in seconds (Anthropic: the claude-api reference, "Client Configuration"; OpenAI: its
+    SDK's README). Google's takes `api_key` and `http_options`, whose `timeout` is "in milliseconds" and whose
+    `retry_options` attempts are the "Maximum number of attempts, including the original request ... If 0 or 1, it
+    means no retries. If not specified, default to 5" (google-genai's google/genai/types.py, HttpOptions and
+    HttpRetryOptions, read 2026-11-14)."""
+    sdk = _sdk(service)
+    if service == "anthropic":
+        return sdk.Anthropic(api_key=api_key, max_retries=0, timeout=float(read_timeout))
+    if service == "openai":
+        return sdk.OpenAI(api_key=api_key, max_retries=0, timeout=float(read_timeout))
+    from google.genai import types
+    return sdk.Client(api_key=api_key, http_options=types.HttpOptions(
+        timeout=int(read_timeout * 1000), retry_options=types.HttpRetryOptions(attempts=1)))
+
+
+def _sdk_client(service: str, read_timeout: int = READ_TIMEOUT):
+    """The process's client of the maker's own API (made once, _new_client), with the key from .env: a missing key
+    stops the run, saying which key and where to put it (_env)."""
+    with _requests_lock:
+        client = _clients.get((service, read_timeout))
+    if client is None:
+        key = _env(DIRECT_SERVICES[service]["key"], f"no model can be called through {SERVICES[service]}")
+        client = _new_client(service, key, read_timeout)
+        with _requests_lock:
+            client = _clients.setdefault((service, read_timeout), client)
+    return client
+
+
+def _as_dict(obj) -> dict:
+    """An SDK's reply object as plain JSON data (the SDKs' objects are pydantic models: model_dump)."""
+    if isinstance(obj, dict):
+        return obj
+    dump = getattr(obj, "model_dump", None)
+    if callable(dump):
+        try:
+            return dump(mode="json")
+        except TypeError:
+            return dump()
+    return {}
+
+
+def _sdk_status(error) -> int | None:
+    """The HTTP status an SDK's error carries, or None when it carries none (a timeout, a lost connection, a fault in
+    the code). Anthropic's and OpenAI's APIStatusError have `status_code` (their SDKs' README); google-genai's
+    errors.APIError has `code` ("print(e.code)  # 404": https://googleapis.github.io/python-genai/)."""
+    for name in ("status_code", "code"):
+        status = getattr(error, name, None)
+        if isinstance(status, int) and not isinstance(status, bool) and 100 <= status < 600:
+            return status
+    return None
+
+
+def _sdk_said(error) -> str:
+    """An SDK's error in words: its message, and the error body the service sent when the SDK keeps it."""
+    message = str(getattr(error, "message", None) or error)
+    body = getattr(error, "body", None)
+    if body and str(body) not in message:
+        message += f" {json.dumps(body, ensure_ascii=False, default=str) if isinstance(body, (dict, list)) else body}"
+    return message
+
+
+def _sdk_error(service: str, error: Exception, paid: bool = True) -> Exception:
+    """The pipeline's own error for an SDK's error, judged as LiteLLM's are: a used-up budget stops the run (paid
+    calls only: stop_if_budget_gone); a rate limit or server error is worth asking again (RetryLater, after the
+    retry-after the service sent); any other HTTP status will not fix itself (ApiError); a timeout is NoAnswerInTime;
+    a lost connection is worth asking again (RuntimeError). Which of the last two an error without a status is, is
+    read from its Python type's name (anthropic.APITimeoutError and openai.APITimeoutError, each a subtype of
+    APIConnectionError; google-genai's transport errors come from httpx2, whose type names are not verified here).
+    Anything else is returned unchanged: a fault in the code, not the service's answer."""
+    status = _sdk_status(error)
+    name = type(error).__name__
+    if status is not None:
+        said = _sdk_said(error)
+        if paid and isinstance(getattr(_last, "reply", None), dict):
+            _last.reply["http_status"], _last.reply["error_body"] = status, said[:ERROR_BODY_CHARS]
+        if paid:
+            stop_if_budget_gone(service, status, said)
+        response = getattr(error, "response", None)
+        message = f"HTTP {status}: {' '.join(said.split())[:300]}"
+        if status in RETRY_STATUSES:
+            return RetryLater(message, _retry_after(response) if hasattr(response, "headers") else None)
+        return ApiError(message)
+    if isinstance(error, TimeoutError) or "Timeout" in name:
+        return NoAnswerInTime(f"{name}: {error}")
+    if any(w in name for w in ("Connection", "Connect", "Network", "Transport", "Protocol")):
+        return RuntimeError(f"no connection to {SERVICES[service]} ({name}: {error})")
+    return error
+
+
+def _sdk_send(service: str, send):
+    """send() (one request through a maker's SDK), as every such request is sent: none in a free command
+    (stop_if_forbidden) or after a used-up budget (stop_if_budget_gone), and its errors made the pipeline's own
+    (_sdk_error)."""
+    stop_if_forbidden()
+    stop_if_budget_gone(service)
+    try:
+        return send()
+    except Exception as e:                                  # noqa: BLE001
+        mine = _sdk_error(service, e)
+        if mine is e:
+            raise
+        raise mine from e
+
+
+def _anthropic_params(prompt: str, model: str, cache_until: str | None) -> dict:
+    """The request to Anthropic's Messages API: the model, `max_tokens` (MAX_ANSWER_TOKENS), the prompt split as
+    _messages splits it for Anthropic's models (the start before cache_until as a system block marked
+    `cache_control` ephemeral, for prompt caching: "system ... array of TextBlockParam ... cache_control: Create a cache
+    control breakpoint at this content block", https://platform.claude.com/docs/en/api/messages), and
+    `output_config.effort` where a thinking level is sent (thinking_sent). No `thinking` (adaptive thinking is always
+    on, on Claude Opus 5.5: DIRECT_SERVICES) and no `temperature`, `top_p` or `top_k` (TEMPERATURE). Not sent either:
+    the server-side refusal `fallbacks`, which would let another model answer a refused request and so mix models in
+    one run's answers; a refusal is recorded as one (Refused)."""
+    messages = _messages(prompt, model, cache_until)
+    params = {"model": model, "max_tokens": max_tokens_sent("anthropic")}
+    if messages[0]["role"] == "system":
+        params["system"] = messages[0]["content"]
+        messages = messages[1:]
+    params["messages"] = messages
+    if temperature_sent(model, "anthropic"):
+        params["temperature"] = TEMPERATURE
+    if thinking_sent(model, "anthropic"):
+        params["output_config"] = {"effort": thinking_sent(model, "anthropic")}
+    return params
+
+
+def _anthropic_usage(usage) -> dict:
+    """Anthropic's token counts in OpenAI's shape, the one _count_tokens and the test call's check read: prompt_tokens
+    = input_tokens (those not read from or written to the cache) + cache_read_input_tokens +
+    cache_creation_input_tokens; completion_tokens = output_tokens ("the inclusive, authoritative total used for
+    billing"); reasoning_tokens = output_tokens_details.thinking_tokens ("Number of output tokens the model generated
+    as internal reasoning"), only when the reply reports it (https://platform.claude.com/docs/en/api/messages, the
+    Usage object, read 2026-11-14). The reply's own counts are kept beside them (maker_usage)."""
+    usage = usage if isinstance(usage, dict) else {}
+    read, write = usage.get("cache_read_input_tokens") or 0, usage.get("cache_creation_input_tokens") or 0
+    out = {"prompt_tokens": (usage.get("input_tokens") or 0) + read + write,
+           "completion_tokens": usage.get("output_tokens") or 0,
+           "cache_read_input_tokens": read, "cache_creation_input_tokens": write, "maker_usage": usage}
+    details = usage.get("output_tokens_details")
+    if isinstance(details, dict) and details.get("thinking_tokens") is not None:
+        out["completion_tokens_details"] = {"reasoning_tokens": details["thinking_tokens"]}
+    return out
+
+
+def _ask_anthropic(prompt: str, model: str, read_timeout: int, cache_until: str | None = None) -> str:
+    """One request to Anthropic's own API (Messages, through the anthropic SDK); the reply text. Streamed, as the
+    claude-api reference advises ("Defaults": "default to streaming for any request that may involve long input, long
+    output, or high `max_tokens` - it prevents hitting request timeouts"), and read whole with
+    `get_final_message()`."""
+    params = _anthropic_params(prompt, model, cache_until)
+    _note_request(params, ("messages", "system"))
+    if "system" in params:
+        _last.reply["settings_sent"]["system"] = "the prompt's start, marked cache_control ephemeral"
+    client = _sdk_client("anthropic", read_timeout)
+
+    def send():
+        with client.messages.stream(**params) as stream:
+            return stream.get_final_message()
+    body = _as_dict(_sdk_send("anthropic", send))
+    _last.reply["http_status"] = 200
+    text = "".join(b.get("text") or "" for b in body.get("content") or [] if isinstance(b, dict)
+                   and b.get("type") == "text")
+    return _finish_reply("anthropic", text, _anthropic_usage(body.get("usage")), body.get("stop_reason"), None,
+                         body.get("model"))
+
+
+def _ask_openai(prompt: str, model: str, read_timeout: int, cache_until: str | None = None) -> str:
+    """One request to OpenAI's own API (Chat Completions, through the openai SDK); the reply text. The request is
+    LiteLLM's (_chat_payload), the reply read as LiteLLM's (_read_chat_reply): the same API."""
+    params = _chat_payload(prompt, model, cache_until, "openai")
+    _note_request(params, ("messages",))
+    client = _sdk_client("openai", read_timeout)
+    body = _as_dict(_sdk_send("openai", lambda: client.chat.completions.create(**params)))
+    _last.reply["http_status"] = 200
+    return _read_chat_reply(body, "openai")
+
+
+def _google_config(model: str) -> dict:
+    """The `config` of a request to Google's Gemini API, as plain data: `max_output_tokens` (MAX_ANSWER_TOKENS),
+    `thinking_config` {"thinking_level": the level in ThinkingLevel's spelling, e.g. "HIGH"} where a thinking level is
+    sent (thinking_sent), `temperature` only where temperature_sent says so (not to Gemini 3 and later: TEMPERATURE)."""
+    config = {"max_output_tokens": max_tokens_sent("google")}
+    if temperature_sent(model, "google"):
+        config["temperature"] = TEMPERATURE
+    if thinking_sent(model, "google"):
+        config["thinking_config"] = {"thinking_level": thinking_sent(model, "google").upper()}
+    return config
+
+
+def _google_usage(usage) -> dict:
+    """Google's token counts (usage_metadata) in OpenAI's shape: prompt_tokens = prompt_token_count, of which
+    cached_content_token_count were read from the cache (Gemini 4 Argon's caching is "Implicit only":
+    https://aistudio.google.com/docs/models/gemini-4-argon); completion_tokens = candidates_token_count +
+    thoughts_token_count, reasoning_tokens = thoughts_token_count, only when the reply reports it (Google's reference
+    lists thoughts apart from the candidates: totalTokenCount is "prompt + tool-use prompt + thoughts + response
+    candidates", https://aistudio.google.com/api-reference/generate-content, read 2026-11-14; that the prompt count
+    includes the cached part, as OpenAI's prompt_tokens includes cached_tokens, is not verified). The reply's own counts
+    are kept beside them (maker_usage)."""
+    usage = usage if isinstance(usage, dict) else {}
+    thoughts = usage.get("thoughts_token_count")
+    out = {"prompt_tokens": usage.get("prompt_token_count") or 0,
+           "completion_tokens": (usage.get("candidates_token_count") or 0) + (thoughts or 0),
+           "cache_read_input_tokens": usage.get("cached_content_token_count") or 0, "maker_usage": usage}
+    if thoughts is not None:
+        out["completion_tokens_details"] = {"reasoning_tokens": thoughts}
+    return out
+
+
+def _ask_google(prompt: str, model: str, read_timeout: int, cache_until: str | None = None) -> str:
+    """One request to Google's Gemini API (generate_content, through the google-genai SDK); the reply text
+    (`response.text`: "If there are multiple candidates, returns the text from only the first one"). The finish reason
+    is the first candidate's `finish_reason` (STOP, MAX_TOKENS, SAFETY, ...), or, when the prompt itself was blocked
+    and no candidate came, `prompt_feedback.block_reason`; the served model is `model_version` ("The model version
+    used to generate the response"; google-genai's types.py and the REST reference, read 2026-11-14)."""
+    config = _google_config(model)
+    _note_request({"model": model, **config}, ())
+    client = _sdk_client("google", read_timeout)             # first: a missing key or package stops here, said plainly
+    from google.genai import types
+    typed = {**config, **({"thinking_config": types.ThinkingConfig(**config["thinking_config"])}
+                          if "thinking_config" in config else {})}
+    reply = _sdk_send("google", lambda: client.models.generate_content(
+        model=model, contents=prompt, config=types.GenerateContentConfig(**typed)))
+    _last.reply["http_status"] = 200
+    body = _as_dict(reply)
+    candidates = body.get("candidates") or []
+    first = candidates[0] if candidates and isinstance(candidates[0], dict) else {}
+    reason = first.get("finish_reason") or ((body.get("prompt_feedback") or {}).get("block_reason")
+                                            if isinstance(body.get("prompt_feedback"), dict) else None)
+    try:
+        text = reply.text or ""
+    except (AttributeError, ValueError):
+        text = ""
+    return _finish_reply("google", text, _google_usage(body.get("usage_metadata")), reason, None,
+                         body.get("model_version"))
+
+
+def _direct_models(service: str) -> list:
+    """The model names a maker's own API lists for the key (free: listing is not a model call): Anthropic's and
+    OpenAI's `client.models.list()` (Anthropic's auto-paginates: the claude-api reference, "Models API"; OpenAI's: its
+    Models API, not read for this), each model's `id`; Google's `client.models.list()`
+    (https://googleapis.github.io/python-genai/), each model's `name` without a leading "models/"."""
+    client = _sdk_client(service, 60)
+    try:
+        models = list(client.models.list())
+    except Exception as e:                                  # noqa: BLE001
+        mine = _sdk_error(service, e, paid=False)
+        if mine is e:
+            raise
+        raise (mine if isinstance(mine, ApiError) else ApiError(str(mine))) from e
+    names = [str(getattr(m, "name", "") or "").removeprefix("models/") if service == "google"
+             else str(getattr(m, "id", "") or "") for m in models]
+    names = [n for n in names if n]
+    if not names:
+        raise ValueError(f"{SERVICES[service]}'s model list is empty or came in a shape this code doesn't read")
+    return sorted(set(names))
 
 
 def _with_reply(error: Exception, text, body: dict, reason, native=None) -> Exception:
@@ -995,7 +1383,16 @@ def _with_call(error: Exception, attempts: int, began: float, cause: Exception |
 def list_models(service: str | None = None) -> list:
     """The model names the service lists for your account. Free: listing is not a model call. Being listed doesn't
     guarantee access."""
-    return _litellm_models() if (service or SERVICE) == "litellm" else _asksage_models()
+    service = service or SERVICE
+    if service in DIRECT_SERVICES:
+        return _direct_models(service)
+    return _litellm_models() if service == "litellm" else _asksage_models()
+
+
+#: The client of each service: one request, the reply text (call_llm).
+_ASK = {"asksage": lambda *a: _ask_asksage(*a), "litellm": lambda *a: _ask_litellm(*a),
+        "anthropic": lambda *a: _ask_anthropic(*a), "openai": lambda *a: _ask_openai(*a),
+        "google": lambda *a: _ask_google(*a)}
 
 
 def call_llm(prompt, attempts=4, read_timeout=READ_TIMEOUT, model=None, service=None, cache_until=None):
@@ -1004,8 +1401,8 @@ def call_llm(prompt, attempts=4, read_timeout=READ_TIMEOUT, model=None, service=
     used-up budget (BudgetExhausted) stops the whole run.
     model, service: MODEL and SERVICE (the run's) when None."""
     model, service = model or MODEL, service or SERVICE
-    # cache_until: where the prompt's identical start ends, for prompt caching (_messages); only LiteLLM uses it
-    ask = _ask_litellm if service == "litellm" else _ask_asksage
+    # cache_until: where the prompt's identical start ends, for prompt caching (_messages); Ask Sage doesn't use it
+    ask = _ASK[service]
     began, _last.reply = time.monotonic(), {}
     for attempt in range(attempts):
         stop_if_forbidden()                                 # a free command sends nothing (forbid_model_calls)
@@ -1016,7 +1413,7 @@ def call_llm(prompt, attempts=4, read_timeout=READ_TIMEOUT, model=None, service=
             text = ask(prompt, model, read_timeout, cache_until)
             _last.timing = {"attempts": attempt + 1, "seconds": round(time.monotonic() - began, 1)}
             return text
-        except requests.ReadTimeout as e:
+        except (requests.ReadTimeout, NoAnswerInTime) as e:
             # Not asked again: the service may still be writing, and billing, the first answer.
             raise _with_call(ApiError(f"no answer within {read_timeout} s (READ_TIMEOUT in "
                                       f"common/common_helpers/llm.py); not asked again, since the service may still be "
@@ -1350,8 +1747,8 @@ class PaidCalls:
                  f"call was made. If {service} says the model "
                  f"isn't allowed, give another with --model <name> (`py helpers/models.py --service {SERVICE} --try <name> ...` "
                  f"tells which you may use)"
-                 + (f"; if it names reasoning_effort, give `--thinking model_default`, which sends no thinking cap"
-                    if thinking_sent() else "")
+                 + (f"; if it names {thinking_parameter()}, give `--thinking model_default`, which sends no thinking "
+                    f"cap" if thinking_sent() else "")
                  + f"; otherwise check your key in .env and that you're on NASA's network. Then run {again} again.{file}")
 
     def _check_test_call(self) -> None:
@@ -1514,6 +1911,12 @@ def paid_calls(settings: dict, output, notes: list = (), session_id: str | None 
     if not name:
         raise Stop(f"The setting model must be a text (not empty), but is {given['model']!r}, so the step can't run. "
                    f"Give --model <name> (`py helpers/models.py` lists them), then run the step again.")
+    own = DIRECT_SERVICES.get(service, {}).get("maker")
+    if own and maker(name) and maker(name) != own:
+        raise Stop(f"The setting model is {name}, a model by {maker(name)}, but the setting service is {service}, "
+                   f"which reaches only {own}'s models ({SERVICES[service]}), so the step can't run. Give a model by "
+                   f"{own} (`py helpers/models.py --service {service}` lists them), or a service that reaches {name} "
+                   f"(e.g. --service litellm), then run the step again.")
     repeat = given["repeat"]
     MODEL, SERVICE, THINKING, REPEAT, SESSION_ID = name, service, thinking, repeat, session_id
     SERVED.clear()

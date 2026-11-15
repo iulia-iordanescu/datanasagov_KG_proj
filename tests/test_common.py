@@ -1937,8 +1937,9 @@ class LiteLLM(unittest.TestCase):
         self.assertIsNone(llm.effort_note("gemini-2.5-pro"))
 
     def test_unknown_service(self):
-        with self.assertRaisesRegex(ValueError, "asksage, litellm"):
-            self.llm.paid_calls({"service": "openai", "model": "x", "confirm_paid_calls": False}, Path("060_extract"))
+        # "openai" is a service since 2026-11-14 (the makers' own APIs); a near name still isn't
+        with self.assertRaisesRegex(ValueError, "asksage, litellm, anthropic, openai, google"):
+            self.llm.paid_calls({"service": "open-ai", "model": "x", "confirm_paid_calls": False}, Path("060_extract"))
 
 
 

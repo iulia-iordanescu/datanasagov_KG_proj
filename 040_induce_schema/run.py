@@ -39,7 +39,7 @@ SETTINGS = {
     "min_support":           1,     # a schema entry enters the schema if found in at least this many texts
     "max_chars":             8000,  # a longer text is split into text pieces, one call each
     "workers":               4,     # model calls made at the same time
-    "service":               SERVICE, # the service that reaches the model: asksage or litellm
+    "service":               SERVICE, # the service that reaches the model: asksage, litellm, anthropic, openai, google
     "model":                 MODEL, # the AI model to ask (py helpers/models.py lists them)
     "thinking":              THINKING, # how much a model that thinks may think: low, medium, high, or model_default
     "repeat":                1,     # which repeat of this recipe: 1 reuses saved answers; 2, 3, ... ask again, each into answers of its own

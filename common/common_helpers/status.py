@@ -74,7 +74,8 @@ COUNTED_PERSON_INPUTS = {"060_extract": {"additions"},
                          "070_evaluate": {"ground_truth_schema", "ground_truth", "component_class_mapping",
                                           "partial_reviews"}}
 #: The keys each service needs in .env (common/common_helpers/llm.py reads them).
-SERVICE_KEYS = {"litellm": ("LITELLM_API_KEY",), "asksage": ("ASKSAGE_EMAIL", "ASKSAGE_API_KEY")}
+SERVICE_KEYS = {"litellm": ("LITELLM_API_KEY",), "asksage": ("ASKSAGE_EMAIL", "ASKSAGE_API_KEY"),
+                "anthropic": ("ANTHROPIC_API_KEY",), "openai": ("OPENAI_API_KEY",), "google": ("GEMINI_API_KEY",)}
 # What each level, area and step state means, and how they relate: docs/upkeep.md, *What the status lists* (the
 # home). Each is defined once here; run_pipeline.py and the annotation tool take them from here.
 TO_DO, LOOK = "to do", "worth a look"

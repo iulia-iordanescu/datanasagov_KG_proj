@@ -107,12 +107,15 @@ Then commit `requirements.txt`.
 
 Skip this part if you only need the pipeline [steps](terminology.md#8-the-pipeline) that call no [model](terminology.md#8-the-pipeline) (010 to 030) and the audit tool.
 
-Create a file named `.env` in the repo root, with your own values in the lines of the service you use: LiteLLM's key for NASA's LiteLLM (the default; how to make the key: `docs/running_on_nasa_laptop.md`, section 3), and the email and key for Ask Sage (`--service asksage`):
+Create a file named `.env` in the repo root, with your own values in the lines of the service you use: LiteLLM's key for NASA's LiteLLM (the default; how to make the key: `docs/running_on_nasa_laptop.md`, section 3), the email and key for Ask Sage (`--service asksage`), and a maker's own key for that maker's API (`--service anthropic`, `openai` or `google`):
 
 ```
 LITELLM_API_KEY=sk-your-key-here
 ASKSAGE_EMAIL=you@example.com
 ASKSAGE_API_KEY=your-key-here
+ANTHROPIC_API_KEY=your-key-here
+OPENAI_API_KEY=your-key-here
+GEMINI_API_KEY=your-key-here
 ```
 
 Don't add quotes or spaces around the `=`.

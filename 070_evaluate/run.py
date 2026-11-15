@@ -54,7 +54,7 @@ INPUTS = {
 
 SETTINGS = {
     "evaluate_held_out":  False,  # also show the held-out part's numbers (for the end; each look is logged)
-    "service":            SERVICE, # the service that reaches the model: asksage or litellm
+    "service":            SERVICE, # the service that reaches the model: asksage, litellm, anthropic, openai, google
     "model":              MODEL,  # the AI model to ask (py helpers/models.py lists them)
     "thinking":           THINKING, # how much a model that thinks may think: low, medium, high, or model_default
     "repeat":             1,      # which repeat of this recipe: 1 reuses saved answers; 2, 3, ... ask again, each into answers of its own

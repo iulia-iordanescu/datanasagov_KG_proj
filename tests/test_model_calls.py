@@ -16,11 +16,15 @@ model behind LiteLLM's reply shape (tests/stand_ins.py, stand_in_post):
     the answer cache      with LITELLM_BYPASS_ANSWER_CACHE=1, every LiteLLM call of 040 to 070 carries LiteLLM's
                           cache control, never one through Ask Sage; the words sent, the other settings and the
                           cache key are the same either way; recorded in the run's record and report
+    the makers' own APIs  anthropic, openai, google, each SDK faked: the parameters sent (the answer limit and the
+                          thinking level under the maker's names, no temperature, Anthropic's prompt caching), the
+                          cache key, token counts, served model, cut-offs, refusals, errors, keys, the test call
 """
 import json
 import logging
 import os
 import shutil
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -29,6 +33,7 @@ from unittest import mock
 import support                                    # noqa: F401  (the repository on the import path)
 import stand_ins
 from common import audit, cache as cache_module, extraction, llm, report, step
+from common.stop import Stop
 
 SETTINGS = {"service": "litellm", "model": "gemini-2.5-pro", "thinking": "low", "confirm_paid_calls": False}
 
@@ -160,7 +165,7 @@ class Guards(unittest.TestCase):
         """A setting paid_calls can't use stops the step (Stop: `stopped`), never fails it: an unknown service, an
         empty model, an unknown thinking level."""
         from common.stop import Stop
-        for settings, words in (({"service": "nowhere"}, "service must be one of asksage, litellm, but is 'nowhere'"),
+        for settings, words in (({"service": "nowhere"}, "service must be one of asksage, litellm, anthropic, openai, google, but is 'nowhere'"),
                                 ({"model": " "}, "model must be a text .not empty., but is ' '"),
                                 ({"thinking": "max"}, "thinking must be one of low, medium, high, model_default, but is 'max'")):
             with self.subTest(settings=settings), self.assertRaisesRegex(Stop, words):
@@ -1126,6 +1131,373 @@ class Budget(unittest.TestCase):
                     if answer.status_code == 429:
                         self.assertEqual(len(posts), 4)                          # retried
 
+
+class FakeSDK:
+    """Stand-ins for the three makers' SDKs (anthropic, openai, google-genai), put in sys.modules so that
+    common/common_helpers/llm.py imports them as it imports the real ones: each records the client's settings and
+    every request's parameters, and answers with the reply the test set (a dict, model_dump'ed as the SDKs' pydantic
+    objects are), or raises the error the test set. No SDK needs to be installed and nothing leaves the computer."""
+
+    def __init__(self):
+        self.clients, self.requests, self.replies, self.listed = [], [], [], []
+        sdk = self
+
+        class Reply:
+            def __init__(self, body, text=None):
+                self.body, self.text = body, text
+
+            def model_dump(self, mode=None):
+                return json.loads(json.dumps(self.body))
+
+        class Model:
+            def __init__(self, **kw):
+                self.__dict__.update(kw)
+
+        def answer(service, params):
+            sdk.requests.append((service, params))
+            got = sdk.replies.pop(0)
+            if isinstance(got, Exception):
+                raise got
+            return Reply(*got) if isinstance(got, tuple) else Reply(got)
+
+        class Pages:
+            def __init__(self, service):
+                self.service = service
+
+            def list(self):
+                return iter(Model(**m) for m in sdk.listed)
+
+        # anthropic
+        class APIStatusError(Exception):
+            def __init__(self, message, status_code, body=None, headers=None):
+                super().__init__(message)
+                self.message, self.status_code, self.body = message, status_code, body
+                self.response = Model(headers=headers or {})
+
+        class APIConnectionError(Exception):
+            pass
+
+        class APITimeoutError(APIConnectionError):
+            pass
+
+        class Stream:
+            def __init__(self, params):
+                self.params = params
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+            def get_final_message(self):
+                return answer("anthropic", self.params)
+
+        class Anthropic:
+            def __init__(self, **kw):
+                sdk.clients.append(("anthropic", kw))
+                self.messages = Model(stream=lambda **params: Stream(params))
+                self.models = Pages("anthropic")
+
+        anthropic = type(sys)("anthropic")
+        anthropic.Anthropic, anthropic.APIStatusError = Anthropic, APIStatusError
+        anthropic.APIConnectionError, anthropic.APITimeoutError = APIConnectionError, APITimeoutError
+
+        # openai
+        class OpenAI:
+            def __init__(self, **kw):
+                sdk.clients.append(("openai", kw))
+                self.chat = Model(completions=Model(create=lambda **params: answer("openai", params)))
+                self.models = Pages("openai")
+
+        openai = type(sys)("openai")
+        openai.OpenAI, openai.APIStatusError, openai.APITimeoutError = OpenAI, APIStatusError, APITimeoutError
+
+        # google-genai
+        class Typed(dict):
+            """A google.genai.types object: its fields, as given."""
+
+        types = type(sys)("google.genai.types")
+        for name in ("HttpOptions", "HttpRetryOptions", "ThinkingConfig", "GenerateContentConfig"):
+            setattr(types, name, type(name, (Typed,), {}))
+
+        class APIError(Exception):
+            def __init__(self, code, message):
+                super().__init__(message)
+                self.code, self.message = code, message
+
+        class Client:
+            def __init__(self, **kw):
+                sdk.clients.append(("google", kw))
+                self.models = Model(generate_content=lambda **params: answer("google", params),
+                                    list=lambda: iter(Model(**m) for m in sdk.listed))
+
+        genai = type(sys)("google.genai")
+        genai.Client, genai.types = Client, types
+        errors = type(sys)("google.genai.errors")
+        errors.APIError = APIError
+        genai.errors = errors
+        google = type(sys)("google")
+        google.genai = genai
+        self.modules = {"anthropic": anthropic, "openai": openai, "google": google, "google.genai": genai,
+                        "google.genai.types": types, "google.genai.errors": errors}
+        self.APIStatusError, self.APITimeoutError, self.APIConnectionError = (APIStatusError, APITimeoutError,
+                                                                             APIConnectionError)
+        self.GoogleError = APIError
+
+
+#: Replies as each maker's API sends them (the fields the code reads; the makers' docs cited in llm.DIRECT_SERVICES).
+ANTHROPIC_REPLY = {"model": "claude-opus-5-5", "stop_reason": "end_turn",
+                   "content": [{"type": "thinking", "thinking": ""}, {"type": "text", "text": '{"ok": true}'}],
+                   "usage": {"input_tokens": 10, "cache_read_input_tokens": 100, "cache_creation_input_tokens": 20,
+                             "output_tokens": 50, "output_tokens_details": {"thinking_tokens": 40}}}
+OPENAI_REPLY = {"model": "gpt-6.1-sol-2026-10-01", "choices": [{"finish_reason": "stop",
+                                                                "message": {"content": '{"ok": true}'}}],
+                "usage": {"prompt_tokens": 30, "completion_tokens": 25, "prompt_tokens_details": {"cached_tokens": 10},
+                          "completion_tokens_details": {"reasoning_tokens": 20}}}
+GOOGLE_REPLY = ({"model_version": "gemini-4-argon-001", "candidates": [{"finish_reason": "STOP"}],
+                 "usage_metadata": {"prompt_token_count": 40, "cached_content_token_count": 15,
+                                    "candidates_token_count": 5, "thoughts_token_count": 60}}, '{"ok": true}')
+BASELINE = {"anthropic": "claude-opus-5-5", "openai": "gpt-6.1-sol", "google": "gemini-4-argon"}
+
+
+class DirectServices(unittest.TestCase):
+    """The makers' own APIs (services anthropic, openai, google), each through its SDK, faked (FakeSDK): the
+    parameters each request sends (the answer limit under the maker's name, the thinking level under the maker's name,
+    no temperature, Anthropic's prompt caching), the cache key, the token counts and the served model, the finish
+    reason (a cut-off), the errors (a rate limit retried, a refusal not, a used-up budget stops the run, a timeout not
+    asked again), a missing key or SDK, the free commands' guarantee, a model of another maker, the model list, and
+    the run's test call. Near-misses included."""
+
+    calls = Guards.calls
+
+    def setUp(self):
+        Guards.setUp(self)
+        self.sdk = FakeSDK()
+        self.extra = [mock.patch.dict(sys.modules, self.sdk.modules),
+                      mock.patch.dict(os.environ, {"ANTHROPIC_API_KEY": "a-key", "OPENAI_API_KEY": "o-key",
+                                                   "GEMINI_API_KEY": "g-key"})]
+        for p in self.extra:
+            p.start()
+        llm._clients.clear()
+        llm.BUDGET_GONE["error"] = None
+
+    def tearDown(self):
+        llm._clients.clear()
+        llm.BUDGET_GONE["error"] = None
+        llm.allow_model_calls()
+        for p in reversed(self.extra):
+            p.stop()
+        Guards.tearDown(self)
+
+    def run_on(self, service, reply, thinking="high", model=None, cache_until=None, prompt=llm.TEST_PROMPT):
+        self.calls(service=service, model=model or BASELINE[service], thinking=thinking)
+        self.sdk.replies.append(reply)
+        text = llm.call_llm(prompt, cache_until=cache_until)
+        return text, self.sdk.requests[-1][1]
+
+    def test_every_new_service_is_a_setting_value(self):
+        for service in ("anthropic", "openai", "google"):
+            with self.subTest(service=service):
+                self.calls(service=service, model=BASELINE[service])          # accepted by the settings' check
+                self.assertEqual(llm.SERVICE, service)
+        with self.assertRaises(Stop):
+            self.calls(service="claude", model="claude-opus-5-5")               # near-miss: not a service
+
+    def test_thinking_sent_to_each_baseline_model(self):
+        for service, model, parameter in (("anthropic", "claude-opus-5-5", "output_config.effort"),
+                                          ("openai", "gpt-6.1-sol", "reasoning_effort"),
+                                          ("google", "gemini-4-argon", "thinking_config.thinking_level")):
+            for thinking in ("low", "medium", "high"):
+                llm.THINKING = thinking
+                self.assertEqual(llm.thinking_sent(model, service), thinking, (service, thinking))
+                self.assertTrue(llm.takes_thinking_cap(model, service))
+            self.assertEqual(llm.thinking_parameter(model, service), parameter)
+            self.assertFalse(llm.temperature_sent(model, service))
+            llm.THINKING = "model_default"
+            self.assertIsNone(llm.thinking_sent(model, service))
+        llm.THINKING = "high"
+        # near-misses: Gemini 2.5 takes no thinking level (an error, Google says); a GPT-4 model takes no effort;
+        # Claude through LiteLLM still gets none (not shown to be passed on)
+        self.assertIsNone(llm.thinking_sent("gemini-2.5-pro", "google"))
+        self.assertIsNone(llm.thinking_sent("gpt-4o", "openai"))
+        self.assertIsNone(llm.thinking_sent("claude-opus-5-5", "litellm"))
+
+    def test_anthropic_request(self):
+        text, params = self.run_on("anthropic", ANTHROPIC_REPLY)
+        self.assertEqual(text, '{"ok": true}')
+        self.assertEqual(params, {"model": "claude-opus-5-5", "max_tokens": llm.MAX_ANSWER_TOKENS,
+                                  "messages": [{"role": "user", "content": llm.TEST_PROMPT}],
+                                  "output_config": {"effort": "high"}})
+        self.assertEqual(self.sdk.clients, [("anthropic", {"api_key": "a-key", "max_retries": 0,
+                                                           "timeout": float(llm.READ_TIMEOUT)})])
+        self.assertEqual(llm.cache_identity(), "anthropic:claude-opus-5-5|thinking:high")
+        self.assertEqual(llm.call_settings()["effort"], "sent as output_config.effort high")
+        self.assertEqual(llm.call_settings()["max_answer_tokens"], llm.MAX_ANSWER_TOKENS)
+        self.assertEqual(llm.REQUESTS, {"sent": 1, "input_tokens": 10, "cache_read_tokens": 100,
+                                        "cache_write_tokens": 20, "output_tokens": 50, "reasoning_tokens": 40})
+        self.assertEqual(llm.SERVED, {"claude-opus-5-5"})
+        # the shared start is a system block marked for prompt caching, the rest the user message: the same words
+        prompt = "RULES\n----- BEGIN RECORD -----\ntext"
+        _, params = self.run_on("anthropic", ANTHROPIC_REPLY, cache_until="----- BEGIN RECORD -----", prompt=prompt)
+        self.assertEqual(params["system"], [{"type": "text", "text": "RULES\n",
+                                             "cache_control": {"type": "ephemeral"}}])
+        self.assertEqual(params["messages"], [{"role": "user", "content": "----- BEGIN RECORD -----\ntext"}])
+        # model_default sends no effort, and the key has no thinking
+        _, params = self.run_on("anthropic", ANTHROPIC_REPLY, thinking="model_default")
+        self.assertNotIn("output_config", params)
+        self.assertEqual(llm.cache_identity(), "anthropic:claude-opus-5-5")
+        for sent in self.sdk.requests:
+            self.assertFalse({"temperature", "top_p", "top_k", "thinking", "fallbacks"} & set(sent[1]))
+
+    def test_openai_request(self):
+        text, params = self.run_on("openai", OPENAI_REPLY)
+        self.assertEqual(text, '{"ok": true}')
+        self.assertEqual(params, {"model": "gpt-6.1-sol", "messages": [{"role": "user", "content": llm.TEST_PROMPT}],
+                                  "max_completion_tokens": llm.MAX_ANSWER_TOKENS, "reasoning_effort": "high"})
+        self.assertEqual(self.sdk.clients[0], ("openai", {"api_key": "o-key", "max_retries": 0,
+                                                          "timeout": float(llm.READ_TIMEOUT)}))
+        self.assertEqual(llm.cache_identity(), "openai:gpt-6.1-sol|thinking:high")
+        self.assertEqual(llm.REQUESTS, {"sent": 1, "input_tokens": 20, "cache_read_tokens": 10,
+                                        "cache_write_tokens": 0, "output_tokens": 25, "reasoning_tokens": 20})
+        self.assertEqual(llm.SERVED, {"gpt-6.1-sol-2026-10-01"})
+        self.assertIsNone(llm.effort_note())                                    # not a Claude model
+
+    def test_google_request(self):
+        text, params = self.run_on("google", GOOGLE_REPLY)
+        self.assertEqual(text, '{"ok": true}')
+        self.assertEqual(params["model"], "gemini-4-argon")
+        self.assertEqual(params["contents"], llm.TEST_PROMPT)
+        self.assertEqual(params["config"], {"max_output_tokens": llm.MAX_ANSWER_TOKENS,
+                                            "thinking_config": {"thinking_level": "HIGH"}})
+        self.assertEqual(type(params["config"]["thinking_config"]).__name__, "ThinkingConfig")
+        service, client = self.sdk.clients[0]
+        self.assertEqual((service, client["api_key"]), ("google", "g-key"))
+        self.assertEqual(client["http_options"], {"timeout": llm.READ_TIMEOUT * 1000,
+                                                  "retry_options": {"attempts": 1}})
+        self.assertEqual(llm.cache_identity(), "google:gemini-4-argon|thinking:high")
+        self.assertEqual(llm.REQUESTS, {"sent": 1, "input_tokens": 25, "cache_read_tokens": 15,
+                                        "cache_write_tokens": 0, "output_tokens": 65, "reasoning_tokens": 60})
+        self.assertEqual(llm.SERVED, {"gemini-4-argon-001"})
+        # near-miss: Gemini 2.5 gets the temperature and no thinking level
+        _, params = self.run_on("google", GOOGLE_REPLY, model="gemini-2.5-pro")
+        self.assertEqual(params["config"], {"max_output_tokens": llm.MAX_ANSWER_TOKENS, "temperature": llm.TEMPERATURE})
+
+    def test_cut_off_and_refusal_by_each_makers_reason(self):
+        anthropic_cut = {**ANTHROPIC_REPLY, "stop_reason": "max_tokens",
+                         "content": [{"type": "text", "text": '{"triples": [{"subj'}]}
+        openai_cut = {**OPENAI_REPLY, "choices": [{"finish_reason": "length", "message": {"content": '{"tri'}}]}
+        google_cut = ({**GOOGLE_REPLY[0], "candidates": [{"finish_reason": "MAX_TOKENS"}]}, '{"tri')
+        for service, reply in (("anthropic", anthropic_cut), ("openai", openai_cut), ("google", google_cut)):
+            with self.subTest(service=service), self.assertRaises(llm.CutOff) as caught:
+                self.run_on(service, reply)
+            self.assertIn(f"{llm.MAX_ANSWER_TOKENS:,} tokens", str(caught.exception))
+            self.assertEqual(len(self.sdk.requests), 1)                        # not asked again
+            self.sdk.requests.clear()
+        refused = {**ANTHROPIC_REPLY, "stop_reason": "refusal", "content": []}
+        blocked = ({**GOOGLE_REPLY[0], "candidates": [], "prompt_feedback": {"block_reason": "PROHIBITED_CONTENT"}}, None)
+        for service, reply in (("anthropic", refused), ("google", blocked)):
+            with self.subTest(service=service), self.assertRaises(llm.Refused):
+                self.run_on(service, reply)
+
+    def test_errors(self):
+        sdk = self.sdk
+        # a rate limit is asked again, after the retry-after the service sent; the second answer is kept
+        self.calls(service="anthropic", model="claude-opus-5-5", thinking="high")
+        sdk.replies += [sdk.APIStatusError("rate limited", 429, headers={"Retry-After": "7"}), ANTHROPIC_REPLY]
+        waits = []
+        with mock.patch.object(llm.time, "sleep", waits.append):
+            self.assertEqual(llm.call_llm(llm.TEST_PROMPT), '{"ok": true}')
+        self.assertEqual(len(sdk.requests), 2)
+        self.assertGreaterEqual(waits[0], 7)
+        self.assertEqual(llm.REQUESTS["sent"], 2)
+        # a refusal that will not fix itself is not asked again, and carries the service's words
+        for service, error in (("openai", sdk.APIStatusError("model not found", 404)),
+                               ("google", sdk.GoogleError(400, "thinking_level is not supported"))):
+            sdk.requests.clear()
+            with self.subTest(service=service), self.assertRaises(llm.ApiError) as caught:
+                self.run_on(service, error)
+            self.assertEqual(len(sdk.requests), 1)
+            self.assertIn("HTTP 4", str(caught.exception))
+        # a server error from Google is asked again (code 503)
+        sdk.requests.clear()
+        self.calls(service="google", model="gemini-4-argon", thinking="high")
+        sdk.replies += [sdk.GoogleError(503, "overloaded"), GOOGLE_REPLY]
+        self.assertEqual(llm.call_llm(llm.TEST_PROMPT), '{"ok": true}')
+        # a timeout: not asked again (the service may still be writing, and billing, the answer)
+        sdk.requests.clear()
+        with self.assertRaises(llm.ApiError) as caught:
+            self.run_on("openai", sdk.APITimeoutError("Request timed out."))
+        self.assertIn("no answer within", str(caught.exception))
+        self.assertEqual(len(sdk.requests), 1)
+        self.assertEqual(caught.exception.call["cause_type"], "NoAnswerInTime")
+        # a lost connection is asked again
+        sdk.requests.clear()
+        self.calls(service="anthropic", model="claude-opus-5-5", thinking="high")
+        sdk.replies += [sdk.APIConnectionError("Connection error."), ANTHROPIC_REPLY]
+        self.assertEqual(llm.call_llm(llm.TEST_PROMPT), '{"ok": true}')
+        self.assertEqual(len(sdk.requests), 2)
+        # a used-up credit stops the run; no other request leaves
+        sdk.requests.clear()
+        with self.assertRaises(llm.BudgetExhausted) as caught:
+            self.run_on("anthropic", sdk.APIStatusError(
+                "Your credit balance is too low to access the Anthropic API.", 400))
+        self.assertIn("Anthropic's API answered that the budget", str(caught.exception.code))
+        with self.assertRaises(llm.BudgetExhausted):
+            llm.call_llm(llm.TEST_PROMPT)
+        self.assertEqual(len(sdk.requests), 1)
+
+    def test_missing_key_or_sdk(self):
+        self.calls(service="openai", model="gpt-6.1-sol")
+        with mock.patch.dict(os.environ, {"OPENAI_API_KEY": ""}), self.assertRaises(SystemExit) as caught:
+            llm.call_llm(llm.TEST_PROMPT)
+        for words in ("OPENAI_API_KEY isn't set", "no model can be called through OpenAI's API", ".env",
+                      "docs/running_on_nasa_laptop.md"):
+            self.assertIn(words, str(caught.exception.code))
+        self.assertEqual(self.sdk.requests, [])
+        self.calls(service="google", model="gemini-4-argon")
+        with mock.patch.dict(sys.modules, {"google": None, "google.genai": None}), \
+                self.assertRaises(SystemExit) as caught:
+            llm.call_llm(llm.TEST_PROMPT)
+        for words in ("The package google-genai isn't installed", "pip install -r requirements.txt"):
+            self.assertIn(words, str(caught.exception.code))
+
+    def test_nothing_leaves_once_forbidden(self):
+        llm.forbid_model_calls("the command under test is free: a test")
+        for service in ("anthropic", "openai", "google"):
+            self.calls(service=service, model=BASELINE[service])
+            with self.subTest(service=service), self.assertRaises(llm.ModelCallForbidden):
+                llm.call_llm(llm.TEST_PROMPT)
+        self.assertEqual(self.sdk.requests, [])
+        llm.allow_model_calls()
+        self.sdk.listed = [{"id": "claude-opus-5-5"}]
+        llm.forbid_model_calls("listing is free")
+        self.assertEqual(llm.list_models("anthropic"), ["claude-opus-5-5"])      # listing is not a model call
+
+    def test_a_model_of_another_maker_stops_the_step(self):
+        with self.assertRaises(Stop) as caught:
+            self.calls(service="anthropic", model="gemini-4-argon")
+        self.assertIn("reaches only Anthropic's models", str(caught.exception))
+        self.calls(service="google", model="gemini-4-argon")                     # near-miss: its own maker
+        self.calls(service="openai", model="some-unknown-name")                  # a maker the table doesn't know: left to the test call
+
+    def test_model_lists(self):
+        self.sdk.listed = [{"id": "claude-opus-5-5"}, {"id": "claude-sonnet-5-5"}]
+        self.assertEqual(llm.list_models("anthropic"), ["claude-opus-5-5", "claude-sonnet-5-5"])
+        self.sdk.listed = [{"name": "models/gemini-4-argon"}, {"name": "gemini-4-carbon"}]
+        self.assertEqual(llm.list_models("google"), ["gemini-4-argon", "gemini-4-carbon"])
+
+    def test_the_test_call_and_the_record(self):
+        for service, reply in (("anthropic", ANTHROPIC_REPLY), ("openai", OPENAI_REPLY), ("google", GOOGLE_REPLY)):
+            with self.subTest(service=service), self.assertLogs(audit.log, logging.INFO) as logs:
+                calls = self.calls(service=service, model=BASELINE[service], thinking="high")
+                self.sdk.replies.append(reply)
+                calls.paid.start("a test")
+            self.assertTrue(any("test call: ok (answer" in line and "thinking" in line and "not reported" not in line
+                                for line in logs.output), logs.output)
+            made = llm.describe()
+            self.assertEqual((made["service"], made["thinking_sent"]), (service, "high"))
+            self.assertEqual(len(made["served_as"]), 1)
 
 
 class FreeCommands(unittest.TestCase):

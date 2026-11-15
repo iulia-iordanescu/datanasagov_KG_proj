@@ -3,6 +3,16 @@ helpers/models.py -- the AI models a service lists for your account, and which o
 
     py helpers/models.py                                  LiteLLM's list (free; the default service)
     py helpers/models.py --service asksage                Ask Sage's list (free)
+    py helpers/models.py --service anthropic              Anthropic's own list (free; also openai, google)
+
+The services anthropic, openai and google reach the model maker's own API
+(ANTHROPIC_API_KEY, OPENAI_API_KEY or GEMINI_API_KEY in .env, and the
+maker's SDK from requirements.txt). The baseline's three models, one test
+call each:
+
+    py helpers/models.py --service anthropic --try claude-opus-5-5
+    py helpers/models.py --service openai --try gpt-6.1-sol
+    py helpers/models.py --service google --try gemini-4-argon
 
 Free: listing is not a model call. Being listed doesn't guarantee access:
 Ask Sage may list a model and still refuse it. (LiteLLM lists only the

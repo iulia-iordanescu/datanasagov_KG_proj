@@ -95,7 +95,7 @@ SETTINGS = {
     "ids":                "",    # only these finished records: ids separated by commas, or a file with one per line; empty: every finished record
     "max_chars":          8000,  # a longer text is split into text pieces, one call each (050's setting)
     "workers":            4,     # model calls made at the same time
-    "service":            llm.SERVICE,  # the service that reaches the model: asksage or litellm
+    "service":            llm.SERVICE,  # the service that reaches the model: asksage, litellm, anthropic, openai, google
     "model":              SECOND_OPINION_MODEL,  # the model that gives the second opinion (py helpers/models.py lists them)
     "thinking":           "medium",  # how much a model that thinks may think: low, medium, high, or model_default (050's setting)
     "repeats":            REPEATS,  # how many times each record is drafted: repeats 1, 2, ..., N, each with answers of its own

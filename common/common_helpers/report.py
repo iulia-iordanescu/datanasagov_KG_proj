@@ -242,9 +242,10 @@ def model_calls(stages: list, test_calls: int, model: str) -> list:
                "| cut off at the answer length limit (no limit is sent through Ask Sage, which gives no reason an "
                "answer ended, so a cut-off can't be detected) | – |"),
               "",
-              "Token counts come only from LiteLLM, whose replies carry them; through Ask Sage they show 0. "
+              "Token counts come from the service's replies (LiteLLM's, or the model maker's own API's); Ask Sage's "
+              "carry none, so through Ask Sage they show 0. "
               "Thinking: the step's `thinking` setting was "
-              f"`{llm.THINKING}`" + (f", sent as `reasoning_effort` `{llm.thinking_sent()}`." if llm.thinking_sent()
+              f"`{llm.THINKING}`" + (f", sent as `{llm.thinking_parameter()}` `{llm.thinking_sent()}`." if llm.thinking_sent()
                                     else ", not sent to this model.")
               + (f" Effort: {llm.effort_note()}." if llm.effort_note() else "")
               + (f" Temperature: {llm.TEMPERATURE}." if llm.temperature_sent() else " Temperature: not sent.")
