@@ -4,8 +4,9 @@ Each wording below has one meaning wherever it is used here.
 
 - Record. A record is the metadata of one entry of a catalog, such as
   data.nasa.gov: its title, its notes field, and its other fields.
-- Entity. An entity is one individual that an instance's words refer to,
-  such as Kestrel. Many entities share one entity class: Kestrel, Osprey,
+- Entity. An entity is what an instance's words refer to: one particular
+  instrument, spacecraft, mission, organization, or the like, such as
+  Kestrel. Many entities share one entity class: Kestrel, Osprey,
   and Tern are three entities of the entity class instrument.
 - Instance, subject instance, object instance. An instance is the record's
   words for one entity, in the subject slot of a triple (its subject

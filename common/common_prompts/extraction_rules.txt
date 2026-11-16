@@ -8,12 +8,12 @@ HOW THE RULES USE THEIR WORDS
 
 Each wording below has one meaning in every rule.
 
-- Entity. An entity is one individual that an instance's words refer to,
-  such as Kestrel. Many entities share one entity class: Kestrel, Osprey,
-  and Tern are three entities of the entity class instrument. One entity may
-  be named in a record by several wordings, such as "Kestrel" and "Kestrel
-  Lake Ice Radiometer (Kestrel)", which rule 23 (one wording) writes as one
-  instance.
+- Entity. An entity is what an instance's words refer to: one particular
+  instrument, spacecraft, mission, organization, or the like, such as
+  Kestrel. Many entities share one entity class: Kestrel, Osprey, and Tern
+  are three entities of the entity class instrument. One entity may be named
+  in a record by several wordings, such as "Kestrel" and "Kestrel Lake Ice
+  Radiometer (Kestrel)", which rule 23 (one wording) writes as one instance.
 - Instance, subject instance, object instance. An instance is the record's
   words for one entity, as rule 11 (the record's own words) and rule 23 (one
   wording) write them, in the subject slot of a triple (its subject
