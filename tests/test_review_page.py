@@ -484,7 +484,7 @@ class Display(unittest.TestCase):
         self.assertIn("Instrument → Spacecraft", self.out["schema"])
         self.assertIn("only: any → Spacecraft", self.out["schema"])
         self.assertIn("reads subject → object", self.out["schema"])                 # the file's notes
-        self.assertIn("only: Dataset → Instrument", self.out["terms"])            # docs/terminology.md's pinned predicate
+        self.assertIn("only: any → Instrument", self.out["terms"])            # docs/terminology.md's pinned predicate
         self.assertEqual(self.out["found"], 1)                                    # a search typed with "->" still finds it
 
     def test_data_and_email_keep_the_files_arrows(self):

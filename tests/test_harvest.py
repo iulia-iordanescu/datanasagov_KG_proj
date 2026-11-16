@@ -246,5 +246,57 @@ class SamePage(unittest.TestCase):
             shutil.rmtree(tmp)
 
 
+class Discards(unittest.TestCase):
+    """Everything the harvest discards is one entry of the record of discarded items (common/common_helpers/dropped.py):
+    the records of a page beyond max_records, a batch file outside the run's range or downloaded again, a leftover
+    .part file; and a page's accounting check stops the run when a record vanishes without a record of it."""
+
+    def setUp(self):
+        from common import dropped
+        self.dropped = dropped
+        dropped.reset()
+        self.addCleanup(dropped.reset)
+        self.cat = StandInCatalog(count=25).__enter__()
+        self.real_url, ckan_client.URL = ckan_client.URL, self.cat.url
+        self.out = Path(tempfile.mkdtemp())
+
+    def tearDown(self):
+        ckan_client.URL = self.real_url
+        self.cat.__exit__()
+        shutil.rmtree(self.out)
+
+    def harvest(self, page_size=10, max_records=0):
+        return moves.download_catalog({"page_size": page_size, "max_records": max_records, "pause_seconds": 0,
+                                       "new_harvest": False}, self.out)
+
+    def test_recorded(self):
+        (self.out / "batch_00000.json.part").write_text("{")
+        self.harvest(max_records=12)                       # page 2 holds 10 records: 8 are beyond the 12 aimed for
+        beyond = [e for e in self.dropped.DISCARDS if e["item_type"] == "record"]
+        self.assertEqual(len(beyond), 8)
+        self.assertEqual({e["setting"]["max_records"] for e in beyond}, {12})
+        self.assertTrue(all(e["record_id"] and e["where"].startswith("catalog position") for e in beyond))
+        self.assertEqual([e["item"]["file"] for e in self.dropped.DISCARDS if e["item_type"] == "file"],
+                         ["batch_00000.json.part"])
+        self.dropped.reset()
+        self.harvest(max_records=20)                       # page 2 holds 2 records, this run needs 10: fetched again
+        replaced = [e for e in self.dropped.DISCARDS if e["action"] == "replaced"]
+        self.assertEqual([e["item"]["file"] for e in replaced], ["batch_00010.json"])
+        self.assertEqual(len(replaced[0]["item"]["records"]), 2)    # each record's id and title, to find it again
+        self.dropped.reset()
+        self.harvest(max_records=10)                       # a smaller trial: batch_00010.json is deleted
+        gone = [e for e in self.dropped.DISCARDS if e["item_type"] == "batch file" and e["action"] == "discarded"]
+        self.assertEqual([e["item"]["file"] for e in gone], ["batch_00010.json"])
+        self.assertEqual(len(gone[0]["item"]["records"]), 10)
+
+    def test_near_miss_a_record_left_out_unrecorded(self):
+        from unittest import mock
+        from common.stop import Stop
+        with mock.patch.object(self.dropped, "discard", lambda *a, **k: None), self.assertRaises(Stop) as caught:
+            self.harvest(max_records=12)
+        self.assertIn("Accounting check failed in stage 1 (download_catalog): 10 records the API returned for the "
+                      "page starting at 10 went in, 2 were kept", str(caught.exception))
+
+
 if __name__ == "__main__":
     unittest.main()

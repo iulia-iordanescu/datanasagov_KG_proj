@@ -99,6 +99,13 @@ def other_checks(labels, splits, definitions, schema, deferred_reasons: dict) ->
                      "predicate splits"))
     rows.append((5, "predicate split dropped by max_new_predicates", len(splits.dropped), "predicate splits"))
     rows.append((5, "refused by the service, even asked alone (not split)", len(splits.refused), "predicates"))
+    rows.append((5, "predicate split undone by merging again (every part of its predicate ended in one predicate)",
+                 len(splits.undone), "predicate splits"))
+    for code, words in (("into_not_a_label", "a merge into something that isn't a label"),
+                        ("not_sent", "a label that wasn't sent"), ("merged_twice", "a label merged twice"),
+                        ("cycle", "a merge that would close a cycle"),
+                        ("both_seen", "a merge of two predicates both there at stage 4")):
+        rows.append((5, f"merging again: {words}", len(splits.merge_issues.get(code, [])), "merges"))
     rows.append((7, "a definition of a schema entry that wasn't sent (ignored)", len(definitions.unknown),
                  "definitions"))
     rows.append((7, "refused by the service, even asked alone (no definition)", len(definitions.refused),

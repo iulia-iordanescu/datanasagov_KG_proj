@@ -7,8 +7,9 @@ Spacecraft). A model reads a sample of texts, the same number from each
 stratum of the ground truth candidates pool, and lists the triple instances
 they state, with no schema imposed; code keeps only those it can verify in
 the text; the model gives every component instance a label, merges labels
-that mean the same thing, and splits a predicate whose objects of different
-entity classes give it different meanings; code counts how many texts and
+that mean the same thing, and splits a predicate that stands for different
+relationships by the entity classes of its subjects, its objects, or both,
+then merges again; code counts how many texts and
 maintainers back each schema entry, and keeps them all with that evidence.
 Terms: docs/terminology.md.
 
@@ -41,6 +42,7 @@ SETTINGS = {
     "texts_per_stratum":     8,     # texts drawn from each stratum of the ground truth candidates pool (19 strata)
     "min_support":           1,     # a schema entry enters the schema if found in at least this many texts
     "max_new_predicates":    50,    # splitting adds at most this many predicates (0: no splitting)
+    "min_split_texts":       2,     # a new predicate of a split needs triple instances from at least this many texts
     "max_chars":             8000,  # a longer text is split into text pieces, one call each
     "workers":               4,     # model calls made at the same time
     "service":               SERVICE, # the service that reaches the model: asksage, litellm, anthropic, openai, google
@@ -59,7 +61,7 @@ def main(inputs, settings, output):
     triples = induce.extract_triple_instances(texts, calls, settings)  # LLM: "MODIS" – "is aboard" – "Aqua", checked in the text
     labels  = induce.label_component_instances(triples, calls)         # LLM: "MODIS" → Instrument, read with its source text
     labels  = induce.merge_labels(labels, triples, calls)              # LLM: Sensor = Instrument, one call over all labels
-    splits  = induce.split_predicates(triples, labels, settings, calls)  # LLM: SOURCED_FROM → one per object entity class, checked
+    splits  = induce.split_predicates(triples, labels, settings, calls)  # LLM: SOURCED_FROM → FROM_MISSION, ..., checked; merged again
     counts  = induce.count_support(triples, labels, splits)            # code: the texts and maintainers behind each schema entry
     words   = induce.write_definitions(counts, settings, calls)        # LLM: one sentence per entity class and predicate
     schema  = induce.check_schema(counts, words, settings)             # code: what enters the schema, what's deferred

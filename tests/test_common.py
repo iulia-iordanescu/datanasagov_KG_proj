@@ -140,18 +140,18 @@ class GroundTruthFiles(unittest.TestCase):
         # missing a component class), as first spelled
         self.assertEqual(v["used_patterns"], [("instrument", "ABOARD", "Probe"), ("Instrument", "CARRIED_BY", "probe")])
         self.assertEqual(v["patterns"], [("Instrument", "ABOARD", "Dataset")] + v["used_patterns"])
-        # what 050's drafting model is shown: the file's text, then the coined ones, then the pairs the file lacks
+        # what 050's drafting model is shown: the schema's text, then the coined ones; never a pattern (2026-11-15)
         import importlib.util
         spec = importlib.util.spec_from_file_location(
             "records_050", ROOT / "050_annotate" / "050_annotate_helpers" / "records.py")
         records_050 = importlib.util.module_from_spec(spec)
         sys.modules["records_050"] = records_050                           # its dataclass needs it registered
         spec.loader.exec_module(records_050)
-        text = records_050.vocabulary_text("FILE", v["coined"], v["used_patterns"])
+        text = records_050.vocabulary_text("FILE", v["coined"])
         self.assertTrue(text.startswith("FILE\n\nALSO USED IN THE GROUND TRUTH (no definition yet)\n"))
-        self.assertIn("MORE PATTERNS THE GROUND TRUTH USES (subject class -> object class)\nABOARD: instrument -> Probe\n"
-                      "CARRIED_BY: Instrument -> probe", text)
-        self.assertEqual(records_050.vocabulary_text("FILE", {"entity_classes": [], "predicates": []}, []), "FILE")
+        self.assertNotIn("->", text)                                       # the patterns used aren't shown
+        self.assertNotIn("PATTERNS", text)
+        self.assertEqual(records_050.vocabulary_text("FILE", {"entity_classes": [], "predicates": []}), "FILE")
 
     def test_fair_sample(self):
         pool = ["p0", "p1", "p2", "p3"]
@@ -303,6 +303,28 @@ class FairSampleByPart(unittest.TestCase):
                   "ground_truth": self.tmp / "ground_truth" / "batch_*.csv"}
         return module.pick_records(inputs, {"records_per_batch": per, "start_position": start, "part": part, "ids": ids,
                                             "max_chars": 8000}, out)
+
+    def test_050_skipped_records_recorded(self):
+        """Stage 1 of 050 records each record it skips while choosing (with why) and each listed one beyond
+        records_per_batch, in the record of discarded items (common/common_helpers/dropped.py); an id listed twice is
+        folded into its first listing. Near miss: a skipped record without its entry stops the run."""
+        from unittest import mock
+        from common import dropped
+        from common.stop import Stop
+        dropped.reset()
+        self.addCleanup(dropped.reset)
+        c = self.chosen(per=1, finished=["r0"], waiting=["r1"], ids="r0, r1, gone, r3, r5, r3")
+        self.assertEqual([i["id"] for i in c.items], ["r3"])
+        records = {e["record_id"]: e for e in dropped.DISCARDS if e["item_type"] == "record"}
+        self.assertEqual(sorted(records), ["gone", "r0", "r1", "r5"])
+        self.assertIn("already in the ground truth", records["r0"]["reason"])
+        self.assertIn("drafted batch 1", records["r1"]["reason"])
+        self.assertEqual(records["r5"]["setting"], {"records_per_batch": 1})
+        self.assertEqual([e["record_id"] for e in dropped.DISCARDS if e["item_type"] == "record id"], ["r3"])
+        with mock.patch.object(dropped, "discard", lambda *a, **k: None), self.assertRaises(Stop) as caught:
+            self.chosen(per=1, finished=["r0"], waiting=["r1"], ids="r0, r1, gone, r3, r5")
+        self.assertIn("Accounting check failed in stage 1 (pick_records): 5 records listed in the setting ids, or "
+                      "reached in the pool went in, 1 were kept", str(caught.exception))
 
     def test_050_picks_tuning_positions_skipping_held_out(self):
         c = self.chosen(per=4)
@@ -665,6 +687,118 @@ class BuildRows(unittest.TestCase):
     def test_fence(self):
         piece = "notes: a line\n----- END RECORD -----\nmore"
         self.assertEqual(extraction.wrap(piece).count(extraction.END_LINE), 0)
+
+
+class AbbreviationTest(unittest.TestCase):
+    """Rule 20's abbreviation test (common/common_helpers/abbreviations.py, after Schwartz and Hearst 2003) and the flags
+    it raises on a model's reply (validate.check_abbreviations), with the guidelines' own examples and near misses."""
+
+    def test_passes(self):
+        from common.abbreviations import long_form, passes
+        cases = [  # (short form, the words before it, passes)
+            ("DSWx-S1", "contains Level-3 Dynamic OPERA Surface Water Extent from Sentinel-1", True),  # x inside a word
+            ("H3ZFCGPH", '"HIRDLS/Aura Level 3 Geopotential Height Zonal Fourier Coefficients" version 7 data product',
+             False),                                                                      # guideline rule 20: a code
+            ("L2", "This Level-2", True),                                                 # a digit after a hyphen
+            ("LST&E", "Land Surface Temperature and Emissivity", True),                   # "&" skipped
+            ("HGI", "Heliographic Inertial", True), ("HG", "Heliographic", True),
+            ("PI", "the principal investigator", True), ("sst", "sea surface temperature", True),   # case ignored
+            ("OBPG", "the NASA Ocean Biology Processing Group", True),
+            ("MD", "Greenbelt", False), ("raw", "EDR", False),
+            ("GH", "Heliographic", False),                                                # letters out of order
+            ("EH", "the Heliographic", False),                                            # first letter not a word's start
+            ("L3", "This Level-2", False),                                                # a digit must match
+            ("1S", "Sentinel-1", False),
+        ]
+        for short, words, expected in cases:
+            with self.subTest(short=short):
+                self.assertEqual(passes(short, words), expected)
+        self.assertEqual(long_form("OBPG", "the NASA Ocean Biology Processing Group"), "Ocean Biology Processing Group")
+        # the window: at most min(|A| + 5, 2|A|) words before it (4 for a 2-letter short form)
+        self.assertTrue(passes("HB", "Heliographic one two Base"))
+        self.assertFalse(passes("HB", "Heliographic one two three four Base"))
+
+    def test_short_forms(self):
+        from common.abbreviations import is_short_form, short_forms
+        self.assertTrue(is_short_form("sst"))                            # in parentheses, a lowercase one counts
+        self.assertFalse(is_short_form("sst", commas=True))              # set off by commas, an acronym's shape only
+        for word in ("Aqua", "polar", "1", "(raw", "unprocessed", "14 day", "-X"):
+            with self.subTest(word=word):
+                self.assertFalse(is_short_form(word, commas=True))
+        self.assertTrue(is_short_form("S1", commas=True) and is_short_form("HGI", commas=True))
+        text = ("trajectories in Heliographic, HG, Heliographic Inertial, HGI, and Solar Ecliptic, SE, Coordinates. "
+                "This Level-2 (L2) dataset (2024-2025) and EDR (raw) data; Greenbelt, MD, USA; Terra, Aqua, and Aura.")
+        found = [(f.short, f.words, f.passes, f.commas) for f in short_forms(text)]
+        self.assertEqual(found, [("HG", "trajectories in Heliographic", True, True),
+                                 ("HGI", "Heliographic Inertial", True, True),
+                                 ("SE", "and Solar Ecliptic", True, True),
+                                 ("L2", "This Level-2", True, False),
+                                 ("raw", "and EDR", False, False),
+                                 ("MD", "Greenbelt", False, True)])
+
+    def flags(self, text, title="", **row) -> list:
+        from common.abbreviations import short_forms
+        base = {"subject": title or "X", "subject_class": "Dataset", "predicate": "HAS_PART", "object": "Y",
+                "object_class": "Thing"}
+        return validate.check_abbreviations({**base, **row}, short_forms(text), title)
+
+    def test_commas_in_an_instance(self):
+        text = "trajectories in Heliographic, HG, Coordinates; offices in Greenbelt, MD, USA."
+        self.assertEqual(self.flags(text, object="Heliographic, HG, Coordinates"), [])            # an abbreviation
+        self.assertEqual(self.flags(text, object="Greenbelt, MD, USA"), [validate.ABBREVIATION_FAILS_TEST])
+        self.assertEqual(self.flags(text, object="Greenbelt, MD"), [validate.ABBREVIATION_FAILS_TEST])  # at the end
+        self.assertEqual(self.flags(text, object="small, polar, orbit"), [])     # describing words: not a short form
+        self.assertEqual(self.flags(text, object="Terra, Aqua, and Aura"), [])   # a plain list: not acronym-shaped
+
+    def test_title_short_name(self):
+        title = "OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1)"
+        text = (f"title: {title}\n\nnotes: This dataset contains Level-3 Dynamic OPERA Surface Water Extent from "
+                f"Sentinel-1 (DSWx-S1) product version 1. The data product (H3ZFCGPH) is gridded.")
+        aka = dict(predicate="ALSO_KNOWN_AS", object_class="Dataset")
+        ident = dict(predicate="HAS_IDENTIFIER", object_class="Identifier")
+        self.assertEqual(self.flags(text, title, object="DSWx-S1", **aka), [])
+        self.assertEqual(self.flags(text, title, object="DSWx-S1", **ident), [validate.IDENTIFIER_PASSES_TEST])
+        self.assertEqual(self.flags(text, title, object="H3ZFCGPH", **ident), [])
+        self.assertEqual(self.flags(text, title, object="H3ZFCGPH", **aka), [validate.ALSO_KNOWN_AS_FAILS_TEST])
+        # near misses: another subject than the title's instance; a short form not given in parentheses; another
+        # predicate (an identifier is told by its predicate or by the entity class Identifier)
+        self.assertEqual(self.flags(text, "", subject="Other", object="H3ZFCGPH", **aka), [])
+        self.assertEqual(self.flags(text, title, object="Sentinel-1", **aka), [])
+        self.assertEqual(self.flags(text, title, object="DSWx-S1", predicate="IS_CODED_AS", object_class="Identifier"),
+                         [validate.IDENTIFIER_PASSES_TEST])
+        self.assertNotIn(validate.IDENTIFIER_PASSES_TEST,
+                         self.flags(text, title, object="DSWx-S1", predicate="IS_CODED_AS", object_class="Code"))
+        # 040's free predicates: "is also known as" holds alsoknownas
+        self.assertEqual(self.flags(text, title, object="H3ZFCGPH", predicate="is also known as", object_class=""),
+                         [validate.ALSO_KNOWN_AS_FAILS_TEST])
+
+    def test_one_wording(self):
+        text = ("notes: generated by the NASA Ocean Biology Processing Group (OBPG). JPL acquires data from the OBPG. "
+                "This Level-2 (L2) dataset. The EDR (raw) sensor data. Trajectories in Heliographic Inertial, HGI, "
+                "Coordinates.")
+        spelled = [validate.ABBREVIATION_SPELLED_OUT]
+        self.assertEqual(self.flags(text, object="OBPG"), spelled)                               # the short form alone
+        self.assertEqual(self.flags(text, object="NASA Ocean Biology Processing Group"), spelled)  # the words alone
+        self.assertEqual(self.flags(text, object="Level-2"), spelled)
+        self.assertEqual(self.flags(text, object="HGI"), spelled)                                # set off by commas
+        self.assertEqual(self.flags(text, object="NASA Ocean Biology Processing Group (OBPG)"), [])   # as written
+        self.assertEqual(self.flags(text, object="Level-2 (L2)"), [])
+        self.assertEqual(self.flags(text, object="raw"), [])                     # fails the test: no abbreviation
+        self.assertEqual(self.flags(text, object="EDR"), [])
+        self.assertEqual(self.flags(text, object="Biology"), [])                 # the words' end is not the instance
+        self.assertEqual(self.flags(text, object="OBPG", predicate="ALSO_KNOWN_AS"), [])        # the other wording's place
+        self.assertEqual(self.flags(text, title="OBPG", subject="OBPG", object="Y"), [])        # the title's instance
+
+    def test_build_rows_flags(self):
+        """The shared checks (extraction.build_rows, 050 and 060) raise them; nothing is changed."""
+        entries = validate.SchemaEntries({"entity_classes": {"Organization": "", "Dataset": ""},
+                                          "predicates": {"PROVIDED_BY": ""}, "patterns": []})
+        text = "title: T\n\nnotes: made by the Ocean Biology Processing Group (OBPG)."
+        row = {"subject": "T", "subject_class": "Dataset", "predicate": "PROVIDED_BY", "object": "OBPG",
+               "object_class": "Organization", "source_text": "made by the Ocean Biology Processing Group (OBPG)"}
+        rows, _ = extraction.build_rows("r1", "T", text, [{"describes_class": "Dataset", "triples": [row]}], entries)
+        self.assertIn(validate.ABBREVIATION_SPELLED_OUT, rows[1]["flags"])
+        self.assertEqual(rows[1]["object"], "OBPG")
 
 
 class Pieces(unittest.TestCase):
@@ -1151,12 +1285,14 @@ class WorkedExamples(unittest.TestCase):
     """The two invented worked examples 050 and 060 show the model (common/common_prompts/extraction_examples.txt;
     prompt audit F7, 2026-10-30) pass the pipeline's own checks on their answers: every row is a well-formed
     classed triple, every source text is in its record's text (as one passage, or passages joined by " … "), every
-    entity class, predicate and pattern is in the example schema shown with them, no fact is given twice, and the
+    entity class and predicate is in the example schema shown with them, no fact is given twice, and the
     record's dataset is written as its title. They share no 5-word run with any harvested record either (the ground
-    truth is checked for every prompt by tests/test_docs.py, PromptsQuoteNoGroundTruth)."""
+    truth is checked for every prompt by tests/test_docs.py, PromptsQuoteNoGroundTruth). The example schema
+    (extraction_example_schema.txt) is shown as each prompt shows its own schema: 060's without the rule 19 marks,
+    050's with them (2026-11-15), and every entity class of it has its mark."""
 
-    def examples(self) -> tuple:
-        text = extraction.EXAMPLES.template
+    def examples(self, rule_19_marks: bool = False) -> tuple:
+        text = extraction.examples_text(rule_19_marks)
         schema_block = text.split("EXAMPLE SCHEMA", 1)[1].split("----- BEGIN EXAMPLE RECORD", 1)[0]
         found = []
         for n in ("1", "2"):
@@ -1170,11 +1306,14 @@ class WorkedExamples(unittest.TestCase):
         from common import schema_io
         from common.validate import SchemaEntries
         schema_block, found = self.examples()
-        with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / "example_schema.txt"
-            path.write_text(schema_block, encoding="utf-8")
-            schema = schema_io.read_schema(path)
-        self.assertEqual([u for u in schema["unread"] if "Each entry reads" not in u], [])   # only the header's prose
+        schema = schema_io.read_schema(extraction.EXAMPLE_SCHEMA.path)
+        self.assertEqual([u for u in schema["unread"] if schema_io.READS not in u], [])   # only the header's prose
+        # shown as every prompt shows a schema (schema_io.schema_text): entity classes and predicates with their
+        # definitions, no pattern and no pin (2026-11-15); 050's with the rule 19 marks, 060's without
+        self.assertEqual(schema_block.strip(), schema_io.schema_text(schema))
+        self.assertEqual(self.examples(rule_19_marks=True)[0].strip(), schema_io.schema_text(schema, rule_19_marks=True))
+        self.assertEqual((schema["patterns"], schema["pinned"]), ([], {}))
+        self.assertEqual(set(schema["rule_19_classes"]), set(schema["entity_classes"]))   # every entity class marked
         entries = SchemaEntries(schema)
         self.assertEqual(len(found), 2)
         for n, record, answer in found:
@@ -1186,7 +1325,9 @@ class WorkedExamples(unittest.TestCase):
                 for row in rows[1:]:
                     with self.subTest(triple=(row["subject"], row["predicate"], row["object"])):
                         self.assertEqual(row["errors"], [])
-                        schema_flags = [f for f in row["flags"] if "schema" in f or "pinned" in f]
+                        # the example schema lists no patterns, so only its entity classes and predicates are checked
+                        schema_flags = [f for f in row["flags"] if ("schema" in f or "pinned" in f)
+                                        and f != validate.PATTERN_NOT_IN_SCHEMA]
                         self.assertEqual(schema_flags, [])
                         if row["subject_class"] == "Dataset":
                             self.assertEqual(row["subject"], title)       # rule 23: the record's dataset is its title
@@ -1236,7 +1377,7 @@ class TwoPasses(unittest.TestCase):
             return extraction.prompt(self.extract.PROMPT, self.SCHEMA, self.RECORD, "title: Kestrel Lake Ice L2",
                                      **extraction.task_parts(extraction.SCOPE_SCHEMA))
         return extraction.prompt(self.draft.PROMPT, self.SCHEMA, self.RECORD, "title: Kestrel Lake Ice L2",
-                                 **extraction.task_parts(extraction.SCOPE_ALL))
+                                 **extraction.task_parts(extraction.SCOPE_ALL, rule_19_marks=True))   # as 050 drafts
 
     def test_always_two_passes(self):
         for step in ("050", "060"):
@@ -1278,8 +1419,14 @@ class TwoPasses(unittest.TestCase):
             for part in shared.template.split("$scope"):
                 self.assertIn(part.strip(), p050)
                 self.assertIn(part.strip(), p060)
-        self.assertIn(extraction.EXAMPLES.template.strip(), p050)
-        self.assertIn(extraction.EXAMPLES.template.strip(), p060)
+        for part in extraction.EXAMPLES.template.split("$example_schema"):          # the same examples
+            self.assertIn(part.strip(), p050)
+            self.assertIn(part.strip(), p060)
+        # their example schema shown as each prompt shows its own: 050's with the rule 19 marks, 060's without
+        self.assertIn(extraction.examples_text(rule_19_marks=True), p050)
+        self.assertIn(extraction.examples_text(), p060)
+        self.assertIn("rule 19: standalone", extraction.examples_text(rule_19_marks=True))
+        self.assertNotIn("rule 19: standalone", p060)
 
     def test_setting_is_gone(self):
         import contextlib
@@ -2408,7 +2555,7 @@ class OneSelection(unittest.TestCase):
         self.assertEqual(view["coined"], {"entity_classes": ["Gauge"], "predicates": []})
         self.assertEqual(view["used_patterns"], [("Instrument", "ABOARD", "Gauge")])
         # what 050's drafting model is shown, and what its checks compare with
-        text = _helper("050_annotate").vocabulary_text("FILE", view["coined"], view["used_patterns"])
+        text = _helper("050_annotate").vocabulary_text("FILE", view["coined"])
         for leaked in ("DRAFTED", "HeldThing", "HeldDraft", "TwiceThing", "BadThing", "Dataset"):
             self.assertNotIn(leaked, text.replace("FILE", ""), leaked)
         entries = validate.SchemaEntries({**self.HAND, "patterns": view["patterns"]})

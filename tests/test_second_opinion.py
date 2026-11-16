@@ -305,6 +305,25 @@ class Apply(Fixture):
             read_table(self.path)
         self.assertIn("two rows", str(e.exception))
 
+    def test_row_without_id_is_recorded(self):
+        """A row with values but no id names no ground truth triple: skipped, with an entry in the record of
+        discarded items when a step reads the file (stage given); an empty row, and a row with an id, get none."""
+        from common import dropped
+        row = {"id": "t0", **{c: GT_T0[0][c] for c in TRIPLE}, "model": "m1", "repeats": 1, "found_in_repeats": 1,
+               "found_exact_in_repeats": 1}
+        write_csv(self.path, COLUMNS, [row, {**row, "id": " "}, {c: "" for c in COLUMNS}])
+        dropped.reset()
+        self.addCleanup(dropped.reset)
+        self.assertEqual(len(read_table(self.path)), 1)                    # no stage (a helper): nothing recorded
+        self.assertEqual(dropped.DISCARDS, [])
+        self.assertEqual(len(read_table(self.path, stage="stage 1 (pick_records)")), 1)
+        self.assertEqual(len(dropped.DISCARDS), 1)                         # the row without an id; not the empty one
+        entry = dropped.DISCARDS[0]
+        self.assertEqual((entry["item_type"], entry["where"]), ("row of the second opinion table",
+                                                                f"{self.path.name}, line 3"))
+        self.assertEqual(entry["item"]["model"], "m1")
+        self.assertNotIn("id", entry["item"])
+
 
 class Candidates(Fixture):
     """annotations/second_opinion_candidates.csv: what --apply true writes there, and what reading it refuses."""

@@ -39,6 +39,7 @@ In `outputs/intermediate_results/030_split/`:
 | File | Contents |
 |---|---|
 | `splits.json` | The two lists, and how they were made. **Written once** (see How to run). |
+| `discarded.jsonl` | Every item this run discarded, one per line, with its stage, its reason and enough to find it again (written by every run, empty when nothing was discarded). Stage 2 records each row of the pool file whose record is no longer in the catalog (the whole row) and each maintainer of the pool file replaced by 020's; stage 3 each record that can't be an induction candidate (in the pool, or without text); and, when `splits.json` is kept as it was, each entry of this run's draw that differs from the kept file. Stages 2 and 3 check that the items in equal those kept plus those recorded, or the run stops. One line per item, its fields and the report's section on them: `helpers/audit.md`, *Items discarded*. |
 | `_manifest.json` | [Run id](../docs/terminology.md#8-the-pipeline), [settings](../docs/terminology.md#8-the-pipeline), input files and their hashes, output files and their hashes, headline numbers, and the [harvest](../docs/terminology.md#1-records-and-their-text) date. Written when a [run](../docs/terminology.md#8-the-pipeline) finishes. |
 
 `splits.json`, shortened:

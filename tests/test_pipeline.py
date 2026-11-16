@@ -24,6 +24,7 @@ from pathlib import Path
 from stand_ins import StandInCatalog
 from support import temp_repo
 from common.report import listed_label
+from common.schema_io import pins_not_in_definition
 
 HERE = Path(__file__).resolve().parent
 COLUMNS = ["id", "subject", "subject_class", "predicate", "object", "object_class", "source_text", "all_facts_extracted",
@@ -107,7 +108,7 @@ class Pipeline(unittest.TestCase):
         m = self.manifest("010_harvest")
         self.assertEqual(m["headline"], {"records harvested": 40})
         self.assertEqual(m["warnings"], 2)                                      # a repeated id, a record with no id
-        self.assertEqual(len(m["outputs"]), 4)
+        self.assertEqual(len(m["outputs"]), 5)                                   # the batch files, discarded.jsonl
         self.assertIs(m["harvest_partial"], False)                              # the whole catalog
         report = sorted((self.repo / "outputs" / "reports").glob("010_harvest_*.md"))[-1].read_text(encoding="utf-8")
         self.assertIn("| Status | ran |", report)                             # the word run_pipeline.py uses too
@@ -204,12 +205,23 @@ class Pipeline(unittest.TestCase):
         splits = evidence["splits"]
         self.assertTrue(splits["sent"] and splits["kept"], splits)
         whys = {r["why"].split(":")[0] for r in splits["rejected"]}
-        self.assertEqual(whys, {"takes every object entity class of the predicate (a renaming, not a split)",
-                                "names an object entity class an earlier predicate split of the predicate took",
-                                "names an object entity class that isn't among the predicate's",
+        self.assertEqual(whys, {"takes every group of the predicate (a renaming, not a split)",
+                                "names an entity class or pattern an earlier predicate split of the predicate took",
+                                "names an entity class or pattern that isn't among the predicate's",
+                                "groups the predicate otherwise than its earlier predicate splits (one grouping per "
+                                "predicate)", "names no grouping (by must be subject, object or pattern)",
                                 "its new predicate is the name of a predicate found", "its predicate wasn't sent"})
         for s in splits["kept"]:
-            self.assertIn(s["into"], predicates | {d["schema_entry"] for d in schema["deferred"]})
+            self.assertIn(splits["final"].get(s["into"], s["into"]),
+                          predicates | {d["schema_entry"] for d in schema["deferred"]})
+        # each kept new predicate in the schema is pinned there to the groups it took, and its definition names them
+        # (the check the ground truth schema's pins pass: common/common_helpers/schema_io.py, pins_not_in_definition)
+        pinned = {s["into"]: s["only"] for s in splits["kept"] if s["into"] in predicates
+                  and splits["final"].get(s["into"], s["into"]) == s["into"]}
+        self.assertTrue(pinned, splits["kept"])
+        self.assertEqual({p: v for p, v in schema["pinned"].items() if p in pinned}, pinned)
+        self.assertEqual(pins_not_in_definition({"pinned": schema["pinned"], "predicates": {
+            e["component_class"]: e["definition"] for e in schema["predicates"]}}), [])
         # the statistics: per text and per stratum, from the texts themselves
         stats = evidence["statistics"]
         self.assertEqual(stats["triple_instances_per_text"]["verified"]["total"],
@@ -248,6 +260,7 @@ class Pipeline(unittest.TestCase):
                               | {"common/common_prompts/words.txt"})
         used = {p["file"] for p in self.manifest("040_induce_schema")["prompts"]}
         self.assertNotIn("common/common_prompts/extraction_examples.txt", used)      # no worked examples in 040
+        self.assertNotIn("common/common_prompts/extraction_example_schema.txt", used)
         self.assertGreater(prompts, 0)
 
     # ---------------------------------------------------------------- 050
@@ -260,7 +273,7 @@ class Pipeline(unittest.TestCase):
         self.assertIn("model calls: 9 of 9 done, 0 failed, took", out)          # the last progress line
         self.prompts_recorded("050_annotate", {"050_annotate/050_annotate_prompts/draft.txt"}
                               | {f"common/common_prompts/extraction_{n}.txt"
-                                 for n in ("rules", "reply", "passes", "examples", "closing")})
+                                 for n in ("rules", "reply", "passes", "examples", "example_schema", "closing")})
         self.assertNotIn("failed model calls:", out)                           # nothing failed: no failed-call record
         rows = read_csv(self.output("050_annotate", "drafted_triples_batch1.csv"))
         pool = [r["id"] for r in read_csv(self.annotations / "ground_truth_candidates.csv")]
@@ -345,7 +358,7 @@ class Pipeline(unittest.TestCase):
         self.assertEqual(set(used["learned_from"]["ids"]), {x["id"] for x in evidence["texts"]})
         _, again = self.run_step("060_extract", *NO_CONFIRM)
         self.assertEqual(again, 0, "a rerun paid again")
-        self.prompts_recorded("060_extract", {"060_extract/060_extract_prompts/extract.txt"} | {f"common/common_prompts/extraction_{n}.txt" for n in ("rules", "reply", "passes", "examples", "closing")})
+        self.prompts_recorded("060_extract", {"060_extract/060_extract_prompts/extract.txt"} | {f"common/common_prompts/extraction_{n}.txt" for n in ("rules", "reply", "passes", "examples", "example_schema", "closing")})
         self.assertEqual(read_csv(self.output("060_extract", "extracted_triples.csv")), kept)   # 070 reads these
 
     # ---------------------------------------------------------------- 070
@@ -646,6 +659,34 @@ class Pipeline(unittest.TestCase):
                                    "ground_truth_candidates.csv", "ground_truth_candidates.json", "ground_truth_schema.txt", "guidelines.md", "held_out_looks.csv",
                                    "left_out.md", "partial_pair_reviews.csv", "pending_triples.csv", "schema_additions.txt",
                                "second_judge.csv", "second_opinion.csv", "second_opinion_candidates.csv"])
+
+    def test_t11a_discards_recorded(self):
+        """Every step's last run wrote its record of discarded items (common/common_helpers/dropped.py), listed it
+        among its outputs and counted it in its report; and the record agrees with what the steps' own outputs say
+        was dropped: 020's two records (no id, a repeat), and every item 060's extracted_triples_removed.csv lists."""
+        from common import dropped
+        from common.step import PIPELINE_STEPS
+        for step in PIPELINE_STEPS:
+            with self.subTest(step=step):
+                path = self.output(step, dropped.DISCARDS_FILE)
+                self.assertTrue(path.is_file(), path)
+                [json.loads(x) for x in path.read_text(encoding="utf-8").splitlines()]       # one JSON object a line
+                self.assertIn(dropped.DISCARDS_FILE, [r["file"] for r in self.manifest(step)["outputs"]])
+                report = (self.repo / self.manifest(step)["report"]).read_text(encoding="utf-8")   # its last finished run
+                self.assertIn("### Items discarded", report)
+        entries = lambda step: [json.loads(x) for x in self.output(step, dropped.DISCARDS_FILE)
+                                .read_text(encoding="utf-8").splitlines()]
+        self.assertEqual(sorted(e["action"] for e in entries("020_clean") if e["item_type"] == "record"),
+                         ["discarded", "folded"])
+        removed = read_csv(self.output("060_extract", "extracted_triples_removed.csv"))
+        recorded = [e for e in entries("060_extract") if e["item_type"] == "classed triple"]
+        self.assertEqual(collections.Counter((e["record_id"], e["reason"].split(":")[0]) for e in recorded),
+                         collections.Counter((r["id"], r["reason"]) for r in removed))
+        evidence = json.loads(self.output("040_induce_schema", "induction_evidence.json").read_text(encoding="utf-8"))
+        unverified = [e for e in entries("040_induce_schema") if e["reason"].startswith("unverified")]
+        self.assertEqual(len(unverified), sum(len(t["unverified"]) for t in evidence["texts"]))
+        dropped_splits = [e for e in entries("040_induce_schema") if e["item_type"] == "predicate split"]
+        self.assertEqual(len(dropped_splits), len(evidence["splits"]["rejected"]) + len(evidence["splits"]["dropped"]))
 
     def reproduce(self, expected, expect=0):
         """py helpers/reproduce_results.py --expected <expected>, each step run by stand_in_run.py; (output, prompts the

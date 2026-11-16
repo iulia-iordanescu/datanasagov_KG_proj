@@ -115,6 +115,36 @@ def pair_text(row: dict, side: str) -> str:
     return " ".join((row.get(f"{side}_{s}") or "").strip() for s in SLOTS)
 
 
+def record_unused(stage: str, path: Path = REVIEWS_PATH) -> None:
+    """One entry per row of the file read_reviews takes no verdict from, in the record of discarded items
+    (common/common_helpers/dropped.py): a row whose verdict is neither SAME nor NOT_SAME, both rows of a conflict, and
+    each row an agreeing later row for the same pair replaces (folded into the row whose verdict counts)."""
+    from common import dropped
+    from common.step import repo_path
+    where = repo_path(path)
+    groups = {}
+    for r in _rows(path):
+        item = {k: v for k, v in r.items() if k != "_line"}
+        if verdict_of(r) not in (SAME, NOT_SAME):
+            dropped.discard(stage, "partial pair review", f"its verdict ({(r.get('verdict') or '').strip()!r}) is "
+                            f"neither {SAME} nor {NOT_SAME}, so it counts for nothing", item,
+                            record_id=(r.get("record_id") or "").strip(), where=f"{where}, line {r['_line']}")
+        else:
+            groups.setdefault(row_key(r), []).append(r)
+    for rows in groups.values():
+        verdicts = {verdict_of(r) for r in rows}
+        for r in rows if len(verdicts) > 1 else rows[:-1]:
+            item = {k: v for k, v in r.items() if k != "_line"}
+            if len(verdicts) > 1:
+                dropped.discard(stage, "partial pair review", "another row for the same pair gives the other verdict, "
+                                "so neither counts", item, record_id=(r.get("record_id") or "").strip(),
+                                where=f"{where}, line {r['_line']}")
+            else:
+                dropped.fold(stage, "partial pair review", "a later row for the same pair gives the same verdict: "
+                             "the later row counts", item, {"line": rows[-1]["_line"]},
+                             record_id=(r.get("record_id") or "").strip(), where=f"{where}, line {r['_line']}")
+
+
 def review_problems(path: Path = REVIEWS_PATH) -> list:
     """Each row whose verdict is neither SAME nor NOT_SAME (case and spacing aside), as "line N (record id):
     'verdict'", then each conflict (two rows for one pair with different verdicts: neither counts)."""

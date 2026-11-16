@@ -55,7 +55,7 @@ import collections
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from common import extraction
+from common import dropped, extraction
 from common.audit import log
 from common.prompt_files import load
 from common.triples_io import UNDECIDED, component_class_key, is_describes
@@ -64,6 +64,9 @@ from common.validate import (DESCRIBES_CLASS_NOT_IN_SCHEMA, DESCRIBES_UNDECIDED,
 
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "060_extract_prompts"   # 060_extract/060_extract_prompts/
 PROMPT = load(PROMPTS_DIR / "extract.txt")
+#: The stage names its discarded items carry (common/common_helpers/dropped.py).
+STAGE_3 = "stage 3 (ask_model)"
+STAGE_4 = "stage 4 (sort_rows)"
 
 #: Checks that remove a row, and the reason written for it.
 REMOVE = {NO_SOURCE_TEXT: extraction.SOURCE_TEXT, SOURCE_NOT_IN_TEXT: extraction.SOURCE_TEXT,
@@ -85,17 +88,6 @@ class Rows:
     new_component_classes: dict = field(default_factory=dict)  # {(kind, component class): {"records": [ids]}}
 
 
-def _in_schema_spelling(row: dict, schema_entries) -> dict:
-    """An extracted triple with its entity classes and predicate written the way the
-    schema writes them: they are compared loosely ("Space craft" is
-    Spacecraft), but the output always uses the schema's spelling."""
-    fixed = dict(row)
-    for column, kind in (("subject_class", "entity_classes"), ("object_class", "entity_classes"),
-                         ("predicate", "predicates")):
-        fixed[column] = schema_entries.spelling[kind].get(schema_entries.key(row[column]), row[column])
-    return fixed
-
-
 def ask_model(chosen, schema, calls, settings: dict) -> extraction.Replies:
     def prompt_for(item, piece):
         return extraction.prompt(PROMPT, schema.text, chosen.records[item["id"]], piece,
@@ -111,6 +103,7 @@ def sort_rows(chosen, schema, replies) -> Rows:
     rows = Rows()
     flags, reasons = collections.Counter(), collections.Counter()
     new_component_classes, spelled = collections.defaultdict(set), {}     # by component_class_key: one per component class
+    extraction.record_left_out(STAGE_3, replies, chosen.items)
     for item in chosen.items:
         rid = item["id"]
         if rid not in replies.of:
@@ -124,8 +117,12 @@ def sort_rows(chosen, schema, replies) -> Rows:
                     key = spelled.setdefault((kind, component_class_key(row[column])), (kind, row[column]))
                     new_component_classes[key].add(rid)
             if is_describes(row):
-                row = _in_schema_spelling(row, schema.schema_entries)
+                row = extraction.in_schema_spelling(STAGE_4, rid, row, schema.schema_entries)
                 if row["errors"] or DESCRIBES_CLASS_NOT_IN_SCHEMA in row["flags"]:
+                    dropped.replace(STAGE_4, "describes class", "no entity class of the schema named ("
+                                    + ", ".join(row["errors"] + row["flags"]) + f"), so it becomes {UNDECIDED}",
+                                    {"object_class": row["object_class"]}, {"object_class": UNDECIDED},
+                                    record_id=rid)
                     row["object_class"] = UNDECIDED           # no entity class of the schema named
                     row["flags"] = sorted(set(row["flags"]) | set(row["errors"]) | {DESCRIBES_UNDECIDED})
                     row["errors"] = []
@@ -135,7 +132,8 @@ def sort_rows(chosen, schema, replies) -> Rows:
             if why:
                 removed.append({"reason": extraction.joined_reason(why), **row})
             else:
-                kept.append(_in_schema_spelling(row, schema.schema_entries))
+                kept.append(extraction.in_schema_spelling(STAGE_4, rid, row, schema.schema_entries))
+        extraction.record_removed(STAGE_4, rid, replies.of[rid], kept, removed)
         for r in kept:
             flags.update(r["flags"])
         reasons.update(x["reason"] for x in removed)

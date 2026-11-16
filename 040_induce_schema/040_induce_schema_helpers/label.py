@@ -35,6 +35,14 @@ A text's title is not sent: its label is the describes_class stage 2 got
 for it, judged from the whole text. Those labels also start the running
 vocabulary of entity class labels (most common first), so other component instances reuse them.
 
+The running vocabulary shows one spelling of each label: a new label that
+differs from one already in it only in case, spacing or punctuation
+(common/common_helpers/triples_io.component_class_key: "Space craft" and
+"Spacecraft") isn't added to it again, so later batches are never shown two
+spellings of one label. The component instances keep the label the model gave;
+stage 4 folds the spellings, by its rule (the most frequent wins), and records
+each fold.
+
 Each batch's answer is cached under a key that includes the labels in use
 before it, so a rerun reuses every batch whose component instances and
 preceding labels are unchanged.
@@ -52,9 +60,11 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from common import dropped
 from common.cache import Cache, ask_cached, ask_split, needs
 from common.audit import log
 from common.prompt_files import fill, load
+from common.triples_io import component_class_key
 
 #: The two kinds of component instance, by slot: "entity" for subject and
 #: object slots (labeled with entity classes), "predicate" for the predicate
@@ -71,6 +81,8 @@ PROMPTS = {"entity": load(PROMPTS_DIR / "label_entity_instances.txt"),
 #: Component instances per call. A batch's reply lists every component
 #: instance it was sent, so this bounds the reply's length.
 LABEL_BATCH = 80
+#: The stage name its discarded items carry (common/common_helpers/dropped.py).
+STAGE = "stage 3 (label_component_instances)"
 
 
 @dataclass
@@ -84,8 +96,10 @@ class Labels:
     merged_into: dict = field(default_factory=dict) # filled by stage 4: {"entity": {label: label merged into}, ...}
     merges: list = field(default_factory=list)      # filled by stage 4
     spelling_folds: list = field(default_factory=list)  # filled by stage 4: {"kind", "into", "folded"}
+    folded: dict = field(default_factory=dict)      # filled by stage 4: {"entity": {stage 3's label: its spelling},
+                                                    #  "predicate": {...}}, before the merge call
     final: dict = field(default_factory=dict)       # filled by stage 4: {"entity": {component instance: its label,
-                                                    #  merged, then folded by spelling}, "predicate": {...}}
+                                                    #  folded by spelling, then merged}, "predicate": {...}}
     merge_issues: dict = field(default_factory=dict)
     calls: int = 0                                  # model calls made by stage 3
     reused: int = 0                                 # stage 3's batches answered from the cache
@@ -109,6 +123,18 @@ def component_instances(triples) -> dict:
                     shown = {"example": usage, "source_text": ti.get("source_text", "")}
                 found[kind][value] = (ids, shown)
     return found
+
+
+def one_spelling(vocabulary: list, labels) -> list:
+    """The labels to add to the running vocabulary: each of labels, in order, unless it, or another spelling of it
+    (component_class_key), is already in the vocabulary or earlier among labels."""
+    have = {component_class_key(v) for v in vocabulary}
+    out = []
+    for lbl in labels:
+        if component_class_key(lbl) not in have:
+            have.add(component_class_key(lbl))
+            out.append(lbl)
+    return out
 
 
 def titles_labeled(triples) -> dict:
@@ -144,6 +170,64 @@ def _match(sent: list, reply) -> tuple:
     return labels, missing
 
 
+def _unused_answers(sent: list, reply) -> list:
+    """[(key, value, why)] for every key of a labeling reply _match took no label from: a component instance that
+    wasn't sent, a label that isn't non-empty text, or a key whose case- and spacing-folded form another key gave
+    first. The same matching as _match."""
+    reply = reply if isinstance(reply, dict) else {}
+    loose_first = {}
+    for k, v in reply.items():
+        if isinstance(v, str) and v.strip():
+            loose_first.setdefault(_loose(k), k)
+    used = set()
+    for value in sent:
+        v = reply.get(value)
+        if isinstance(v, str) and v.strip():
+            used.add(value)
+        elif _loose(value) in loose_first:
+            used.add(loose_first[_loose(value)])
+    sent_loose = {_loose(v) for v in sent}
+    out = []
+    for k, v in reply.items():
+        if k in used:
+            continue
+        why = ("a label that isn't non-empty text" if not (isinstance(v, str) and v.strip()) else
+               "a component instance that wasn't sent in this call" if _loose(k) not in sent_loose else
+               "the same component instance once case and spacing are folded as another key, whose label was taken")
+        out.append((k, v, why))
+    return out
+
+
+def _record_unused(kind: str, sent: list, reply) -> None:
+    """One entry per key of a labeling reply that gave no label (_unused_answers)."""
+    for key, value, why in _unused_answers(sent, reply):
+        dropped.discard(STAGE, "label", f"in the model's reply, but not taken: {why}",
+                        {"kind": BECOMES[kind], "component_instance": key, "label": value})
+
+
+def _record_labels(kind: str, found: dict, titles: dict, labels: dict, unlabeled: list, refused: list,
+                   since: int, triples) -> None:
+    """One entry per component instance stage 3 left unlabeled (refused, or unlabeled after the second ask) and per
+    title whose describes class another text with the same title replaced; then the kind's accounting check."""
+    why_refused = dict(refused)
+    for value in unlabeled:
+        texts = sorted(found[kind][value][0]) if value in found[kind] else []
+        reason = (f"refused by the model's service: {why_refused[value]}" if value in why_refused else
+                  "left unlabeled: no label in the reply, even when asked again")
+        dropped.discard(STAGE, "component instance", reason, {"kind": BECOMES[kind], "component_instance": value,
+                                                              "texts": texts})
+    if kind == "entity":
+        for t in triples.texts:
+            title, named = t.get("title"), t.get("describes_class")
+            if title and named and titles.get(title) != named:
+                dropped.replace(STAGE, "label", "another text with the same title named another describes class, "
+                                "and the last text's is the title's label", {"title": title, "describes_class": named},
+                                {"label": titles.get(title)}, record_id=t["id"])
+    n_in = len(set(found[kind]) | set(titles))
+    dropped.account(STAGE, f"{BECOMES[kind]} component instances", n_in, len(labels), since=since,
+                    item_type="component instance")
+
+
 #: The shape of a labeling answer (the prompts' reply format): a "labels" object. One of another shape is asked again,
 #: never kept (common/common_helpers/cache.py, ask_cached).
 SHAPE = needs(labels=dict)
@@ -160,10 +244,12 @@ def label_component_instances(triples, calls) -> Labels:
         # Most common first (found in the most texts); ties alphabetically,
         # so the order never depends on the order of the triple instances.
         vocabulary, labels, unlabeled = [], {}, []
+        since, titles = dropped.mark(), {}
         if kind == "entity":
             labels = titles_labeled(triples)
+            titles = dict(labels)
             counted = collections.Counter(labels.values())
-            vocabulary = sorted(counted, key=lambda lbl: (-counted[lbl], lbl))
+            vocabulary = one_spelling([], sorted(counted, key=lambda lbl: (-counted[lbl], lbl)))
         order = sorted((v for v in found[kind] if v not in labels),
                        key=lambda v: (-len(found[kind][v][0]), v))
 
@@ -185,16 +271,19 @@ def label_component_instances(triples, calls) -> Labels:
             for reply in ask_split(lambda values: ask({v: items[v] for v in values}), batch, refused):
                 answers.update(reply)
             got, missing = _match(batch, answers)
+            _record_unused(kind, batch, answers)
             missing = [v for v in missing if v not in {r for r, _ in refused}]
             if missing:
                 # One more try for those left out, with the running vocabulary as it is now.
                 again = {}
                 for reply in ask_split(lambda values: ask({v: items[v] for v in values}), missing, refused):
                     again.update(reply)
+                asked_again = missing
                 more, missing = _match(missing, again)
+                _record_unused(kind, asked_again, again)
                 got.update(more)
                 missing = [v for v in missing if v not in {r for r, _ in refused}]
-            new = [lbl for lbl in dict.fromkeys(got.values()) if lbl not in vocabulary]
+            new = one_spelling(vocabulary, got.values())
             vocabulary += new
             labels.update(got)
             unlabeled += missing
@@ -203,6 +292,7 @@ def label_component_instances(triples, calls) -> Labels:
         unlabeled += [v for v, _ in refused]
         result.refused[kind] = [{"component_instance": v, "why": why} for v, why in refused]
         result.of[kind], result.vocabulary[kind], result.unlabeled[kind] = labels, vocabulary, unlabeled
+        _record_labels(kind, found, titles, labels, unlabeled, refused, since, triples)
         log.info(f"  {kind} component instances: {len(labels):,} labeled with {len(vocabulary):,} labels"
                  + (f"; {len(unlabeled)} left unlabeled" if unlabeled else ""))
     result.calls, result.reused = calls.paid.made - before, cache.reused

@@ -19,8 +19,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from common import dropped
 from common.chunking import full_text, pieces
-from common.ground_truth import ANNOTATED, DRAFTED_BY, EVALUABLE, SCHEMA_EVIDENCE, TO_FIX, read_ground_truth, read_pool
+from common.ground_truth import (ANNOTATED, DRAFTED_BY, EVALUABLE, SCHEMA_EVIDENCE, TO_FIX, read_ground_truth, read_pool,
+                                 record_skipped)
 from common.llm import maker, same_model_name
 from common.records_io import NOT_IN_CATALOG, WITHOUT_TEXT, WITHOUT_TEXT_TO_DO, has_text, load_records, read_ids
 from common.report import named
@@ -32,6 +34,8 @@ MODES = ("ground_truth", "all")
 
 #: 060's own reason for skipping a record (the shared ones: common/common_helpers/records_io.py).
 NOT_FINISHED = "not finished in the ground truth"
+#: The stage name its discarded items carry (common/common_helpers/dropped.py).
+STAGE = "stage 1 (pick_records)"
 
 @dataclass
 class Chosen:
@@ -58,7 +62,8 @@ def pick_records(inputs: dict, settings: dict) -> Chosen:
     pool_rows = read_pool(inputs["splits"])
     chosen.pool = {r["id"]: (r["position"], r.get("part")) for r in pool_rows}
     gt_files = input_files(Path(inputs["ground_truth"]))
-    ids = read_ids(settings["ids"])
+    since = dropped.mark()
+    ids = read_ids(settings["ids"], STAGE)
     if not gt_files and not ids and settings["extract_from"] == "ground_truth":
         raise Stop(f"No ground truth files at {repo_path(inputs['ground_truth'])}, so 060 has no finished records to "
                    f"extract from (extract_from is ground_truth). Annotate records first (`py 050_annotate/run.py`, "
@@ -66,6 +71,7 @@ def pick_records(inputs: dict, settings: dict) -> Chosen:
                    f"then run `py 060_extract/run.py` again.")
     # No ground truth files is fine for extract_from all and for ids: no record is then in the ground truth.
     gt = read_ground_truth(gt_files[0].parent if gt_files else Path(inputs["ground_truth"]).parent, pool_rows)
+    record_skipped(STAGE, gt)
     chosen.ground_truth = set(gt.select(ANNOTATED).ids)
     chosen.schema_evidence = set(gt.select(SCHEMA_EVIDENCE).ids)
     chosen.notes += [f"Ground truth, {p}" for p in gt.problems]
@@ -98,6 +104,13 @@ def pick_records(inputs: dict, settings: dict) -> Chosen:
                                  "text": full_text(record),
                                  "pieces": pieces(record, settings["max_chars"])})
     chosen.skipped = {k: v for k, v in skipped.items() if v}
+    for reason, rids in chosen.skipped.items():
+        for rid in rids:
+            record = chosen.records.get(rid) or {}
+            dropped.discard(STAGE, "record", f"skipped while choosing: {reason}",
+                            {"id": rid, "title": record.get("title")}, record_id=rid)
+    dropped.account(STAGE, "records wanted", len(wanted) + len(skipped[NOT_FINISHED]), len(chosen.items),
+                    since=since, item_type="record")
 
     to_do = {      # what to do about records skipped for each reason (worded as in 050)
         NOT_IN_CATALOG: f"Check these ids in {'the setting ids' if ids else 'annotations/ground_truth/'} "

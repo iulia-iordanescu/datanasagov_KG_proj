@@ -27,9 +27,10 @@ In `outputs/intermediate_results/010_harvest/`:
 | File | Contents |
 |---|---|
 | `batch_00000.json`, `batch_01000.json`, … | One file per page: the raw CKAN [records](../docs/terminology.md#1-records-and-their-text), exactly as the API returned them, wrapped with the request that returned them (see Audit trail). The number is the position of the page's first record. |
+| `discarded.jsonl` | Every item this run discarded, one per line, with its stage, its reason and enough to find it again (written by every run, empty when nothing was discarded). Stage 1 records each record of a page beyond the records aimed for (with `max_records`), each [batch file](../docs/terminology.md#1-records-and-their-text) deleted for lying outside the run's range and each batch file downloaded again (each with the id and title of every record it held), and each leftover `.part` file or old `_lineage.jsonl` deleted; for each page, the records the API returned must equal those saved plus those recorded, or the run stops. One line per item, its fields and the report's section on them: `helpers/audit.md`, *Items discarded*. |
 | `_manifest.json` | [Run id](../docs/terminology.md#8-the-pipeline), settings, input files and their hashes, output files and their hashes, headline numbers (records harvested), and the [harvest](../docs/terminology.md#1-records-and-their-text) date, which later [steps](../docs/terminology.md#8-the-pipeline) carry forward. Written when a run finishes. |
 
-One [batch file](../docs/terminology.md#1-records-and-their-text), shortened:
+One batch file, shortened:
 
 ```json
 {"request": "GET https://data.nasa.gov/api/3/action/package_search?rows=1000&start=0&sort=metadata_created+asc%2C+id+asc",

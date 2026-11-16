@@ -369,6 +369,20 @@ def read_mapping(path: Path = MAPPING_PATH) -> list:
         return rows
 
 
+def record_unread_rows(stage: str, path) -> None:
+    """One entry per row of the translation table that read_mapping doesn't read though it holds values: a row whose
+    component_class_from_past_or_crt_schema is empty, in the record of discarded items
+    (common/common_helpers/dropped.py)."""
+    from common import dropped
+    _, raw_rows = read_csv_table(path)
+    for r in raw_rows:
+        if not (r.get("component_class_from_past_or_crt_schema") or "").strip() and \
+                any(str(v or "").strip() for k, v in r.items() if k != "_line"):
+            dropped.discard(stage, "row of the translation table", "its component_class_from_past_or_crt_schema is "
+                            "empty, so it translates nothing", {k: v for k, v in r.items() if k != "_line"},
+                            where=f"{ref_path(path)}, line {r['_line']}")
+
+
 def value_problems(rows: list) -> list:
     """Each row whose column of fixed values holds a value outside VALUES (or "yes" in swap_subject_and_object for an
     entity class, or a match value on a (none) row), as "line N (component class): column 'value'", in the file's

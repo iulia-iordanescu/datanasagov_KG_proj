@@ -93,6 +93,11 @@ class Cache:
         if k in self.answers and not _is_cut_off(self.answers[k]):
             wrong = check(self.answers[k]) if check else None
             if wrong:
+                from common import dropped
+                from common.step import repo_path
+                dropped.discard(f"model calls ({self.stage})", "reply", f"a saved answer of the wrong shape ({wrong}), "
+                                f"ignored and asked again", {"cache_key": k, "answer": self.answers[k]},
+                                where=f"{repo_path(self.path)}#{k}")
                 self._ignored(wrong)
                 return None
             self.reused += 1

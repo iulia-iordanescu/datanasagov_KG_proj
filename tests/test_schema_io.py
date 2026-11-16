@@ -2,6 +2,7 @@
 shapes, the additions file, the source rule for additions, and the careful
 edits the annotation tool makes to the ground truth schema."""
 import json
+import re
 import shutil
 import tempfile
 import unittest
@@ -69,7 +70,7 @@ class Reading(unittest.TestCase):
         s = schema_io.read_schema(path)
         self.assertEqual(s["pinned"], {"HAS_PART": [("any", "Dataset"), ("Instrument", "Spacecraft")]})
         self.assertEqual(len(s["unread"]), 2)                        # the "only:" line is read
-        self.assertIn("only: any -> Dataset; Instrument -> Spacecraft", schema_io.schema_text(s))
+        self.assertNotIn("only:", schema_io.schema_text(s))         # a prompt never shows the pins; the checks use them
         # renaming an entity class renames it in the pins; renaming the predicate keeps its pins
         path.write_bytes(schema_io.rename_in_ground_truth_schema(path, "entity class", "Dataset", "Collection")[0])
         self.assertEqual(schema_io.read_schema(path)["pinned"]["HAS_PART"], [("any", "Collection"), ("Instrument", "Spacecraft")])
@@ -109,8 +110,26 @@ class Reading(unittest.TestCase):
         again = schema_io.read_schema(self.write("t.txt", text))
         self.assertEqual(again["entity_classes"], s["entity_classes"])
         self.assertEqual(again["predicates"], s["predicates"])
-        self.assertEqual(sorted(again["patterns"]), sorted(s["patterns"]))
-        self.assertEqual(again["unread"], ["line 9: Each entry reads subject -> object, with its patterns (subject class -> object class)."])
+        # only entity classes and predicates with their definitions: no pattern, no pin (decided 2026-11-15)
+        self.assertTrue(s["patterns"])
+        self.assertEqual(again["patterns"], [])
+        self.assertEqual(again["pinned"], {})
+        self.assertNotIn("->", text)
+        self.assertEqual(again["unread"], ["line 9: " + schema_io.READS])
+        self.assertEqual(schema_io.schema_text(again), text)                 # written the same way again
+
+    def test_schema_text_near_misses(self):
+        """A pinned predicate with no pattern, a pattern whose predicate isn't in the schema, a predicate without a
+        definition: none puts anything but entity classes and predicates with their definitions in the text."""
+        s = {"entity_classes": {"Dataset": "a set of data", "Instrument": ""},
+             "predicates": {"ACQUIRED_BY": "was collected by this Instrument", "BARE": ""},
+             "patterns": [("Dataset", "ACQUIRED_BY", "Instrument"), ("Dataset", "MISSING", "Instrument")],
+             "pinned": {"ACQUIRED_BY": [("any", "Instrument")], "BARE": [("Dataset", "Dataset")]}}
+        text = schema_io.schema_text(s)
+        self.assertEqual(text.splitlines(), [
+            "ENTITY CLASSES", "--------------", "Dataset      a set of data", "Instrument",
+            "", "PREDICATES", "----------", schema_io.READS, "",
+            "ACQUIRED_BY  was collected by this Instrument", "BARE"])
 
     def test_hand_built_schema_reads_cleanly(self):
         s = schema_io.read_ground_truth_schema(HAND)
@@ -218,6 +237,123 @@ def unpinned(schema: dict) -> list:
     return out
 
 
+class RuleNineteenMarksInPrompts(unittest.TestCase):
+    """Which prompts show the rule 19 marks (decided 2026-11-15, docs/improvements.md): those that write or check the
+    ground truth (050's drafting; the second opinion, which drafts with 050's prompt; the second judge) show each
+    entity class's mark on a line under it, as the ground truth schema's file writes it, in their schema and in the
+    worked examples' example schema; extraction (060) never shows them, with the ground truth schema or any other.
+    Patterns and pins stay out of every prompt."""
+
+    MARK = re.compile(r"^ +rule 19: (?:standalone|describing)$", re.M)
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp)
+
+    @staticmethod
+    def module(name: str, path: Path):
+        import importlib.util
+        import sys
+        spec = importlib.util.spec_from_file_location(name, path)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[name] = module
+        spec.loader.exec_module(module)
+        return module
+
+    def test_schema_text_near_misses(self):
+        s = {"entity_classes": {"Dataset": "a set of data", "Purpose": "what something is for", "Probe": "a small craft"},
+             "predicates": {"BASED_IN": "is based in this place"},
+             "patterns": [("Dataset", "BASED_IN", "Purpose")], "pinned": {"BASED_IN": [("any", "Purpose")]},
+             "rule_19_classes": {"Dataset": "standalone", "Purpose": "describing", "Ghost": "standalone"},
+             "rule_19_predicates": {"BASED_IN": "a country"}}
+        plain = schema_io.schema_text(s)
+        self.assertEqual(plain, schema_io.schema_text(s, rule_19_marks=False))         # the default: no marks
+        self.assertNotIn("rule 19", plain)
+        marked = schema_io.schema_text(s, rule_19_marks=True)
+        self.assertEqual(marked.splitlines(), [
+            "ENTITY CLASSES", "--------------", schema_io.MARKS_READ, "",
+            "Dataset   a set of data", "          rule 19: standalone",
+            "Purpose   what something is for", "          rule 19: describing",
+            "Probe     a small craft",                    # no mark in the file: no line, and MARKS_READ says to decide
+            "", "PREDICATES", "----------", schema_io.READS, "",
+            "BASED_IN  is based in this place"])           # a qualifier predicate's mark, a pattern, a pin: never shown
+        self.assertNotIn("Ghost", marked)                   # a mark of an entity class the schema doesn't have
+        path = self.tmp / "marked.txt"
+        path.write_text(marked, encoding="utf-8")
+        again = schema_io.read_schema(path)                 # read back: the file's own marks, the same texts
+        self.assertEqual(again["rule_19_classes"], {"Dataset": "standalone", "Purpose": "describing"})
+        self.assertEqual(schema_io.schema_text(again, rule_19_marks=True), marked)
+        self.assertEqual(schema_io.schema_text(again), plain)
+        bare = {"entity_classes": {"Dataset": "a set of data"}, "predicates": {}}   # no marks at all (a JSON schema)
+        self.assertEqual(self.MARK.findall(schema_io.schema_text(bare, rule_19_marks=True)), [])
+
+    def test_which_prompts_show_them(self):
+        from support import use_step
+        from common import dropped, extraction
+        from common.ground_truth import GROUND_TRUTH_SCHEMA
+        dropped.reset()
+        self.addCleanup(dropped.reset)
+        shown = schema_io.without_held_out_only(schema_io.read_ground_truth_schema(GROUND_TRUTH_SCHEMA))
+        marks = len(shown["rule_19_classes"])
+        self.assertGreater(marks, 10)                       # marks to show, or the checks below would prove nothing
+        example = len(schema_io.read_schema(extraction.EXAMPLE_SCHEMA.path)["rule_19_classes"])
+        self.assertGreater(example, 10)
+        record = {"id": "r0", "title": "Kestrel Lake Ice L2", "notes": "Made by the Tern algorithm."}
+        (self.tmp / "records.jsonl").write_text(json.dumps(record) + "\n", encoding="utf-8")
+        pool = [{"id": "r0", "position": 0, "part": "tuning"}]
+        (self.tmp / "splits.json").write_text(json.dumps({"ground_truth_candidates": {"records": pool}}),
+                                              encoding="utf-8")
+        (self.tmp / "ground_truth").mkdir()
+        (self.tmp / "additions.txt").write_text("", encoding="utf-8")
+        piece = "title: Kestrel Lake Ice L2"
+
+        # 050's drafting, which the second opinion uses as it is: the ground truth schema and the example schema marked
+        records_050 = self.module("records_050_marks", ROOT / "050_annotate" / "050_annotate_helpers" / "records.py")
+        draft_050 = self.module("draft_050_marks", ROOT / "050_annotate" / "050_annotate_helpers" / "draft.py")
+        chosen, _ = records_050.read_inputs({"records": self.tmp / "records.jsonl", "splits": self.tmp / "splits.json",
+                                             "ground_truth": self.tmp / "ground_truth" / "batch_*.csv",
+                                             "ground_truth_schema": GROUND_TRUTH_SCHEMA})
+        self.assertIn(schema_io.schema_text(shown, rule_19_marks=True), chosen.schema_text)
+        drafting = draft_050.prompt_for(chosen)({"id": "r0"}, piece)
+        self.assertIn(chosen.schema_text, drafting)
+        self.assertIn(extraction.examples_text(rule_19_marks=True), drafting)
+        self.assertEqual(len(self.MARK.findall(drafting)), marks + example)
+        self.assertEqual(drafting.count(schema_io.MARKS_READ), 2)
+
+        # the second judge: the ground truth schema as 050 shows it, marked
+        judge = self.module("second_judge_marks", ROOT / "helpers" / "second_judge.py")
+        row = {"id": "r0", "subject": "Kestrel Lake Ice L2", "subject_class": "Dataset", "predicate": "P",
+               "object": "Tern", "object_class": "Algorithm", "source_text": "Made by the Tern algorithm."}
+        judging = judge.facts_prompt(chosen, [], "GUIDELINES", row)
+        self.assertIn(chosen.schema_text, judging)
+        self.assertEqual(len(self.MARK.findall(judging)), marks)
+
+        # 060's extraction: no mark, with the ground truth schema (a copy: the same content) or any other schema
+        use_step("060_extract")
+        import schema as extract_schema
+        extract_060 = self.module("extract_060_marks", ROOT / "060_extract" / "060_extract_helpers" / "extract.py")
+        copy = self.tmp / "copy_of_the_ground_truth_schema.txt"
+        shutil.copy2(GROUND_TRUTH_SCHEMA, copy)
+        other = self.tmp / "other.txt"            # near miss: a schema file with marks that isn't the ground truth's
+        other.write_text(schema_io.schema_text({**shown, "entity_classes": {**shown["entity_classes"], "Extra": "x"}},
+                                               rule_19_marks=True), encoding="utf-8")
+        induced = self.tmp / "the_schema.json"
+        induced.write_text(json.dumps({"entity_classes": [{"component_class": "Dataset", "definition": "a set"}],
+                                       "predicates": [{"component_class": "P", "definition": "has"}]}),
+                           encoding="utf-8")
+        for path, ground_truth in ((copy, True), (other, False), (induced, False)):
+            with self.subTest(schema=path.name):
+                s = extract_schema.load_schema({"schema": path, "additions": self.tmp / "additions.txt",
+                                                "splits": self.tmp / "splits.json",
+                                                "ground_truth": self.tmp / "ground_truth" / "batch_*.csv"})
+                self.assertEqual(s.ground_truth, ground_truth)
+                extracting = extraction.prompt(extract_060.PROMPT, s.text, record, piece,
+                                               **extraction.task_parts(extraction.SCOPE_SCHEMA))
+                self.assertEqual(self.MARK.findall(extracting), [])
+                self.assertNotIn(schema_io.MARKS_READ, extracting)
+                self.assertIn(extraction.examples_text(), extracting)        # the example schema unmarked too
+
+
 class PinsFollowDefinitions(unittest.TestCase):
     """The ground truth schema's rule "A predicate whose definition names its object's entity class is pinned to it"
     (annotations/ground_truth_schema.txt, PREDICATES), checked: every such predicate has a pin to each entity class
@@ -256,6 +392,58 @@ LIKE_A_GRID       looks like a Grid (IN_GRID)
         s = schema_io.read_ground_truth_schema(HAND)
         self.assertEqual(unpinned(s), [], "add a line \"only: any -> <entity class>\" under each of these predicates "
                          "in annotations/ground_truth_schema.txt, or reword its definition")
+
+
+#: The entity classes an "only:" line names (other than "any") that its predicate's definition doesn't name, as
+#: "PREDICATE: EntityClass, ...": the converse of unpinned. The check is shared with 040's defining (stage 7), which
+#: asks a pinned predicate's definition to name its pin: common/common_helpers/schema_io.py, unnamed_pinned.
+pins_not_in_definition = schema_io.pins_not_in_definition
+
+
+class DefinitionsNamePins(unittest.TestCase):
+    """The converse of PinsFollowDefinitions: every entity class on a predicate's "only:" line (other than "any")
+    appears in that predicate's definition in the ground truth schema. No prompt shows the pins (common/common_helpers/
+    schema_io.schema_text), so the definition, the one home of a predicate's meaning, must say what the pin allows."""
+
+    def test_near_misses(self):
+        text = """ENTITY CLASSES
+--------------
+Grid              a fixed set of cells
+Channel           a range of wavelengths
+Instrument        a device
+Person            one named human being
+Organization      a named institution
+
+PREDICATES
+----------
+ON_GRID           its values are given on this Grid
+                  only: any -> Grid
+GRIDDED_AS        its values are gridded
+                  only: any -> Grid
+ON_A_GRID         its values are given on a grid
+                  only: any -> Grid
+CHANNEL_OF        is one of the Channels this Instrument measures in
+                  only: Channel -> Instrument
+RUN_BY            is run by this Person
+                  only: any -> Organization; any -> Person
+LED_BY            is led by this Person or Organization
+                  only: any -> Organization; any -> Person
+"""
+        tmp = Path(tempfile.mkdtemp())
+        try:
+            path = tmp / "s.txt"
+            path.write_text(text, encoding="utf-8")
+            s = schema_io.read_schema(path)
+        finally:
+            shutil.rmtree(tmp)
+        self.assertEqual(pins_not_in_definition(s), ["GRIDDED_AS: Grid", "ON_A_GRID: Grid", "RUN_BY: Organization"])
+
+    def test_ground_truth_schema(self):
+        s = schema_io.read_ground_truth_schema(HAND)
+        self.assertEqual(len(s["pinned"]), 64)                  # every pinned predicate is checked, held-out only too
+        self.assertEqual(pins_not_in_definition(s), [], "name each of these entity classes in the predicate's "
+                         "definition in annotations/ground_truth_schema.txt (e.g. \"this Purpose\", \"(a Time)\"), "
+                         "or correct its \"only:\" line")
 
 
 class Additions(unittest.TestCase):
@@ -483,7 +671,7 @@ class ExtractionKeepsPins(unittest.TestCase):
         self.assertEqual(s.content["pinned"], {"HAS_PART": [("Dataset", "any")]})
         self.assertEqual(flags("Dataset", "HAS_PART", "Instrument"), [])
         self.assertEqual(flags("Instrument", "HAS_PART", "Dataset"), ["pattern_not_pinned"])
-        self.assertIn("only: Dataset -> any", s.text)
+        self.assertNotIn("only:", s.text)                       # kept for the checks, never shown (2026-11-15)
 
     def test_additions_pins_kept_and_respelled(self):
         additions = ("PREDICATES\n----------\nhas_part          has as a part\n"
@@ -502,6 +690,33 @@ class ExtractionKeepsPins(unittest.TestCase):
         s, _ = self.load(TEXT, additions)
         self.assertEqual(s.content["pinned"], {})
         self.assertEqual([x["entry_type"] for x in s.not_tuning], ["predicate"])    # as every output file writes it
+
+    def test_left_out_entries_recorded(self):
+        """Every additions entry 060 leaves out is one entry of the record of discarded items
+        (common/common_helpers/dropped.py): one already in the schema (folded into it), one from a held-out record
+        with its pin, an unread line; the accounting check stops the run when one vanishes without a record."""
+        from unittest import mock
+        from common import dropped
+        from common.stop import Stop
+        dropped.reset()
+        self.addCleanup(dropped.reset)
+        additions = ("PREDICATES\n----------\nhas_part          has as a part\n                  source: mentor\n"
+                     "ON_BOARD          is carried on\n                  only: Instrument -> Spacecraft\n"
+                     "                  source: ground truth held-out #8\n"
+                     "NOT AN ENTRY      two words\n")
+        s, _ = self.load(TEXT, additions)
+        got = sorted((e["action"], e["item_type"], e["item"].get("schema_entry") or e["item"].get("predicate")
+                      or e["item"].get("line")) for e in dropped.DISCARDS)
+        self.assertIn(("folded", "schema entry", "has_part"), got)
+        self.assertIn(("discarded", "schema entry", "ON_BOARD"), got)
+        self.assertIn(("discarded", "pinned predicate", "ON_BOARD"), got)
+        self.assertTrue(any(t == "line of a schema file" and "NOT AN ENTRY" in str(w) for _, t, w in got), got)
+        folded = next(e for e in dropped.DISCARDS if e["action"] == "folded" and e["item_type"] == "schema entry")
+        self.assertEqual(folded["kept_as"], {"schema_entry": "HAS_PART"})
+        with mock.patch.object(dropped, "fold", lambda *a, **k: None), self.assertRaises(Stop) as caught:
+            self.load(TEXT, additions)
+        self.assertIn("Accounting check failed in stage 2 (load_schema): 2 predicate entries of the additions file "
+                      "went in, 0 were kept and 1 were recorded", str(caught.exception))
 
     def test_pin_naming_unknown_entity_class_noted(self):
         additions = ("PREDICATES\n----------\nON_BOARD          is carried on\n"
@@ -578,13 +793,10 @@ class HeldOutOnly(unittest.TestCase):
         self.assertEqual(s["entity_classes"]["Moonlet"], "a small moon")             # the original is left alone
         unmarked = {**s, "held_out_only": {"entity_classes": set(), "predicates": set()}}
         self.assertIs(schema_io.without_held_out_only(unmarked), unmarked)           # nothing marked: the same
-        text = schema_io.text_without_held_out_only(self.TEXT, s)
+        text = schema_io.schema_text(w)                                        # what 050's prompt shows of it
         for gone in ("Moonlet", "ORBITS", "held-out"):
             self.assertNotIn(gone, text, gone)
-        self.assertIn("Instrument -> Spacecraft\n", text + "\n")
-        self.assertIn("only: Instrument -> Spacecraft", text)
-        self.assertIn("Instrument ABOARD Spacecraft", text)
-        self.assertEqual(schema_io.text_without_held_out_only(self.TEXT, unmarked), self.TEXT)
+        self.assertIn("Instrument", text)
 
     def test_source_line(self):
         self.assertEqual(schema_io.source_line([3], [8, 8]), "ground truth tuning #3; held-out #8")

@@ -141,6 +141,10 @@ def call_llm_json(prompt, retries=1, read_timeout=READ_TIMEOUT, cache_until=None
             log.debug(f"unusable answer from {llm.MODEL} (attempt {attempt + 1} of {retries + 1}), "
                       f"{len(text):,} characters, {e}:\n{text}")
             shape = isinstance(e, WrongShape)
+            from common import dropped
+            dropped.discard("model calls", "reply", ("a JSON object of the wrong shape" if shape else "not a JSON "
+                            "object") + f" ({e}), " + ("so the call fails" if attempt == retries else "asked once more"),
+                            {"model": llm.MODEL, "attempt": attempt + 1, "answer": text})
             with _requests_lock:
                 if not attempt:
                     REASKS["wrong_shape" if shape else "not_json"] += 1

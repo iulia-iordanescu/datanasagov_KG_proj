@@ -34,7 +34,7 @@ def prompt_for(chosen):
     """The prompt of each text piece of a chosen record: prompt_for(chosen)(item, piece)."""
     def prompt(item, piece):
         return extraction.prompt(PROMPT, chosen.schema_text, chosen.records[item["id"]], piece,
-                                 **extraction.task_parts(extraction.SCOPE_ALL))
+                                 **extraction.task_parts(extraction.SCOPE_ALL, rule_19_marks=chosen.rule_19_marks))
     return prompt
 
 

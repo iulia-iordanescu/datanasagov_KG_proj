@@ -32,6 +32,7 @@ from pathlib import Path
 
 import batches
 import ckan_client
+from common import dropped
 from common.audit import current_run_id, log
 from common.report import named, this_report
 from common.stop import Stop
@@ -110,6 +111,8 @@ def _set_aside(saved: Harvest) -> str:
     return target.name
 
 
+#: The stage names its discarded items carry (common/common_helpers/dropped.py).
+STAGE_1 = "stage 1 (download_catalog)"
 #: CKAN's usual cap on records per request (its rows_max, 1000 by default): more are never returned, and a page
 #: shorter than asked for would skip the records between pages.
 PAGE_SIZE_MAX = 1000
@@ -126,9 +129,13 @@ def download_catalog(settings: dict, output: Path) -> Harvest:
     pause = settings["pause_seconds"]
 
     for part in batches.leftover_parts(output):
+        dropped.discard(STAGE_1, "file", "an unfinished batch file left by an interrupted write (.part), deleted",
+                        {"file": part.name})
         part.unlink()
     old_lineage = output / OLD_LINEAGE_FILE
     if old_lineage.exists():
+        dropped.discard(STAGE_1, "file", "the lineage file of an older version of this step, replaced by the request "
+                        "block in each batch file, deleted", {"file": old_lineage.name})
         old_lineage.unlink()
         log.info(f"  removed {OLD_LINEAGE_FILE} (replaced by the request block in each batch file)")
 
@@ -170,6 +177,9 @@ def download_catalog(settings: dict, output: Path) -> Harvest:
             # Saved by a run with other settings (max_records, page_size), by
             # an older version of this step, or with another sort order.
             harvest.replaced += 1
+            dropped.replace(STAGE_1, "batch file", f"the batch file on disk {reason}, so the page was downloaded again",
+                            _batch_item(path, batch), {"file": path.name, "downloaded again": True},
+                            setting={"page_size": page_size, "max_records": max_records})
             log.info(f"  {path.name} {reason}; downloading it again")
 
         if start == 0:
@@ -177,6 +187,14 @@ def download_catalog(settings: dict, output: Path) -> Harvest:
         else:
             page, request = ckan_client.fetch_page(session, start, page_size)
         records = page["results"][:expected]
+        since = dropped.mark()
+        for position, record in enumerate(page["results"][expected:], start=start + expected):
+            # The API sent more than this run aims for (max_records): the rest of the page isn't saved.
+            dropped.discard(STAGE_1, "record", "beyond the records this run aims for, so not saved",
+                            {"id": record.get("id"), "title": record.get("title")}, record_id=record.get("id"),
+                            setting={"max_records": max_records}, where=f"catalog position {position}")
+        dropped.account(STAGE_1, f"records the API returned for the page starting at {start}", len(page["results"]),
+                        len(records), since=since)
         if 0 < len(records) < expected and page["count"] > start + len(records):
             # The server gave fewer than asked for, though the catalog has more: its cap on records per request is
             # below page_size. Saving this page and asking for the next from start + page_size would skip the
@@ -206,10 +224,21 @@ def download_catalog(settings: dict, output: Path) -> Harvest:
     mine = set(harvest.files)
     for p in batches.all_batches(output):
         if p not in mine:
+            dropped.discard(STAGE_1, "batch file", "outside this run's range (from an earlier, larger harvest), "
+                            "deleted so that 020 doesn't mix two harvests", _batch_item(p, batches.load_batch(p)),
+                            setting={"page_size": page_size, "max_records": max_records})
             p.unlink()
             harvest.removed.append(p.name)
             log.info(f"  removed {p.name} (outside this run's range)")
     return harvest
+
+
+def _batch_item(path: Path, batch: dict) -> dict:
+    """A batch file as a discarded item: its file, its request block and the ids and titles of its records, enough to
+    find each record again in the catalog."""
+    return {"file": path.name, "request": batch.get("request"), "fetched_at": batch.get("fetched_at"),
+            "records": [{"id": r.get("id"), "title": r.get("title")} for r in batch.get("records", [])
+                        if isinstance(r, dict)]}
 
 
 def check_complete(harvest: Harvest) -> Check:

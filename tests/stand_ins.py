@@ -233,26 +233,34 @@ def _merges(prompt: str) -> dict:
 
 
 def _splits(prompt: str) -> dict:
-    """Step 040's splitting: each predicate sent split into one new predicate per object entity class but the last,
-    plus faults code must reject: a renaming (every object entity class), an object entity class taken twice, an
-    object entity class not the predicate's, the predicate's own name, and a predicate not sent."""
-    sent = _json_after(prompt, "PREDICATES (each with the entity classes of its object instances):")
+    """Step 040's splitting: each predicate sent split into one new predicate per group but the last, grouped by object
+    when it has several object entity classes, else by subject, plus faults code must reject: a renaming (every
+    group), a group taken twice, a group not the predicate's, another grouping for the same predicate, no grouping,
+    the predicate's own name, and a predicate not sent. A group found in one text only is rejected too
+    (min_split_texts 2)."""
+    sent = _json_after(prompt, "PREDICATES (each with its patterns and the entity classes of its subject instances "
+                               "and object instances):")
     splits = []
     for p in sent:
-        ocs = [oc["entity_class"] for oc in p["object_classes"]]
-        splits.append({"predicate": p["predicate"], "into": f"{p['predicate']}_ALL", "object_classes": ocs})
-        splits += [{"predicate": p["predicate"], "into": f"{p['predicate']}_{c.upper()}", "object_classes": [c]}
-                   for c in ocs[:-1]]
-        splits += [{"predicate": p["predicate"], "into": f"{p['predicate']}_AGAIN", "object_classes": ocs[:1]},
-                   {"predicate": p["predicate"], "into": f"{p['predicate']}_ODD", "object_classes": ["Gadget"]},
-                   {"predicate": p["predicate"], "into": p["predicate"], "object_classes": ocs[-1:]}]
-    splits.append({"predicate": "NOT_SENT", "into": "NEW", "object_classes": ["Instrument"]})
+        by = "object" if len(p["object_classes"]) > 1 else "subject"
+        groups = list(p[f"{by}_classes"])
+        name = p["predicate"]
+        splits.append({"predicate": name, "by": by, "into": f"{name}_ALL", "takes": groups})
+        splits += [{"predicate": name, "by": by, "into": f"{name}_{c.upper()}", "takes": [c]} for c in groups[:-1]]
+        first = p["patterns"][0]
+        splits += [{"predicate": name, "by": by, "into": f"{name}_AGAIN", "takes": groups[:1]},
+                   {"predicate": name, "by": by, "into": f"{name}_ODD", "takes": ["Gadget"]},
+                   {"predicate": name, "by": "pattern", "into": f"{name}_OTHER",
+                    "takes": [f"{first['subject']} -> {first['object']}"]},
+                   {"predicate": name, "by": "verb", "into": f"{name}_VERB", "takes": groups[-1:]},
+                   {"predicate": name, "by": by, "into": name, "takes": groups[-1:]}]
+    splits.append({"predicate": "NOT_SENT", "by": "object", "into": "NEW", "takes": ["Instrument"]})
     return {"splits": splits}
 
 
 def _definitions(prompt: str) -> dict:
     """Step 040's definitions: one each, Mission too vague, plus one not sent."""
-    header = "ENTITY CLASSES:" if "\nENTITY CLASSES:" in prompt else "PREDICATES:"
+    header = "ENTITY CLASSES TO DEFINE:" if "\nENTITY CLASSES TO DEFINE:" in prompt else "PREDICATES:"
     entries = _json_after(prompt, header)
     d, vague = {}, {}
     for e in entries:
@@ -260,7 +268,7 @@ def _definitions(prompt: str) -> dict:
         if name == "Mission":
             vague[name] = "stand-in: too vague"
         else:
-            d[name] = f"A {name} (stand-in definition)."
+            d[name] = f"A {name}{''.join(f' of this {c}' for c in e.get('must_name', []))} (stand-in definition)."
     d["Bogus"] = "not sent"
     return {"definitions": d, "too_vague": vague}
 
@@ -316,7 +324,7 @@ def stand_in_model(prompt, attempts=4, read_timeout=180, model=None, cache_until
         return json.dumps(_splits(prompt))
     if "\nSCHEMA\n" in prompt:
         return json.dumps(_mapping(prompt))
-    if "\nENTITY CLASSES:" in prompt or "\nPREDICATES:" in prompt:
+    if "\nENTITY CLASSES OF THE SCHEMA:" in prompt:                 # step 040's defining, both kinds
         return json.dumps(_definitions(prompt))
     if '{"ok": true}' in prompt:
         return '{"ok": true}'

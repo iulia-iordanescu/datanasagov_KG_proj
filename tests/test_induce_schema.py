@@ -275,6 +275,32 @@ class Merging(unittest.TestCase):
         web = next(e for e in listing if e["label"] == "WebTool")
         self.assertEqual((web["texts"], sorted(web["examples"])), (2, ["Giovanni", "Worldview"]))
 
+    def test_predicate_listing_shows_entity_classes(self):
+        """Stage 4 shows each predicate label with up to EXAMPLES triple instances, each instance with its entity class
+        as stage 4's own entity class merge left it (Sensor merged into Instrument first); an unlabeled instance is
+        written without one; the most frequent first, ties in reading order."""
+        triples = texts(("t1", "m1", "T1", "", [("CERES", "is aboard", "Terra"), ("MODIS", "is aboard", "Aqua"),
+                                                ("MODIS", "is aboard", "Aqua")]),
+                        ("t2", "m1", "T2", "", [("OMI", "flies on", "Mystery"), ("AIRS", "is aboard", "Aqua")]))
+        labels = label.Labels(of={"entity": {"CERES": "Sensor", "MODIS": "Instrument", "Terra": "Spacecraft",
+                                             "Aqua": "Spacecraft", "OMI": "Instrument", "AIRS": "Instrument"},
+                                  "predicate": {"is aboard": "ABOARD", "flies on": "FLIES_ON"}},
+                              vocabulary={"entity": ["Sensor", "Instrument", "Spacecraft"],
+                                          "predicate": ["ABOARD", "FLIES_ON"]})
+        model = Scripted({"Below are the labels given to subject": {"merges": [{"into": "Instrument",
+                                                                                "labels": ["Sensor"]}]},
+                          "Below are the labels given to predicate": {"merges": []}})
+        with model as calls:
+            merge.merge_labels(labels, triples, calls)
+        prompt = next(p for p in model.prompts if "FLIES_ON" in p)
+        listing = {e["label"]: e for e in json.loads(prompt[prompt.rindex("LABELS:") + len("LABELS:"):])}
+        self.assertEqual(listing["ABOARD"], {"label": "ABOARD", "texts": 2, "examples": [
+            "MODIS (Instrument) -- is aboard -- Aqua (Spacecraft)", "CERES (Instrument) -- is aboard -- Terra (Spacecraft)",
+            "AIRS (Instrument) -- is aboard -- Aqua (Spacecraft)"]})
+        self.assertEqual(listing["FLIES_ON"]["examples"], ["OMI (Instrument) -- flies on -- Mystery"])
+        entity_prompt = next(p for p in model.prompts if "Sensor" in p)
+        self.assertIn('"CERES"', entity_prompt)                            # entity labels: their instances, as before
+
     def test_one_label_no_call(self):
         labels = label.Labels(of={"entity": {}, "predicate": {}}, vocabulary={"entity": ["A"], "predicate": ["P"]})
         with Scripted({}) as calls:
@@ -289,10 +315,11 @@ class Merging(unittest.TestCase):
 
 
 def labels_for(entity, predicate, merged=None):
-    """Labels as stage 4 leaves them: merged, then folded by spelling (merge.fold_spellings)."""
+    """Labels as stage 4 leaves them: folded by spelling (merge.fold_spellings), then merged (merge.final_labels)."""
     labels = label.Labels(of={"entity": entity, "predicate": predicate},
                           merged_into={"entity": merged or {}, "predicate": {}})
     merge.fold_spellings(labels)
+    merge.final_labels(labels)
     return labels
 
 
@@ -338,16 +365,23 @@ class Counting(unittest.TestCase):
         self.assertEqual((ds["support"], ds["examples"]), (2, ["MODIS L2", "AIRS L1"]))
         self.assertEqual((self.c.texts_with_triple_instances, self.c.texts_with_describes_class), (2, 2))
 
-    def test_split_reassigns_by_object_class(self):
-        """Stage 5's kept split gives a triple instance the new predicate only when its object has an entity class the
-        split took; others keep the predicate; an unlabeled object never moves."""
-        splits = split.Splits(into={"ABOARD": {"Spacecraft": "ABOARD_SPACECRAFT"}})
+    def test_split_reassigns_by_its_grouping(self):
+        """Stage 5's kept split gives a triple instance the new predicate only when its pattern is in a group the split
+        took; others keep the predicate; a triple instance with an unlabeled object never moves (CERES -- Mystery)."""
+        splits = split.Splits(into={"ABOARD": {"by": "object", "to": {"Spacecraft": "ABOARD_SPACECRAFT"}}})
         c = count.count_support(self.triples, self.labels, splits)
         patterns = {tuple(p["pattern"]): p["support"] for p in c.patterns}
         self.assertEqual(patterns, {("Instrument", "ABOARD_SPACECRAFT", "Spacecraft"): 2})
         predicates = {p["component_class"]: p["support"] for p in c.predicates}
         self.assertEqual(predicates, {"ABOARD_SPACECRAFT": 2, "ABOARD": 1})          # t2: CERES -- Mystery
         self.assertEqual(c.pattern_of["t2"], [("Instrument", "ABOARD_SPACECRAFT", "Spacecraft"), None])
+
+    def test_pins_counted_for_predicates_found(self):
+        """Counting keeps stage 5's pin of each predicate it counts, and no pin of a predicate it doesn't."""
+        splits = split.Splits(into={"ABOARD": {"by": "object", "to": {"Spacecraft": "ABOARD_SPACECRAFT"}}},
+                              pinned={"ABOARD_SPACECRAFT": [("any", "Spacecraft")], "GONE": [("any", "X")]})
+        c = count.count_support(self.triples, self.labels, splits)
+        self.assertEqual(c.pinned, {"ABOARD_SPACECRAFT": [("any", "Spacecraft")]})
 
     def test_predicate_examples_are_facts(self):
         """A predicate's examples are the triple instances that most often state it: they show its subject and
@@ -356,95 +390,403 @@ class Counting(unittest.TestCase):
         self.assertIn("AIRS -- flies on -- Aqua", self.entry("predicates", "ABOARD")["examples"])
 
 
-class Splitting(unittest.TestCase):
-    """Stage 5's code checks, each with a near miss that passes, and the cap."""
+class SplitLookup(unittest.TestCase):
+    """Splits.predicate: each grouping's group, a triple instance with a side unlabeled never moving (whatever the
+    grouping), and merging again applied after the split."""
+
+    def test_each_grouping(self):
+        s = split.Splits(into={"P": {"by": "subject", "to": {"A": "P_A"}},
+                               "Q": {"by": "object", "to": {"B": "Q_B"}},
+                               "R": {"by": "pattern", "to": {"A -> B": "R_AB"}}},
+                         final={"P_A": "P_A", "Q_B": "OTHER"})
+        cases = [("P", "A", "C", "P_A"), ("P", "C", "A", "P"),             # subject: A as object doesn't count
+                 ("Q", "C", "B", "OTHER"), ("Q", "B", "C", "Q"),           # object, then merged again into OTHER
+                 ("R", "A", "B", "R_AB"), ("R", "B", "A", "R"), ("R", "A", "C", "R"),   # the pattern, not one side
+                 ("P", None, "C", "P"), ("Q", "C", None, "Q"),             # an unlabeled side never moves
+                 ("P", "A", None, "P"),                                    # ... even on the side not grouped by
+                 (None, "A", "B", None), ("S", "A", "B", "S")]             # no label; a predicate not split
+        for p, sc, oc, expected in cases:
+            with self.subTest(p=p, sc=sc, oc=oc):
+                self.assertEqual(s.predicate(p, sc, oc), expected)
+
+    def test_pin_of_each_grouping(self):
+        self.assertEqual([split.pin_of("subject", "A"), split.pin_of("object", "B"), split.pin_of("pattern", "A -> B")],
+                         [("A", "any"), ("any", "B"), ("A", "B")])
+
+
+class SplitFixture:
+    """The triple instances and labels stage 5's tests share.
+
+    SOURCED_FROM: one subject entity class (Data) and three object ones: Mission (t1, t2), Spacecraft (t2),
+    Instrument (t3). MEASURES: two subject entity classes and two object ones, whose patterns cut across both:
+    Instrument -> Variable (t1, t2), Instrument -> Image (t3), Spacecraft -> Variable (t3, t4), Spacecraft -> Image
+    (t4). ABOARD: one pattern (not sent)."""
 
     def setUp(self):
-        # SOURCED_FROM reaches Mission (2 texts), Spacecraft (1) and Instrument (1); ABOARD only Spacecraft
-        self.triples = texts(("t1", "m1", "T1", "", [("data", "came from", "Apollo 11"), ("MODIS", "is aboard", "Aqua")]),
-                             ("t2", "m1", "T2", "", [("images", "came from", "Cassini"), ("x", "came from", "Apollo 12")]),
-                             ("t3", "m2", "T3", "", [("y", "came from", "MODIS")]))
+        self.triples = texts(
+            ("t1", "m1", "T1", "", [("data", "came from", "Apollo 11"), ("MODIS", "is aboard", "Aqua"),
+                                    ("MODIS", "measures", "temperature")]),
+            ("t2", "m1", "T2", "", [("images", "came from", "Cassini"), ("x", "came from", "Apollo 12"),
+                                    ("AIRS", "measures", "humidity")]),
+            ("t3", "m2", "T3", "", [("y", "came from", "MODIS"), ("AIRS", "measures", "scene"),
+                                    ("Aqua", "measures", "temperature")]),
+            ("t4", "m2", "T4", "", [("Terra", "measures", "humidity"), ("Terra", "measures", "mosaic")]))
         self.labels = labels_for({"data": "Data", "images": "Data", "x": "Data", "y": "Data", "MODIS": "Instrument",
-                                  "Aqua": "Spacecraft", "Apollo 11": "Mission", "Apollo 12": "Mission",
-                                  "Cassini": "Spacecraft"},
-                                 {"came from": "SOURCED_FROM", "is aboard": "ABOARD"})
-        self.found = split.object_classes(self.triples, self.labels)
+                                  "AIRS": "Instrument", "Aqua": "Spacecraft", "Terra": "Spacecraft",
+                                  "Apollo 11": "Mission", "Apollo 12": "Mission", "Cassini": "Spacecraft",
+                                  "temperature": "Variable", "humidity": "Variable", "scene": "Image",
+                                  "mosaic": "Image"},
+                                 {"came from": "SOURCED_FROM", "is aboard": "ABOARD", "measures": "MEASURES"})
+        self.found = split.patterns_of(self.triples, self.labels)
         self.predicates = set(self.labels.final["predicate"].values())
 
-    def check(self, *items):
-        passed, rejected = split.check([{"splits": list(items)}], self.found, self.predicates)
+    def check(self, *items, min_texts=1):
+        passed, rejected = split.check([{"splits": list(items)}], self.found, self.predicates, min_texts)
         return passed, [r["why"].split(":")[0] for r in rejected]
 
+    def run_stage(self, splits, merges=(), cap=10, min_texts=1):
+        """The stage with these replies: (Splits, the prompts sent)."""
+        model = Scripted({'"splits": [': {"splits": list(splits)}, '"merges": [': {"merges": list(merges)}})
+        with model as calls:
+            s = split.split_predicates(self.triples, self.labels, {"max_new_predicates": cap,
+                                                                   "min_split_texts": min_texts}, calls)
+        return s, model.prompts
+
+
+
+class Splitting(SplitFixture, unittest.TestCase):
+    """Stage 5's code checks, each with a near miss that passes, and the cap."""
+
     def test_found_and_sent(self):
-        self.assertEqual({p: set(ocs) for p, ocs in self.found.items()},
-                         {"SOURCED_FROM": {"Mission", "Spacecraft", "Instrument"}, "ABOARD": {"Spacecraft"}})
+        self.assertEqual({p: set(pats) for p, pats in self.found.items()},
+                         {"SOURCED_FROM": {("Data", "Mission"), ("Data", "Spacecraft"), ("Data", "Instrument")},
+                          "ABOARD": {("Instrument", "Spacecraft")},
+                          "MEASURES": {("Instrument", "Variable"), ("Instrument", "Image"), ("Spacecraft", "Variable"),
+                                       ("Spacecraft", "Image")}})
+        self.assertEqual({p for p, pats in self.found.items() if split.several(pats)}, {"SOURCED_FROM", "MEASURES"})
+        groups = {g: sorted(e["texts"]) for g, e in split.groups(self.found["MEASURES"], "subject").items()}
+        self.assertEqual(groups, {"Instrument": ["t1", "t2", "t3"], "Spacecraft": ["t3", "t4"]})
+
+    def test_one_side_varies_is_sent(self):
+        """A predicate with one subject entity class but several object ones is sent (near miss: one of each isn't),
+        and so is one with several subject entity classes and one object entity class."""
+        self.assertTrue(split.several({("Data", "Mission"): {}, ("Data", "Spacecraft"): {}}))
+        self.assertTrue(split.several({("Data", "Mission"): {}, ("Image", "Mission"): {}}))
+        self.assertFalse(split.several({("Data", "Mission"): {}}))
+        self.assertFalse(split.several({}))                                 # no pattern at all
 
     def test_each_check_and_its_near_miss(self):
-        ok = {"predicate": "SOURCED_FROM", "into": "FROM_MISSION", "object_classes": ["Mission"]}
+        ok = {"predicate": "SOURCED_FROM", "by": "object", "into": "FROM_MISSION", "takes": ["Mission"]}
+        measures = {"predicate": "MEASURES", "by": "pattern", "into": "MEASURED", "takes": ["Instrument -> Variable"]}
         cases = [
             ("not an object", ["SOURCED_FROM"], split.NOT_AN_OBJECT),
-            ("predicate not sent (ABOARD has one object entity class)", {**ok, "predicate": "ABOARD"}, split.NOT_SENT),
+            ("predicate not sent (ABOARD has one pattern)", {**ok, "predicate": "ABOARD"}, split.NOT_SENT),
             ("no name", {**ok, "into": "  "}, split.NO_NAME),
             ("an existing name, spelled otherwise", {**ok, "into": "aboard"}, split.NAME_TAKEN),
             ("its own name", {**ok, "into": "Sourced From"}, split.NAME_TAKEN),
-            ("no object entity class", {**ok, "object_classes": []}, split.NO_CLASSES),
-            ("not the predicate's", {**ok, "object_classes": ["Organization"]}, split.NOT_AN_OBJECT_CLASS),
-            ("every object entity class", {**ok, "object_classes": ["Mission", "Spacecraft", "Instrument"]},
-             split.EVERY_CLASS),
+            ("no grouping", {**ok, "by": "verb"}, split.NO_GROUPING),
+            ("grouping left out", {k: v for k, v in ok.items() if k != "by"}, split.NO_GROUPING),
+            ("no group", {**ok, "takes": []}, split.NO_GROUPS),
+            ("takes not a list", {**ok, "takes": "Mission"}, split.NO_GROUPS),
+            ("only blank groups", {**ok, "takes": ["  ", ""]}, split.NO_GROUPS),
+            ("a blank group beside a real one", {**ok, "takes": ["Mission", " "]}, split.NOT_ITS_GROUP),
+            ("a group that isn't text", {**ok, "takes": ["Mission", 7]}, split.NOT_ITS_GROUP),
+            ("not the predicate's", {**ok, "takes": ["Organization"]}, split.NOT_ITS_GROUP),
+            ("the predicate's on the other side only", {**ok, "by": "subject", "takes": ["Mission"]},
+             split.NOT_ITS_GROUP),
+            ("a pattern it doesn't have", {**measures, "takes": ["Variable -> Instrument"]}, split.NOT_ITS_GROUP),
+            ("a pattern not written as one", {**measures, "takes": ["Instrument Variable"]}, split.NOT_ITS_GROUP),
+            ("an entity class where a pattern is asked", {**measures, "takes": ["Instrument"]}, split.NOT_ITS_GROUP),
+            ("every object entity class", {**ok, "takes": ["Mission", "Spacecraft", "Instrument"]}, split.EVERY_GROUP),
+            ("its one subject entity class is every group", {**ok, "by": "subject", "takes": ["Data"]},
+             split.EVERY_GROUP),
+            ("every pattern", {**measures, "takes": ["Instrument -> Variable", "Instrument -> Image",
+                                                     "Spacecraft -> Variable", "Spacecraft -> Image"]},
+             split.EVERY_GROUP),
         ]
         for what, item, why in cases:
             with self.subTest(what):
                 self.assertEqual(self.check(item)[1], [why])
-        # near misses that pass: the predicate and the entity class in another spelling, read as the ones sent
-        passed, rejected = self.check({"predicate": "sourced_from", "into": "FROM_MISSION", "object_classes": ["mission"]})
-        self.assertEqual((passed, rejected), ([{"predicate": "SOURCED_FROM", "into": "FROM_MISSION",
-                                               "object_classes": ["Mission"]}], []))
+        _, why = split.check([{"splits": [{**ok, "by": "subject", "takes": ["Mission"]}]}], self.found, self.predicates)
+        self.assertIn("Mission (among its object entity classes only)", why[0]["why"])
+        # near misses that pass: the predicate and each group in another spelling, read as the ones sent
+        passed, rejected = self.check({"predicate": "sourced_from", "by": "Object", "into": "FROM_MISSION",
+                                       "takes": ["mission"]})
+        self.assertEqual((passed, rejected), ([{"predicate": "SOURCED_FROM", "by": "object", "into": "FROM_MISSION",
+                                               "takes": ["Mission"], "only": [["any", "Mission"]], "texts": 2,
+                                               "triple_instances": 2}], []))
+        passed, _ = self.check({**measures, "takes": ["instrument->variable", "Spacecraft -> Image"]})
+        self.assertEqual((passed[0]["takes"], passed[0]["only"], passed[0]["texts"]),
+                         (["Instrument -> Variable", "Spacecraft -> Image"],
+                          [["Instrument", "Variable"], ["Spacecraft", "Image"]], 3))
+        passed, _ = self.check({**measures, "by": "subject", "takes": ["Spacecraft"]})
+        self.assertEqual((passed[0]["only"], passed[0]["texts"], passed[0]["triple_instances"]),
+                         ([["Spacecraft", "any"]], 2, 3))
+
+    def test_min_split_texts(self):
+        """A new predicate needs supporting texts (texts with a triple instance it would take) at least min_split_texts;
+        a group found in one text fails, two groups of one text each (two texts) pass, and the setting is recorded."""
+        from common import dropped
+        dropped.reset()
+        self.addCleanup(dropped.reset)
+        one_text = {"predicate": "SOURCED_FROM", "by": "object", "into": "FROM_CRAFT", "takes": ["Spacecraft"]}
+        self.assertEqual(self.check(one_text, min_texts=2)[1], [split.TOO_FEW_TEXTS])
+        self.assertEqual(self.check(one_text, min_texts=1)[1], [])                       # near miss: the setting
+        two_texts = {**one_text, "takes": ["Spacecraft", "Instrument"]}                  # t2 and t3
+        self.assertEqual(self.check(two_texts, min_texts=2)[1], [])
+        same_text = {"predicate": "MEASURES", "by": "pattern", "into": "M", "takes": ["Spacecraft -> Image"]}
+        self.assertEqual(self.check(same_text, min_texts=2)[1], [split.TOO_FEW_TEXTS])    # t4 only
+        self.assertEqual(self.check({**same_text, "takes": ["Spacecraft -> Variable"]}, min_texts=2)[1], [])
+        self.assertEqual(self.check(two_texts, min_texts=3)[1], [split.TOO_FEW_TEXTS])
+        settings = [e["setting"] for e in dropped.DISCARDS if "min_split_texts" in e["reason"]]
+        self.assertIn({"min_split_texts": 2}, settings)
+        # a split rejected for too few texts leaves its group free for a later split, and fixes no grouping
+        passed, rejected = self.check(one_text, {**one_text, "by": "subject", "into": "X", "takes": ["Data"]},
+                                      {**two_texts, "into": "FROM_PLATFORM"}, min_texts=2)
+        self.assertEqual(([p["into"] for p in passed], rejected),
+                         (["FROM_PLATFORM"], [split.TOO_FEW_TEXTS, split.EVERY_GROUP]))
+
+    def test_one_grouping_per_predicate(self):
+        """The first split of a predicate that passes fixes its grouping; another grouping of the same predicate is
+        rejected; another predicate keeps its own choice; splits by one grouping may together take every group."""
+        passed, rejected = self.check(
+            {"predicate": "MEASURES", "by": "subject", "into": "BY_INSTRUMENT", "takes": ["Instrument"]},
+            {"predicate": "MEASURES", "by": "object", "into": "OF_IMAGE", "takes": ["Image"]},          # other grouping
+            {"predicate": "MEASURES", "by": "pattern", "into": "OF_X", "takes": ["Spacecraft -> Image"]},   # and again
+            {"predicate": "SOURCED_FROM", "by": "object", "into": "FROM_MISSION", "takes": ["Mission"]},
+            {"predicate": "MEASURES", "by": "subject", "into": "BY_SPACECRAFT", "takes": ["Spacecraft"]})
+        self.assertEqual([p["into"] for p in passed], ["BY_INSTRUMENT", "FROM_MISSION", "BY_SPACECRAFT"])
+        self.assertEqual(rejected, [split.OTHER_GROUPING, split.OTHER_GROUPING])
+        self.assertEqual(split.added_by(passed, self.found), 2)        # MEASURES split away whole: 2 - 1, plus 1
 
     def test_first_split_stands(self):
         passed, rejected = self.check(
-            {"predicate": "SOURCED_FROM", "into": "FROM_MISSION", "object_classes": ["Mission"]},
-            {"predicate": "SOURCED_FROM", "into": "FROM_CRAFT", "object_classes": ["Spacecraft", "Mission"]},  # Mission taken
-            {"predicate": "SOURCED_FROM", "into": "from_mission", "object_classes": ["Instrument"]},           # name taken
-            {"predicate": "SOURCED_FROM", "into": "FROM_SPACECRAFT", "object_classes": ["Spacecraft"]})
-        self.assertEqual([p["into"] for p in passed], ["FROM_MISSION", "FROM_SPACECRAFT"])
-        self.assertEqual(rejected, [split.CLASS_TWICE, split.NAME_TWICE])
+            {"predicate": "SOURCED_FROM", "by": "object", "into": "FROM_MISSION", "takes": ["Mission"]},
+            {"predicate": "SOURCED_FROM", "by": "object", "into": "FROM_CRAFT", "takes": ["Spacecraft", "Mission"]},
+            {"predicate": "SOURCED_FROM", "by": "object", "into": "from_mission", "takes": ["Instrument"]},
+            {"predicate": "SOURCED_FROM", "by": "object", "into": "FROM_SPACECRAFT", "takes": ["Spacecraft"]},
+            {"predicate": "MEASURES", "by": "pattern", "into": "M1", "takes": ["Instrument -> Image"]},
+            {"predicate": "MEASURES", "by": "pattern", "into": "M2", "takes": ["instrument -> image"]})
+        self.assertEqual([p["into"] for p in passed], ["FROM_MISSION", "FROM_SPACECRAFT", "M1"])
+        self.assertEqual(rejected, [split.GROUP_TWICE, split.NAME_TWICE, split.GROUP_TWICE])
+
+    def test_group_named_twice_counted_once(self):
+        passed, _ = self.check({"predicate": "SOURCED_FROM", "by": "object", "into": "FROM_MISSION",
+                                "takes": ["Mission", "mission"]})
+        self.assertEqual(passed[0]["takes"], ["Mission"])
 
     def test_added_counts_a_predicate_split_away(self):
-        ocs = {"SOURCED_FROM": {"Mission", "Spacecraft", "Instrument"}}
-        one = {"predicate": "SOURCED_FROM", "object_classes": ["Mission"]}
-        rest = {"predicate": "SOURCED_FROM", "object_classes": ["Spacecraft", "Instrument"]}
-        self.assertEqual(split.added_by([one], ocs), 1)
-        self.assertEqual(split.added_by([one, rest], ocs), 1)       # every object entity class taken: SOURCED_FROM is gone
+        one = {"predicate": "SOURCED_FROM", "by": "object", "takes": ["Mission"]}
+        rest = {"predicate": "SOURCED_FROM", "by": "object", "takes": ["Spacecraft", "Instrument"]}
+        self.assertEqual(split.added_by([one], self.found), 1)
+        self.assertEqual(split.added_by([one, rest], self.found), 1)       # every group taken: SOURCED_FROM is gone
+        pattern = [{"predicate": "MEASURES", "by": "pattern", "takes": ["Instrument -> Variable", "Spacecraft -> Image"]},
+                   {"predicate": "MEASURES", "by": "pattern", "takes": ["Instrument -> Image"]}]
+        self.assertEqual(split.added_by(pattern, self.found), 2)          # Spacecraft -> Variable stays: none gone
 
     def test_cap_keeps_most_supported_first(self):
-        passed = [{"predicate": "SOURCED_FROM", "into": "FROM_SPACECRAFT", "object_classes": ["Spacecraft"], "texts": 1},
-                  {"predicate": "SOURCED_FROM", "into": "FROM_MISSION", "object_classes": ["Mission"], "texts": 2}]
+        passed = [{"predicate": "SOURCED_FROM", "by": "object", "into": "FROM_SPACECRAFT", "takes": ["Spacecraft"],
+                   "texts": 1},
+                  {"predicate": "SOURCED_FROM", "by": "object", "into": "FROM_MISSION", "takes": ["Mission"], "texts": 2}]
         kept, dropped = split.capped(passed, self.found, 1)
         self.assertEqual(([s["into"] for s in kept], [s["into"] for s in dropped]), (["FROM_MISSION"], ["FROM_SPACECRAFT"]))
         kept, dropped = split.capped(passed, self.found, 2)                         # near miss: room for both
         self.assertEqual((len(kept), dropped), (2, []))
-        # splits that take every object entity class add one predicate less, so a cap of 1 keeps both halves of a full split
-        full = passed[1:] + [{"predicate": "SOURCED_FROM", "into": "FROM_OTHER", "object_classes": ["Spacecraft",
-                                                                                                   "Instrument"], "texts": 2}]
+        # splits that take every group add one predicate less, so a cap of 1 keeps both halves of a full split
+        full = passed[1:] + [{"predicate": "SOURCED_FROM", "by": "object", "into": "FROM_OTHER",
+                              "takes": ["Spacecraft", "Instrument"], "texts": 2}]
         kept, dropped = split.capped(full, self.found, 1)
         self.assertEqual((len(kept), dropped), (2, []))
 
     def test_stage_end_to_end(self):
         """The model's reply, checked and capped; max_new_predicates 0 asks nothing."""
-        reply = {"splits": [{"predicate": "SOURCED_FROM", "into": "FROM_MISSION", "object_classes": ["Mission"]},
-                            {"predicate": "SOURCED_FROM", "into": "FROM_SPACECRAFT", "object_classes": ["Spacecraft"]},
-                            {"predicate": "SOURCED_FROM", "into": "FROM_GADGET", "object_classes": ["Gadget"]}]}
-        model = Scripted({"splits": reply})
-        with model as calls:
-            s = split.split_predicates(self.triples, self.labels, {"max_new_predicates": 1}, calls)
-        self.assertEqual([e["predicate"] for e in s.sent], ["SOURCED_FROM"])
-        self.assertEqual(s.into, {"SOURCED_FROM": {"Mission": "FROM_MISSION"}})
+        s, prompts = self.run_stage([
+            {"predicate": "SOURCED_FROM", "by": "object", "into": "FROM_MISSION", "takes": ["Mission"]},
+            {"predicate": "SOURCED_FROM", "by": "object", "into": "FROM_SPACECRAFT", "takes": ["Spacecraft"]},
+            {"predicate": "SOURCED_FROM", "by": "object", "into": "FROM_GADGET", "takes": ["Gadget"]}], cap=1)
+        self.assertEqual([e["predicate"] for e in s.sent], ["MEASURES", "SOURCED_FROM"])
+        self.assertEqual(s.into, {"SOURCED_FROM": {"by": "object", "to": {"Mission": "FROM_MISSION"}}})
         self.assertEqual(([d["into"] for d in s.dropped], [r["into"] for r in s.rejected], s.added, s.calls),
                          (["FROM_SPACECRAFT"], ["FROM_GADGET"], 1, 1))
-        self.assertEqual(s.kept[0]["texts"], 2)
+        self.assertEqual((s.kept[0]["texts"], s.pinned, s.net_added, s.merge_calls), (2, {"FROM_MISSION": [
+            ("any", "Mission")]}, 1, 1))
+        self.assertEqual(len(prompts), 2)                                   # splitting, then merging again
         with Scripted({}) as calls:
-            none = split.split_predicates(self.triples, self.labels, {"max_new_predicates": 0}, calls)
-        self.assertEqual((none.calls, none.into, none.sent), (0, {}, []))
+            none = split.split_predicates(self.triples, self.labels, {"max_new_predicates": 0, "min_split_texts": 2},
+                                          calls)
+        self.assertEqual((none.calls, none.merge_calls, none.into, none.sent, none.pinned, none.net_added),
+                         (0, 0, {}, [], {}, 0))
+
+    def test_sent_shows_every_grouping(self):
+        """Each predicate sent shows its patterns (with texts and examples) and the texts of each subject entity class
+        and object entity class, so a split by any grouping can be read off."""
+        _, prompts = self.run_stage([])
+        sent = json.loads(prompts[0][prompts[0].rindex("object instances):") + len("object instances):"):])
+        m = next(e for e in sent if e["predicate"] == "MEASURES")
+        self.assertEqual((m["texts"], m["subject_classes"], m["object_classes"]),
+                         (4, {"Instrument": 3, "Spacecraft": 2}, {"Variable": 4, "Image": 2}))
+        self.assertEqual([(p["subject"], p["object"], p["texts"]) for p in m["patterns"]],
+                         [("Instrument", "Variable", 2), ("Spacecraft", "Variable", 2), ("Instrument", "Image", 1),
+                          ("Spacecraft", "Image", 1)])
+        self.assertEqual(m["patterns"][0]["examples"], ["MODIS -- measures -- temperature", "AIRS -- measures -- humidity"])
+        self.assertEqual(len(prompts), 1)                                   # nothing split: no merging again
+
+    def test_unlabeled_subject_is_not_moved_or_shown(self):
+        """A triple instance whose subject has no label has no pattern: it is in no group, counts toward no split's
+        support, and stays with its predicate (near miss: the same triple instance with a labeled subject moves)."""
+        self.triples.texts[3]["triple_instances"].append({"subject": "nobody", "predicate": "came from",
+                                                          "object": "Apollo 13", "source_text": "x"})
+        self.labels.final["entity"]["Apollo 13"] = "Mission"
+        s, _ = self.run_stage([{"predicate": "SOURCED_FROM", "by": "object", "into": "FROM_MISSION",
+                                "takes": ["Mission"]}])
+        self.assertEqual(s.kept[0]["texts"], 2)                            # t4's triple instance has no pattern
+        c = count.count_support(self.triples, self.labels, s)
+        self.assertEqual(c.pattern_of["t4"][-1], None)
+        self.assertEqual({p["component_class"]: p["support"] for p in c.predicates}["SOURCED_FROM"], 3)   # t2, t3, t4
+        self.labels.final["entity"]["nobody"] = "Data"                      # near miss
+        s, _ = self.run_stage([{"predicate": "SOURCED_FROM", "by": "object", "into": "FROM_MISSION",
+                                "takes": ["Mission"]}])
+        self.assertEqual(s.kept[0]["texts"], 3)
+
+
+class MergingAgain(SplitFixture, unittest.TestCase):
+    """Stage 5's merging again, after the cap: stage 4's predicate merge prompt and code over every predicate after
+    splitting; merges of two predicates both there at stage 4 set aside; splits undone when every part of their
+    predicate ends in one predicate; pins after a merge (the union when every member is pinned, none otherwise)."""
+
+    def setUp(self):
+        super().setUp()
+        from common import dropped
+        self.dropped = dropped
+        dropped.reset()
+        self.addCleanup(dropped.reset)
+
+    def records(self, stage, item_type=None):
+        return [e for e in self.dropped.DISCARDS if e["stage"] == stage
+                and (item_type is None or e["item_type"] == item_type)]
+
+    MISSION = {"predicate": "SOURCED_FROM", "by": "object", "into": "FROM_MISSION", "takes": ["Mission"]}
+    CRAFT = {"predicate": "SOURCED_FROM", "by": "object", "into": "FROM_CRAFT", "takes": ["Spacecraft", "Instrument"]}
+    BY_INSTRUMENT = {"predicate": "MEASURES", "by": "subject", "into": "BY_INSTRUMENT", "takes": ["Instrument"]}
+
+    def test_prompt_is_stage_4s_over_every_predicate_after_splitting(self):
+        _, prompts = self.run_stage([self.MISSION, self.CRAFT])
+        listing = json.loads(prompts[1][prompts[1].rindex("LABELS:") + len("LABELS:"):])
+        self.assertEqual([e["label"] for e in listing], ["ABOARD", "FROM_CRAFT", "FROM_MISSION", "MEASURES"])
+        self.assertEqual(next(e for e in listing if e["label"] == "FROM_MISSION"),
+                         {"label": "FROM_MISSION", "texts": 2, "examples": [
+                             "data (Data) -- came from -- Apollo 11 (Mission)",
+                             "x (Data) -- came from -- Apollo 12 (Mission)"]})
+
+    def test_parts_of_one_split_show_their_own_triple_instances(self):
+        """The new predicates of one split share their predicate instance ("came from"), so each is shown with the
+        triple instances it took, whose entity classes differ (near miss: the words alone are the same)."""
+        _, prompts = self.run_stage([self.MISSION, self.CRAFT])
+        listing = {e["label"]: e["examples"] for e in json.loads(
+            prompts[1][prompts[1].rindex("LABELS:") + len("LABELS:"):])}
+        self.assertEqual(listing["FROM_CRAFT"], ["images (Data) -- came from -- Cassini (Spacecraft)",
+                                                 "y (Data) -- came from -- MODIS (Instrument)"])
+        self.assertTrue(all("(Mission)" in x for x in listing["FROM_MISSION"]))
+        self.assertFalse(any("(Mission)" in x for x in listing["FROM_CRAFT"]))
+        words = lambda xs: {x.split(" -- ")[1] for x in xs}                # noqa: E731
+        self.assertEqual(words(listing["FROM_CRAFT"]), words(listing["FROM_MISSION"]))
+        self.assertIn("the same predicate instance alone is no reason to merge them", prompts[1])
+        self.assertIn(merge.PROMPTS["predicate"].template.split("$labels")[0].split("$words")[1].strip()[:200],
+                      prompts[1])
+
+    def test_split_merged_back_together_is_undone(self):
+        """Both new predicates of a full split merged into one: a renaming, so the split is undone and SOURCED_FROM
+        is whole again, with no pin; every step is recorded."""
+        s, _ = self.run_stage([self.MISSION, self.CRAFT], [{"into": "FROM_MISSION", "labels": ["FROM_CRAFT"]}])
+        self.assertEqual((s.into, s.kept, s.pinned), ({}, [], {}))
+        self.assertEqual([(u["into"], u["ends_in"], u["goes_to"]) for u in s.undone],
+                         [("FROM_CRAFT", "FROM_MISSION", "SOURCED_FROM"), ("FROM_MISSION", "FROM_MISSION",
+                                                                           "SOURCED_FROM")])
+        self.assertEqual((s.predicate("SOURCED_FROM", "Data", "Mission"), s.net_added, s.added), ("SOURCED_FROM", 0, 1))
+        undone = [e["item"]["into"] for e in self.records(split.STAGE, "predicate split")]
+        self.assertEqual(sorted(undone), ["FROM_CRAFT", "FROM_MISSION"])
+        folds = sorted((e["item"]["label"], e["kept_as"]["label"]) for e in self.records(split.MERGE_AGAIN_STAGE))
+        self.assertEqual(folds, [("FROM_CRAFT", "SOURCED_FROM"), ("FROM_MISSION", "SOURCED_FROM")])
+
+    def test_split_merged_back_into_its_predicate_is_undone(self):
+        s, _ = self.run_stage([self.MISSION], [{"into": "SOURCED_FROM", "labels": ["FROM_MISSION"]}])
+        self.assertEqual(([u["goes_to"] for u in s.undone], s.into, s.final.get("SOURCED_FROM")),
+                         (["SOURCED_FROM"], {}, "SOURCED_FROM"))
+        # near miss: only one of two new predicates merged back, so the split stands (with one part fewer)
+        s, _ = self.run_stage([self.MISSION, {**self.CRAFT, "takes": ["Spacecraft"]}],
+                              [{"into": "SOURCED_FROM", "labels": ["FROM_MISSION"]}])
+        self.assertEqual((s.undone, s.predicate("SOURCED_FROM", "Data", "Mission"),
+                          s.predicate("SOURCED_FROM", "Data", "Spacecraft")), ([], "SOURCED_FROM", "FROM_CRAFT"))
+        self.assertEqual(s.pinned, {"FROM_CRAFT": [("any", "Spacecraft")]})       # FROM_MISSION joined unpinned
+
+    def test_new_predicate_merged_into_another_predicate(self):
+        """A new predicate merged into a different, existing predicate takes that predicate's lack of a pin; the
+        split stands (its predicate kept other triple instances), and the dropped pin is recorded."""
+        s, _ = self.run_stage([self.MISSION], [{"into": "ABOARD", "labels": ["FROM_MISSION"]}])
+        self.assertEqual((s.undone, s.predicate("SOURCED_FROM", "Data", "Mission"), s.pinned), ([], "ABOARD", {}))
+        pins = [(e["action"], e["item"]) for e in self.records(split.MERGE_AGAIN_STAGE, "pinned predicate")]
+        self.assertEqual(pins, [("discarded", {"predicate": "FROM_MISSION", "only": ["any", "Mission"]})])
+        self.assertEqual(s.net_added, 0)                                    # one added, one merged away
+
+    def test_both_old_set_aside(self):
+        """A merge of two predicates both there at stage 4 is set aside and recorded (stage 4 judged them); a merge of
+        an old predicate into a new one is kept (near miss)."""
+        s, _ = self.run_stage([self.MISSION], [{"into": "ABOARD", "labels": ["MEASURES"]},
+                                               {"into": "FROM_MISSION", "labels": ["ABOARD"]}])
+        self.assertEqual(s.merge_issues["both_seen"], ["MEASURES"])
+        self.assertEqual((s.final["MEASURES"], s.final["ABOARD"]), ("MEASURES", "FROM_MISSION"))
+        self.assertEqual(s.pinned, {})                                      # ABOARD has no pin
+        set_aside = [e["item"] for e in self.records(split.MERGE_AGAIN_STAGE, "merge")]
+        self.assertEqual(set_aside, [{"kind": "predicate", "merge": {"label": "MEASURES", "into": "ABOARD"}}])
+
+    def test_chain_and_pinned_union(self):
+        """A chain of merges among new predicates of two splits is followed to its end; the predicate they become is
+        pinned to the union of their pins, since each is pinned; neither split is undone (each predicate kept a part)."""
+        s, _ = self.run_stage([self.MISSION, {**self.CRAFT, "takes": ["Spacecraft"]}, self.BY_INSTRUMENT],
+                              [{"into": "FROM_CRAFT", "labels": ["FROM_MISSION"]},
+                               {"into": "BY_INSTRUMENT", "labels": ["FROM_CRAFT"]}])
+        self.assertEqual((s.final["FROM_MISSION"], s.final["FROM_CRAFT"], s.undone), ("BY_INSTRUMENT", "BY_INSTRUMENT", []))
+        self.assertEqual(s.pinned, {"BY_INSTRUMENT": [("Instrument", "any"), ("any", "Spacecraft"), ("any", "Mission")]})
+        unions = [e["item"]["predicate"] for e in self.records(split.MERGE_AGAIN_STAGE, "pinned predicate")]
+        self.assertEqual(sorted(set(unions)), ["FROM_CRAFT", "FROM_MISSION"])
+        self.assertEqual(s.net_added, 1)                                    # three added, two merged away
+
+    def test_undone_into_another_splits_new_predicate(self):
+        """Every part of SOURCED_FROM merged into a new predicate of MEASURES: the split is undone and SOURCED_FROM,
+        whole again, is merged into it; SOURCED_FROM has no pin, so the predicate it joins loses its pin."""
+        s, _ = self.run_stage([self.MISSION, self.CRAFT, self.BY_INSTRUMENT],
+                              [{"into": "BY_INSTRUMENT", "labels": ["FROM_MISSION", "FROM_CRAFT"]}])
+        self.assertEqual([(u["into"], u["goes_to"]) for u in s.undone],
+                         [("FROM_CRAFT", "BY_INSTRUMENT"), ("FROM_MISSION", "BY_INSTRUMENT")])
+        self.assertEqual((s.predicate("SOURCED_FROM", "Data", "Mission"), list(s.into), s.pinned),
+                         ("BY_INSTRUMENT", ["MEASURES"], {}))
+        restored = [e for e in self.records(split.MERGE_AGAIN_STAGE, "label") if e["item"]["label"] == "SOURCED_FROM"]
+        self.assertEqual([e["kept_as"] for e in restored], [{"label": "BY_INSTRUMENT"}])
+
+    def test_undoing_cascades(self):
+        """SOURCED_FROM's parts end in MEASURES' new predicate; MEASURES' parts then end in one predicate too (its
+        own new one), so both are undone, and SOURCED_FROM ends in MEASURES."""
+        s, _ = self.run_stage([self.MISSION, self.CRAFT, self.BY_INSTRUMENT],
+                              [{"into": "BY_INSTRUMENT", "labels": ["FROM_MISSION", "FROM_CRAFT", "MEASURES"]}])
+        self.assertEqual({u["predicate"] for u in s.undone}, {"SOURCED_FROM", "MEASURES"})
+        self.assertEqual((s.into, s.predicate("SOURCED_FROM", "Data", "Mission"),
+                          s.predicate("MEASURES", "Instrument", "Image"), s.pinned), ({}, "MEASURES", "MEASURES", {}))
+        self.assertEqual(s.net_added, -1)                                   # SOURCED_FROM merged into MEASURES
+
+    def test_cap_before_merging_again(self):
+        """The cap is applied first: a split it dropped stays dropped even when merging again undoes the split it
+        kept."""
+        s, _ = self.run_stage([self.MISSION, {**self.CRAFT, "takes": ["Spacecraft"]}],
+                              [{"into": "SOURCED_FROM", "labels": ["FROM_MISSION"]}], cap=1)
+        self.assertEqual(([d["into"] for d in s.dropped], [u["into"] for u in s.undone], s.into, s.added),
+                         (["FROM_CRAFT"], ["FROM_MISSION"], {}, 1))
+
+    def test_accounting_near_miss(self):
+        from unittest import mock
+        from common.stop import Stop
+        with mock.patch.object(self.dropped, "fold", lambda *a, **k: None), self.assertRaises(Stop) as caught:
+            self.run_stage([self.MISSION], [{"into": "SOURCED_FROM", "labels": ["FROM_MISSION"]}])
+        self.assertIn("Accounting check failed in stage 5 (merge_predicates_again)", str(caught.exception))
 
 
 class Tallying(unittest.TestCase):
@@ -630,6 +972,25 @@ class TracingInduction(unittest.TestCase):
         cassini = out.split("Cassini", 1)[1].split("\n")[2]
         self.assertNotIn("split", cassini)
 
+    def test_split_by_grouping_and_merged_again(self):
+        """Since 2026-11-15: a split names its grouping ("by"); a pattern split needs both entity classes (Cassini's
+        subject has no label: no split shown, a near miss), and merging again shows after the split."""
+        path = self.folder / "induction_evidence.json"
+        evidence = json.loads(path.read_text(encoding="utf-8"))
+        evidence["labels"]["entity"] = {"Apollo 11": "Mission", "samples": "Sample", "Cassini": "Mission"}
+        evidence["splits"] = {"into": {"FROM": {"by": "pattern", "to": {"Sample -> Mission": "SAMPLE_FROM"}}},
+                              "final": {"SAMPLE_FROM": "COLLECTED_DURING", "FROM": "FROM"}}
+        path.write_text(json.dumps(evidence), encoding="utf-8")
+        _, out = self.trace("Apollo|Cassini")
+        self.assertIn("-> split to SAMPLE_FROM by its pattern, Sample -> Mission (stage 5) -> merged again into "
+                      "COLLECTED_DURING (stage 5) = COLLECTED_DURING", out)
+        cassini = out.split("Cassini", 1)[1].split("\n")[2]
+        self.assertNotIn("split", cassini)
+        evidence["splits"]["into"]["FROM"] = {"by": "subject", "to": {"Sample": "SAMPLE_FROM"}}
+        path.write_text(json.dumps(evidence), encoding="utf-8")
+        _, out = self.trace("Apollo")
+        self.assertIn("split to SAMPLE_FROM by its subject's entity class, Sample (stage 5)", out)
+
     def test_matches_the_label_and_unlabeled(self):
         n, out = self.trace("^ABOARD$")                      # the label, not the words
         self.assertEqual(n, 1)
@@ -649,6 +1010,440 @@ class TracingInduction(unittest.TestCase):
         with self.assertRaises(FileNotFoundError) as e:
             self.trace(".")
         self.assertIn("py 040_induce_schema/run.py", str(e.exception))
+
+
+class Discards(unittest.TestCase):
+    """Every stage of 040 records each item it doesn't keep in the record of discarded items
+    (common/common_helpers/dropped.py), and its accounting checks stop the run when an item vanishes without a record
+    of it (the near misses: the recording switched off)."""
+
+    def setUp(self):
+        from common import dropped
+        from common.stop import Stop
+        from unittest import mock
+        self.dropped, self.Stop, self.mock = dropped, Stop, mock
+        dropped.reset()
+        self.addCleanup(dropped.reset)
+
+    def off(self, name="discard"):
+        """The recording of one action switched off: an item removed without an entry."""
+        return self.mock.patch.object(self.dropped, name, lambda *a, **k: None)
+
+    def of(self, stage, action=None):
+        return [e for e in self.dropped.DISCARDS if e["stage"] == stage and (action is None or e["action"] == action)]
+
+    def test_stage_1_twins_and_not_reached(self):
+        orders = {"S1": ["a", "c", "f"], "S2": ["b", "e", "d", "g"]}
+        taken, skipped, _ = texts_stage.draw(orders, ["S1", "S2"], Drawing.RECORDS, 1)
+        texts_stage._record_not_taken(orders, ["S1", "S2"], taken, skipped, Drawing.RECORDS, 1)
+        folded = {e["record_id"]: e["kept_as"]["id"] for e in self.of(texts_stage.STAGE, "folded")}
+        self.assertEqual(folded, {"b": "a", "e": "a"})                       # twins, into the text they twin
+        not_reached = sorted(e["record_id"] for e in self.of(texts_stage.STAGE, "discarded"))
+        self.assertEqual(not_reached, ["c", "f", "g"])                       # d was taken from S2
+        self.assertEqual({e["setting"]["texts_per_stratum"] for e in self.of(texts_stage.STAGE, "discarded")}, {1})
+        self.dropped.account(texts_stage.STAGE, "induction candidates", 7, 2)
+
+    def test_stage_2_items_not_kept(self):
+        import extract
+        from common import extraction
+        good = {"subject": "MODIS", "predicate": "is aboard", "object": "Aqua", "source_text": "MODIS aboard Aqua"}
+        invented = {"subject": "Terra", "predicate": "carries", "object": "Aqua", "source_text": "Terra carries Aqua"}
+        item = {"id": "r", "maintainer": "m", "title": "T", "text": "title: T\n\nnotes: MODIS aboard Aqua.",
+                "record": {}, "pieces": ["p1", "p2"]}
+        replies = extraction.Replies(of={"r": [{"triples": [good, {"subject": ""}, invented], "describes_class": "A"},
+                                               {"triples": [dict(good)], "describes_class": "B"}]})
+        saved = extraction.ask_model
+        extraction.ask_model = lambda *a, **k: replies
+        self.addCleanup(setattr, extraction, "ask_model", saved)
+        extract.extract_triple_instances(SimpleNamespace(items=[item]), None, {"workers": 1})
+        reasons = sorted(e["reason"].split(":")[0] for e in self.of(extract.STAGE) if e["action"] != "replaced")
+        self.assertEqual(reasons, ["not a triple instance", "the same fact stated twice in one text (triple_key)",
+                                   "unverified"])
+        self.assertEqual([e["item"] for e in self.of(extract.STAGE, "replaced")], [{"describes_class": "B"}])
+        with self.off(), self.assertRaises(self.Stop) as caught:
+            extract.extract_triple_instances(SimpleNamespace(items=[item]), None, {"workers": 1})
+        self.assertIn("Accounting check failed in stage 2 (extract_triple_instances): 4 items in the replies about "
+                      "text r went in, 1 were kept", str(caught.exception))
+
+    def test_stage_4_merges_and_folds(self):
+        m = Merging().merge([{"into": "Gadget", "labels": ["Sensor"]},
+                             {"into": "Instrument", "labels": ["Sensor", "Widget", "Instrument"]},
+                             {"into": "Spacecraft", "labels": ["Sensor"]}, "not a dict",
+                             {"into": "Craft", "labels": "Spacecraft"}])
+        set_aside = [e["reason"].split(": ", 1)[1] for e in self.of(merge.STAGE, "discarded")]
+        self.assertEqual(sorted(set_aside), sorted(merge.ISSUE_WHY[k] for k in (
+            "into_not_a_label", "not_sent", "into_itself", "merged_twice", "not_an_object", "labels_not_a_list")))
+        self.assertEqual([(e["item"]["label"], e["kept_as"]["label"]) for e in self.of(merge.STAGE, "folded")],
+                         [(x["label"], x["into"]) for x in m.merges])
+
+    def test_stage_4_near_miss(self):
+        labels = label.Labels(of={"entity": {"a": "Sensor", "b": "Instrument"}, "predicate": {}},
+                              vocabulary={"entity": ["Instrument", "Sensor"], "predicate": []})
+        with Scripted({"LABELS": {"merges": [{"into": "Instrument", "labels": ["Sensor"]}]}}) as calls, \
+                self.off("fold"), self.assertRaises(self.Stop) as caught:
+            merge.merge_labels(labels, texts(), calls)
+        self.assertIn("Accounting check failed in stage 4 (merge_labels): 2 entity class labels went in, 1 were "
+                      "kept", str(caught.exception))
+
+    def test_stage_5_rejected_dropped_undone_and_off(self):
+        s = Splitting()
+        s.setUp()
+        settings = {"max_new_predicates": 1, "min_split_texts": 2}
+        gadget = {"predicate": "SOURCED_FROM", "by": "object", "into": "FROM_GADGET", "takes": ["Gadget"]}
+        craft = {"predicate": "SOURCED_FROM", "by": "object", "into": "FROM_CRAFT", "takes": ["Spacecraft"]}
+        reply = {"splits": [{"predicate": "SOURCED_FROM", "by": "object", "into": "FROM_MISSION", "takes": ["Mission"]},
+                            {"predicate": "MEASURES", "by": "subject", "into": "BY_SPACECRAFT", "takes": ["Spacecraft"]},
+                            craft, gadget, "not an object"]}
+        replies = {'"splits": [': reply, '"merges": [': {"merges": []}}
+        with Scripted(replies) as calls:
+            split.split_predicates(s.triples, s.labels, settings, calls)
+        got = sorted((e["item"].get("into") or str(e["item"].get("raw")), e["reason"].split(":")[0],
+                      str(e.get("setting"))) for e in self.of(split.STAGE))
+        self.assertEqual(got, sorted([
+            ("FROM_MISSION", "passed the checks, but keeping it would add more predicates than max_new_predicates "
+                              "allows (the splits with the most texts are kept first)", str({"max_new_predicates": 1})),
+            ("not an object", "proposed by the model, rejected by code", "None"),
+            (str(craft), "proposed by the model, rejected by code", str({"min_split_texts": 2})),
+            (str(gadget), "proposed by the model, rejected by code", "None")]))
+        with Scripted(replies) as calls, self.off(), self.assertRaises(self.Stop):
+            split.split_predicates(s.triples, s.labels, settings, calls)
+        self.dropped.reset()                                               # undone by merging again: recorded too
+        undo = {'"splits": [': reply, '"merges": [': {"merges": [{"into": "MEASURES", "labels": ["BY_SPACECRAFT"]}]}}
+        with Scripted(undo) as calls:
+            split.split_predicates(s.triples, s.labels, settings, calls)
+        self.assertIn(("BY_SPACECRAFT", "undone by merging again"),
+                      [(e["item"].get("into"), e["reason"].split(":")[0]) for e in self.of(split.STAGE)])
+        self.dropped.reset()
+        with Scripted({}) as calls:                                        # splitting off: the predicates not sent
+            split.split_predicates(s.triples, s.labels, {**settings, "max_new_predicates": 0}, calls)
+        self.assertEqual([(e["item"]["predicate"], e["setting"]) for e in self.of(split.STAGE)],
+                         [("MEASURES", {"max_new_predicates": 0}), ("SOURCED_FROM", {"max_new_predicates": 0})])
+
+    def test_stage_6_no_pattern(self):
+        c = Counting()
+        c.setUp()                                                          # CERES -- is aboard -- Mystery: no label
+        no_pattern = [e["item"]["object"] for e in self.of(count.STAGE)]
+        self.assertEqual(no_pattern, ["Mystery"])
+        with self.off(), self.assertRaises(self.Stop) as caught:
+            count.count_support(c.triples, c.labels, NO_SPLITS)
+        self.assertIn("Accounting check failed in stage 6 (count_support): 6 verified triple instances went in, 5 "
+                      "were kept", str(caught.exception))
+
+    def test_stage_8_deferred(self):
+        e = lambda name, support: {"component_class": name, "support": support, "texts": ["t0"] * support,  # noqa: E731
+                                   "maintainers": ["m1"], "examples": ["x"]}
+        counts = SimpleNamespace(entity_classes=[e("Instrument", 2), e("Rare", 1)], predicates=[e("ABOARD", 2)],
+                                 patterns=[{"pattern": ["Rare", "ABOARD", "Instrument"], "support": 2,
+                                            "maintainers": ["m1"], "texts": ["t0"]}])
+        definitions = SimpleNamespace(of={}, too_vague={})
+        check.check_schema(counts, definitions, {"min_support": 2})
+        self.assertEqual(sorted(x["item"]["schema_entry"] for x in self.of(check.STAGE)),
+                         ["Rare", "Rare ABOARD Instrument"])
+        self.assertEqual({x["setting"]["min_support"] for x in self.of(check.STAGE)}, {2})
+        with self.off(), self.assertRaises(self.Stop):
+            check.check_schema(counts, definitions, {"min_support": 2})
+
+
+class FoldBeforeMerging(unittest.TestCase):
+    """Stage 4 folds spellings before its merge call (the most frequent spelling wins, ties alphabetically), so the
+    model sees one spelling of each label; each fold is recorded. Stage 3's running vocabulary holds one spelling."""
+
+    def setUp(self):
+        from common import dropped
+        dropped.reset()
+        self.addCleanup(dropped.reset)
+        self.dropped = dropped
+
+    def test_merge_call_sees_one_spelling(self):
+        labels = label.Labels(of={"entity": {"a": "Space craft", "b": "Spacecraft", "c": "Spacecraft", "d": "Sensor",
+                                             "e": "Instrument"}, "predicate": {"p": "ABOARD"}},
+                              vocabulary={"entity": ["Space craft", "Spacecraft", "Sensor", "Instrument"],
+                                          "predicate": ["ABOARD"]})
+        model = Scripted({"LABELS": {"merges": [{"into": "Instrument", "labels": ["Sensor"]}]}})
+        with model as calls:
+            m = merge.merge_labels(labels, texts(), calls)
+        sent = json.loads(model.prompts[0][model.prompts[0].rindex("LABELS:") + len("LABELS:"):])
+        self.assertEqual([e["label"] for e in sent], ["Instrument", "Sensor", "Spacecraft"])   # no "Space craft"
+        self.assertEqual(m.final["entity"], {"a": "Spacecraft", "b": "Spacecraft", "c": "Spacecraft",
+                                             "d": "Instrument", "e": "Instrument"})
+        self.assertEqual(m.spelling_folds, [{"kind": "entity class", "into": "Spacecraft",
+                                             "folded": ["Space craft", "Spacecraft"]}])
+        folds = [(e["item"]["label"], e["kept_as"]["label"]) for e in self.dropped.DISCARDS if e["action"] == "folded"]
+        self.assertEqual(sorted(folds), [("Sensor", "Instrument"), ("Space craft", "Spacecraft")])
+
+    def test_tie_alphabetical_and_digits_kept(self):
+        labels = label.Labels(of={"entity": {"a": "Level2", "b": "level 2", "c": "Level3"}, "predicate": {}},
+                              vocabulary={"entity": ["Level2", "level 2", "Level3"], "predicate": []})
+        with Scripted({"LABELS": {"merges": []}}) as calls:
+            m = merge.merge_labels(labels, texts(), calls)
+        self.assertEqual(m.final["entity"], {"a": "Level2", "b": "Level2", "c": "Level3"})      # "L" sorts before "l"
+
+    def test_running_vocabulary_one_spelling(self):
+        self.assertEqual(label.one_spelling(["Spacecraft"], ["Space craft", "Instrument", "instrument", "SPACECRAFT"]),
+                         ["Instrument"])
+        self.assertEqual(label.one_spelling([], ["Level2", "Level3"]), ["Level2", "Level3"])    # digits apart
+        triples = texts(("t1", "m", "T1", "", [("MODIS", "is aboard", "Aqua"), ("AIRS", "is aboard", "Terra")]))
+        replies = iter([{"labels": {"MODIS": "Instrument", "Aqua": "Spacecraft", "AIRS": "instrument",
+                                    "Terra": "Space craft"}}, {"labels": {"is aboard": "ABOARD"}}])
+        with Scripted({}) as calls:
+            llm.call_llm_json = lambda prompt, **kw: next(replies)
+            result = label.label_component_instances(triples, calls)
+        self.assertEqual(sorted(result.vocabulary["entity"]), ["Spacecraft", "instrument"])   # first met in the batch
+        self.assertEqual(result.of["entity"]["AIRS"], "instrument")          # kept as the model gave it: stage 4 folds
+
+
+class SplittingShowsEveryName(unittest.TestCase):
+    """Stage 5's prompt shows every predicate found, whose names code refuses for a new predicate, not only the
+    predicates sent."""
+
+    def test_names_shown(self):
+        s = Splitting()
+        s.setUp()
+        model = Scripted({"splits": {"splits": []}})
+        with model as calls:
+            split.split_predicates(s.triples, s.labels, {"max_new_predicates": 1, "min_split_texts": 2}, calls)
+        prompt = model.prompts[0]
+        found = json.loads(prompt.split("must not take):\n", 1)[1].split("\n\nPREDICATES (", 1)[0])
+        self.assertEqual(found, ["ABOARD", "MEASURES", "SOURCED_FROM"])       # ABOARD isn't sent (one pattern)
+        sent = json.loads(prompt[prompt.rindex("object instances):") + len("object instances):"):])
+        self.assertEqual([e["predicate"] for e in sent], ["MEASURES", "SOURCED_FROM"])
+
+
+class DescribesClassByMajority(unittest.TestCase):
+    """Stage 2 takes the describes class the most text pieces named (extraction.describes_class, as 050 and 060)."""
+
+    def test_majority(self):
+        import extract
+        from common import dropped, extraction
+        dropped.reset()
+        self.addCleanup(dropped.reset)
+        item = {"id": "r", "maintainer": "m", "title": "T", "text": "title: T", "record": {}, "pieces": ["1", "2", "3"]}
+        for named, chosen in ((["WebTool", "Dataset", "dataset"], "Dataset"), (["A", "B", ""], "A"),
+                              (["", "", "C"], "C")):
+            with self.subTest(named=named):
+                replies = extraction.Replies(of={"r": [{"triples": [], "describes_class": n} for n in named]})
+                saved = extraction.ask_model
+                extraction.ask_model = lambda *a, **k: replies
+                try:
+                    out = extract.extract_triple_instances(SimpleNamespace(items=[item]), None, {"workers": 1})
+                finally:
+                    extraction.ask_model = saved
+                self.assertEqual(out.texts[0]["describes_class"], chosen)
+        replaced = [(e["item"]["describes_class"], e["reason"]) for e in dropped.DISCARDS
+                    if e["item_type"] == "describes class"]
+        self.assertIn(("WebTool", "named by a text piece, but more text pieces of the same text named another one "
+                                  "(or as many, and it was named first)"), replaced)
+        self.assertIn(("dataset", "named by a text piece, but another spelling of the one chosen, which is kept in "
+                                  "its first spelling"), replaced)
+
+
+class Defining(unittest.TestCase):
+    """Stage 7: a predicate is sent with its patterns; both prompts list the entity classes being defined; an entry
+    left out, or a definition naming a word shaped like an entity class that isn't one, is asked once more."""
+
+    def counts(self):
+        e = lambda name, support, ex=("x",): {"component_class": name, "support": support,  # noqa: E731
+                                              "texts": ["t"] * support, "maintainers": ["m"], "examples": list(ex)}
+        return SimpleNamespace(
+            entity_classes=[e("Instrument", 3), e("Spacecraft", 2), e("Rare", 1), e("Thing", 2)],
+            predicates=[e("ABOARD", 2, ("MODIS -- is aboard -- Aqua",)), e("HAS", 2)],
+            patterns=[{"pattern": ["Instrument", "ABOARD", "Spacecraft"], "support": 2},
+                      {"pattern": ["Rare", "ABOARD", "Spacecraft"], "support": 1},        # Rare: below min_support
+                      {"pattern": ["Thing", "ABOARD", "Spacecraft"], "support": 2}])      # Thing: too vague
+
+    def test_words_shaped_like_entity_classes(self):
+        import define
+        known = ["Instrument", "Spacecraft", "PhysicalQuantity", "MapProjection"]
+        cases = [("a device on a Spacecraft", []),                                   # one part: never checked
+                 ("holds measurements of this PhysicalQuantity", []),
+                 ("holds several PhysicalQuantities", ["PhysicalQuantities"]),       # "ies": not a plural of it
+                 ("is drawn in these MapProjections", []),                           # plural "s"
+                 ("was made by MODIS aboard SeaWiFS, as GeoTIFF or NetCDF", []),     # proper nouns: no lowercase part
+                 ("was taken at McMurdo", ["McMurdo"]),                              # a CamelCase proper noun: listed
+                 ("covers this SpatialExtent and this SpatialExtent", ["SpatialExtent"]),   # once
+                 ("is a Physicalquantity or physicalQuantity", []),                  # not CamelCase
+                 ("uses the Level-2 MapProjection-like grid", []),                   # inside a hyphenated word
+                 ("measures a Physical Quantity", [])]
+        for text, expected in cases:
+            with self.subTest(text=text):
+                self.assertEqual(define.not_entity_classes(text, known), expected)
+
+    def test_patterns_sent_and_asked_again(self):
+        import define
+        from common import dropped
+        dropped.reset()
+        self.addCleanup(dropped.reset)
+        replies = {
+            "ENTITY CLASSES TO DEFINE": [
+                {"definitions": {"Instrument": "a device carried by a Spacecraft", "Spacecraft": "a craft"},
+                 "too_vague": {"Thing": "anything"}}],
+            "PREDICATES:": [
+                {"definitions": {"ABOARD": "is carried on this SpaceVehicle"}},                 # HAS left out
+                {"definitions": {"ABOARD": "is carried on this Spacecraft", "HAS": "has this PhysicalQuantity"}}],
+        }
+        prompts = []
+
+        def answer(prompt, **kw):
+            prompts.append(prompt)
+            key = next(k for k in replies if k in prompt)
+            return replies[key].pop(0)
+        with Scripted({}) as calls:
+            llm.call_llm_json = answer
+            d = define.write_definitions(self.counts(), {"min_support": 2}, calls)
+        first = prompts[1]
+        listing = json.loads(first.split("ENTITY CLASSES OF THE SCHEMA:\n", 1)[1].split("\n\nPREDICATES:", 1)[0])
+        self.assertEqual(listing, ["Instrument", "Spacecraft"])            # Rare below min_support, Thing too vague
+        sent = json.loads(first[first.rindex("PREDICATES:") + len("PREDICATES:"):])
+        self.assertEqual(sent[0]["patterns"], [{"subject": "Instrument", "object": "Spacecraft", "texts": 2}])
+        again = json.loads(prompts[2][prompts[2].rindex("PREDICATES:") + len("PREDICATES:"):])
+        self.assertEqual([e["component_class"] for e in again], ["HAS", "ABOARD"])   # missing, then wrong word
+        self.assertEqual(d.of["predicates"], {"ABOARD": "is carried on this Spacecraft",
+                                              "HAS": "has this PhysicalQuantity"})
+        self.assertEqual(d.not_entity_classes, [])                         # HAS was missing, not checked twice
+        self.assertEqual(len(prompts), 3)
+        replaced = [e for e in dropped.DISCARDS if e["action"] == "replaced"]
+        self.assertEqual([(e["item"]["definition"], e["kept_as"]["definition"]) for e in replaced],
+                         [("is carried on this SpaceVehicle", "is carried on this Spacecraft")])
+
+    def test_still_wrong_is_kept_and_listed(self):
+        import define
+        from common import dropped
+        dropped.reset()
+        self.addCleanup(dropped.reset)
+        replies = iter([{"definitions": {"Instrument": "a device", "Spacecraft": "a craft"},
+                         "too_vague": {"Thing": "anything"}},
+                        {"definitions": {"ABOARD": "is carried on this SpaceVehicle"}, "too_vague": {"HAS": "vague"}},
+                        {"too_vague": {"ABOARD": "vague after all"}}])        # second ask: no definition
+        with Scripted({}) as calls:
+            llm.call_llm_json = lambda prompt, **kw: next(replies)
+            d = define.write_definitions(self.counts(), {"min_support": 2}, calls)
+        self.assertEqual(d.of["predicates"], {"ABOARD": "is carried on this SpaceVehicle"})    # the first kept
+        self.assertEqual(d.too_vague["predicates"], {"HAS": "vague"})
+        self.assertEqual(d.not_entity_classes, [{"kind": "predicate", "component_class": "ABOARD",
+                                                 "definition": "is carried on this SpaceVehicle",
+                                                 "words": ["SpaceVehicle"]}])
+        reasons = [e["reason"] for e in dropped.DISCARDS]
+        self.assertTrue(any("the second reply gave no definition, so the first is kept, which still names "
+                            "SpaceVehicle" in r for r in reasons), reasons)
+        self.assertTrue(any(r.startswith("in the model's reply (too_vague, asked once more), but not taken")
+                            for r in reasons), reasons)
+
+
+class DefiningPinnedPredicates(unittest.TestCase):
+    """Stage 7: a predicate stage 5 pinned is sent with "must_name" (its pin's entity classes being defined) and its
+    definition must name each, checked as the ground truth schema's pins are (schema_io.unnamed_pinned); one that
+    doesn't is asked once more, and one that still doesn't is kept, recorded and listed."""
+
+    def counts(self):
+        e = lambda name, support: {"component_class": name, "support": support, "texts": ["t"] * support,  # noqa: E731
+                                   "maintainers": ["m"], "examples": ["x"]}
+        return SimpleNamespace(
+            entity_classes=[e("Data", 2), e("Mission", 2), e("Spacecraft", 2), e("Rare", 1)],
+            predicates=[e("FROM_MISSION", 2), e("FROM_CRAFT", 2), e("ABOUT_RARE", 2), e("HAS", 2)],
+            patterns=[{"pattern": ["Data", "FROM_MISSION", "Mission"], "support": 2}],
+            pinned={"FROM_MISSION": [("any", "Mission")], "FROM_CRAFT": [("Data", "Spacecraft")],
+                    "ABOUT_RARE": [("any", "Rare")]})                       # Rare: below min_support
+
+    def run_define(self, second):
+        import define
+        from common import dropped
+        dropped.reset()
+        self.addCleanup(dropped.reset)
+        replies = iter([{"definitions": {"Data": "values", "Mission": "a mission", "Spacecraft": "a craft"}},
+                        {"definitions": {"FROM_MISSION": "came from this mission",          # lowercase: not named
+                                         "FROM_CRAFT": "was carried on one of the Spacecrafts of this Data",   # plural
+                                         "ABOUT_RARE": "is about something rare", "HAS": "has"}},
+                        second])
+        prompts = []
+
+        def answer(prompt, **kw):
+            prompts.append(prompt)
+            return next(replies)
+        with Scripted({}) as calls:
+            llm.call_llm_json = answer
+            d = define.write_definitions(self.counts(), {"min_support": 2}, calls)
+        return d, prompts, dropped.DISCARDS
+
+    def test_must_name_sent_and_asked_again(self):
+        d, prompts, discards = self.run_define({"definitions": {"FROM_MISSION": "was produced during this Mission"}})
+        sent = json.loads(prompts[1][prompts[1].rindex("PREDICATES:") + len("PREDICATES:"):])
+        must = {e["component_class"]: e.get("must_name") for e in sent}
+        self.assertEqual(must, {"FROM_MISSION": ["Mission"], "FROM_CRAFT": ["Data", "Spacecraft"], "ABOUT_RARE": None,
+                                "HAS": None})                              # Rare isn't being defined; HAS isn't pinned
+        again = json.loads(prompts[2][prompts[2].rindex("PREDICATES:") + len("PREDICATES:"):])
+        self.assertEqual([e["component_class"] for e in again], ["FROM_MISSION"])
+        self.assertEqual(d.of["predicates"]["FROM_MISSION"], "was produced during this Mission")
+        self.assertEqual(d.pins_not_named, [])
+        self.assertIn("doesn't name Mission, which its pin allows", d.asked_again[0]["why"])
+        replaced = [e for e in discards if e["action"] == "replaced"]
+        self.assertEqual([(e["item"]["pinned_not_named"], e["kept_as"]["pinned_not_named"]) for e in replaced],
+                         [(["Mission"], [])])
+        self.assertNotIn("must_name", prompts[0])                          # entity classes are never pinned
+
+    def test_still_not_named_is_kept_and_listed(self):
+        d, _, discards = self.run_define({"definitions": {"FROM_MISSION": "came from this Missionary"}})
+        self.assertEqual(d.of["predicates"]["FROM_MISSION"], "came from this Missionary")
+        self.assertEqual(d.pins_not_named, [{"kind": "predicate", "component_class": "FROM_MISSION",
+                                             "definition": "came from this Missionary", "entity_classes": ["Mission"]}])
+        reasons = [e["reason"] for e in discards if e["action"] == "replaced"]
+        self.assertTrue(any("it still doesn't name Mission (listed in the report)" in r for r in reasons), reasons)
+
+
+class SharedPinCheck(unittest.TestCase):
+    """The one check that a definition names its pin's entity classes (schema_io.unnamed_pinned), with near misses."""
+
+    def test_near_misses(self):
+        from common.schema_io import unnamed_pinned
+        cases = [("came from this Mission", [("any", "Mission")], []),
+                 ("came from one of these Missions", [("any", "Mission")], []),        # plural "s"
+                 ("came from this mission", [("any", "Mission")], ["Mission"]),        # spelling must be exact
+                 ("came from this Missionary", [("any", "Mission")], ["Mission"]),     # a whole word only
+                 ("came from this Sub-Mission", [("any", "Mission")], ["Mission"]),    # inside a hyphenated word
+                 ("a Data value from a Spacecraft", [("Data", "Spacecraft")], []),
+                 ("a value from a Spacecraft", [("Data", "Spacecraft"), ("any", "Spacecraft")], ["Data"]),
+                 ("anything", [("any", "any")], []), ("", [("any", "Mission")], ["Mission"])]
+        for definition, pins, expected in cases:
+            with self.subTest(definition=definition):
+                self.assertEqual(unnamed_pinned(definition, pins), expected)
+
+
+class PinsInTheSchema(unittest.TestCase):
+    """Stage 8 writes the pin of each predicate in the schema, and none of a deferred predicate; a pair of a pin naming
+    an entity class not in the schema is left out, and a pinned predicate left with none is deferred."""
+
+    def test_pin_through_an_entity_class_not_in_the_schema(self):
+        from common import dropped
+        dropped.reset()
+        self.addCleanup(dropped.reset)
+        e = lambda name, support: {"component_class": name, "support": support, "texts": ["t0"] * support,  # noqa: E731
+                                   "maintainers": ["m1"], "examples": ["x"]}
+        counts = SimpleNamespace(entity_classes=[e("Data", 2), e("Mission", 2), e("Rare", 1)],
+                                 predicates=[e("FROM_RARE", 2), e("FROM_EITHER", 2), e("FROM_ANY", 2)], patterns=[],
+                                 pinned={"FROM_RARE": [("any", "Rare")],
+                                         "FROM_EITHER": [("any", "Rare"), ("any", "Mission")],
+                                         "FROM_ANY": [("Data", "any")]})
+        schema = check.check_schema(counts, SimpleNamespace(of={}, too_vague={}), {"min_support": 2})
+        self.assertEqual(schema.pinned, {"FROM_EITHER": [["any", "Mission"]], "FROM_ANY": [["Data", "any"]]})
+        self.assertEqual([(d["schema_entry"], d["reason_code"]) for d in schema.deferred if d["entry_type"] == "predicate"],
+                         [("FROM_RARE", check.NOT_IN_SCHEMA)])
+        left_out = [e["item"] for e in dropped.DISCARDS if e["item_type"] == "pinned predicate"]
+        self.assertEqual(left_out, [{"predicate": "FROM_RARE", "only": ["any", "Rare"]},
+                                    {"predicate": "FROM_EITHER", "only": ["any", "Rare"]}])
+
+    def test_pins_written_for_predicates_in_the_schema(self):
+        e = lambda name, support: {"component_class": name, "support": support, "texts": ["t0"] * support,  # noqa: E731
+                                   "maintainers": ["m1"], "examples": ["x"]}
+        counts = SimpleNamespace(entity_classes=[e("Data", 2), e("Mission", 2)],
+                                 predicates=[e("FROM_MISSION", 2), e("RARE_SPLIT", 1), e("VAGUE_SPLIT", 2)],
+                                 patterns=[], pinned={"FROM_MISSION": [("any", "Mission")],
+                                                      "RARE_SPLIT": [("Data", "any")],
+                                                      "VAGUE_SPLIT": [("any", "Data")]})
+        definitions = SimpleNamespace(of={}, too_vague={"predicates": {"VAGUE_SPLIT": "vague"}})
+        schema = check.check_schema(counts, definitions, {"min_support": 2})
+        self.assertEqual(schema.pinned, {"FROM_MISSION": [["any", "Mission"]]})
+        no_pins = check.check_schema(SimpleNamespace(**{k: v for k, v in vars(counts).items() if k != "pinned"}),
+                                     definitions, {"min_support": 2})
+        self.assertEqual(no_pins.pinned, {})                               # counts with no pins (an older shape)
 
 
 if __name__ == "__main__":

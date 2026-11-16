@@ -28,7 +28,9 @@ same checks and names.
 """
 from __future__ import annotations
 
-from common.text_match import Text, instance_key
+import re
+
+from common.text_match import Text, instance_key, norm_text
 from common.triples_io import PASSAGES_JOIN, component_class_key, is_describes, is_undecided, passages  # noqa: F401
 
 # --------------------------------------------------------------------------
@@ -44,6 +46,11 @@ SUBJECT_NOT_IN_SOURCE = "subject_not_in_source"
 OBJECT_NOT_IN_SOURCE = "object_not_in_source"
 SUBJECT_EQUALS_OBJECT = "subject_equals_object"
 DATASET_SUBJECT_NOT_TITLE = "dataset_subject_not_title"
+# check_abbreviations (rule 20's abbreviation test, common/common_helpers/abbreviations.py)
+ABBREVIATION_FAILS_TEST = "abbreviation_fails_test"
+ALSO_KNOWN_AS_FAILS_TEST = "also_known_as_fails_test"
+IDENTIFIER_PASSES_TEST = "identifier_passes_test"
+ABBREVIATION_SPELLED_OUT = "abbreviation_spelled_out"
 # check_against_schema
 SUBJECT_CLASS_NOT_IN_SCHEMA = "subject_class_not_in_schema"
 OBJECT_CLASS_NOT_IN_SCHEMA = "object_class_not_in_schema"
@@ -78,6 +85,8 @@ ERRORS = (NO_SOURCE_TEXT, SOURCE_NOT_IN_TEXT)
 #: check_triple_instance's flags: the triple instance is verified, but worth a look.
 FLAGS = (SUBJECT_NOT_IN_TEXT, OBJECT_NOT_IN_TEXT, SUBJECT_NOT_IN_SOURCE, OBJECT_NOT_IN_SOURCE, SUBJECT_EQUALS_OBJECT,
          DATASET_SUBJECT_NOT_TITLE)
+#: check_abbreviations's flags: a model's reply that disagrees with rule 20's abbreviation test (040, 050, 060).
+ABBREVIATION_FLAGS = (ABBREVIATION_FAILS_TEST, ALSO_KNOWN_AS_FAILS_TEST, IDENTIFIER_PASSES_TEST, ABBREVIATION_SPELLED_OUT)
 #: check_against_schema's flags.
 SCHEMA_FLAGS = (SUBJECT_CLASS_NOT_IN_SCHEMA, OBJECT_CLASS_NOT_IN_SCHEMA, PREDICATE_NOT_IN_SCHEMA, PATTERN_NOT_IN_SCHEMA,
                 PATTERN_NOT_PINNED)
@@ -97,7 +106,7 @@ TOOL_CHECKS = (EMPTY, NOT_CONNECTED, SEVERAL_QUALIFIERS, SLASH_LIST_SPLIT, RULES
 # The qualifier predicates of rule 19 of "Writing a classed triple" (annotations/guidelines.md) have one home: their
 # "rule 19: qualifier, …" lines in annotations/ground_truth_schema.txt (schema_io.qualifier_predicates).
 #: Every check code, each once.
-ALL_CHECKS = (ERRORS + FLAGS + SCHEMA_FLAGS + DESCRIBES_ERRORS + DESCRIBES_FLAGS + ROWS_FLAGS + GROUND_TRUTH_ERRORS
+ALL_CHECKS = (ERRORS + FLAGS + ABBREVIATION_FLAGS + SCHEMA_FLAGS + DESCRIBES_ERRORS + DESCRIBES_FLAGS + ROWS_FLAGS + GROUND_TRUTH_ERRORS
               + TOOL_CHECKS + HELD_OUT_ONLY_ERRORS)
 
 
@@ -138,6 +147,81 @@ def check_triple_instance(instance: dict, text: Text, title: str = "") -> tuple:
     if title.strip() and component_class_key(instance.get("subject_class")) == "dataset"             and not is_describes(instance) and instance_key(instance.get("subject")) != instance_key(title):
         flags.append(DATASET_SUBJECT_NOT_TITLE)
     return errors, flags
+
+
+# --------------------------------------------------------------------------
+# rule 20's abbreviation test (040, 050, 060: a model's replies)
+# --------------------------------------------------------------------------
+#
+# The test is implemented once (common/common_helpers/abbreviations.py, after Schwartz and Hearst, 2003). Each flag
+# says that a reply disagrees with it; nothing is changed. "Disagrees", for each use:
+#
+#   abbreviation_fails_test   rules 20 and 22, commas: a subject or object instance holds a short form shaped like an
+#                             acronym set off by commas right after words ("Greenbelt, MD, USA"), and the short form
+#                             fails the test against the words before it (back to the instance's start or the previous
+#                             comma). Rule 20 then reads the commas as separating the items of a list, which rule 22
+#                             splits, one triple per item; the reply kept them in one instance.
+#   also_known_as_fails_test  rule 20, the title's short name: the subject is the title's instance, the predicate says
+#   identifier_passes_test    "also known as" (its key holds alsoknownas) or names an identifier (its key holds
+#                             identifier, or the object's entity class is Identifier), and the object is a short form
+#                             the record's text gives in parentheses right after words. Rule 20: when the short form
+#                             passes the test against those words (at any of its places), it is also known as; when it
+#                             fails at every place, it is a code, the identifier. The flag names the reply that took the
+#                             other one.
+#   abbreviation_spelled_out  rule 23, test 1 (with rule 20's one instance, as written): the record spells a short
+#                             form out ("Ocean Biology Processing Group (OBPG)", "Heliographic Inertial, HGI,"), the test
+#                             passing, and an instance other than the title's is the short form alone ("OBPG"), or the
+#                             spelled-out words alone, the short form dropped ("Ocean Biology Processing Group" where
+#                             the text has it right before "(OBPG)"). The wording that spells the abbreviation out is
+#                             the one to use; the other appears only in an also-known-as triple, which is not flagged,
+#                             and the title's short name is judged by the flags above, not by this one.
+
+
+def _ends_with(words: str, value: str) -> bool:
+    """Whether value, evened out (text_match.norm_text), is the end of words, cut between two words."""
+    w, v = norm_text(words), norm_text(value)
+    return bool(v) and (w == v or (w.endswith(v) and not w[-len(v) - 1].isalnum()))
+
+
+def _holds(value: str, short: str) -> bool:
+    """Whether value holds short as a whole word (case ignored)."""
+    return re.search(r"(?<![^\W_])" + re.escape(short) + r"(?![^\W_])", value, re.I) is not None
+
+
+def check_abbreviations(instance: dict, forms: list, title: str = "") -> list:
+    """The flags above for one triple instance (its predicate free words in 040, a schema's predicate in 050 and 060).
+    forms: abbreviations.short_forms(the record's whole text), found once per record."""
+    from common.abbreviations import is_short_form, passes
+    flags = []
+    predicate = component_class_key(instance.get("predicate"))
+    also_known_as = "alsoknownas" in predicate
+    identifier = not also_known_as and ("identifier" in predicate
+                                        or component_class_key(instance.get("object_class")) == "identifier")
+    title_key = instance_key(title) if str(title or "").strip() else None
+    values = {k: str(instance.get(k) or "").strip() for k in ("subject", "object")}
+    for value in values.values():
+        parts = value.split(",")
+        if any(is_short_form(parts[i], commas=True) and parts[i - 1].strip() and not passes(parts[i].strip(), parts[i - 1])
+               for i in range(1, len(parts))):
+            flags.append(ABBREVIATION_FAILS_TEST)
+            break
+    places = []                                 # the title's short name: its places in parentheses
+    if title_key and instance_key(values["subject"]) == title_key and (also_known_as or identifier):
+        places = [f for f in forms if not f.commas and instance_key(f.short) == instance_key(values["object"])]
+        if places and also_known_as and not any(f.passes for f in places):
+            flags.append(ALSO_KNOWN_AS_FAILS_TEST)
+        if places and identifier and any(f.passes for f in places):
+            flags.append(IDENTIFIER_PASSES_TEST)
+    if not also_known_as:
+        for slot, value in values.items():
+            if not value or (title_key and instance_key(value) == title_key) or (slot == "object" and places):
+                continue                        # the title's instance; the title's short name (judged above)
+            if any(f.passes and (instance_key(value) == instance_key(f.short)
+                                 or (not _holds(value, f.short) and _ends_with(f.words, value) and passes(f.short, value)))
+                   for f in forms):
+                flags.append(ABBREVIATION_SPELLED_OUT)
+                break
+    return flags
 
 
 # --------------------------------------------------------------------------

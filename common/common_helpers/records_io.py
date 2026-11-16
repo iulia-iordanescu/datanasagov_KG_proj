@@ -128,13 +128,14 @@ def has_text(record: dict) -> bool:
     return bool(even(" ".join((record.get(name) or "") for name in text_fields(record))).strip())
 
 
-def read_ids(value: str) -> list:
+def read_ids(value: str, stage: str | None = None) -> list:
     """The ids setting: ids separated by commas or spaces, or the path of a
     text file with one id per line (a CSV whose first column is the id works
     too; a header line "id", blank lines, and lines starting with # are
     skipped). An id listed twice counts once. A value ending in .txt or .csv, or
     holding a / or \\, is a path. Written once for a person in
-    docs/running_on_nasa_laptop.md, *Settings several steps share*."""
+    docs/running_on_nasa_laptop.md, *Settings several steps share*. stage: the step's stage that reads it, under which
+    each id listed again is recorded as folded into its first listing (common/common_helpers/dropped.py)."""
     value = value.strip()
     if not value:
         return []
@@ -152,4 +153,12 @@ def read_ids(value: str) -> list:
                 ids.append(first)
     else:
         ids = [i for i in re.split(r"[,\s]+", value) if i]
+    if stage:
+        from common import dropped
+        seen = set()
+        for i in ids:
+            if i in seen:
+                dropped.fold(stage, "record id", "listed again in the setting ids: an id listed twice counts once",
+                             {"id": i}, {"id": i}, record_id=i)
+            seen.add(i)
     return list(dict.fromkeys(ids))

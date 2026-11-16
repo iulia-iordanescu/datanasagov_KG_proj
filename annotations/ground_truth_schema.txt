@@ -189,7 +189,7 @@ MEASURES             takes measurements of this PhysicalQuantity (an Instrument'
 HAS_MISSION_PHASE    was collected during this MissionPhase
                      Dataset -> MissionPhase
                      only: any -> MissionPhase
-HAS_PURPOSE          is meant to achieve
+HAS_PURPOSE          is meant to achieve this Purpose
                      WebTool -> Purpose
                      only: any -> Purpose
 HAS_TARGET           is about, or studies, this CelestialBody
@@ -223,7 +223,7 @@ HAS_PROCESSING_LEVEL  is processed to this ProcessingLevel
                       rule 19: qualifier, a processing level
                       Dataset -> ProcessingLevel
                       only: any -> ProcessingLevel
-HAS_SPATIAL_RESOLUTION  each of its values covers this much ground, e.g. 500 m
+HAS_SPATIAL_RESOLUTION  each of its values covers this much ground (a SpatialResolution), e.g. 500 m
                         rule 19: qualifier, a spatial resolution
                         Dataset -> SpatialResolution
                         only: any -> SpatialResolution
@@ -231,7 +231,7 @@ HAS_VERTICAL_RESOLUTION  its values are this far apart in height or pressure, e.
                          source: ground truth tuning #24
 HAS_VERTICAL_RANGE   its values can be used over this range of heights or pressures, e.g. 1000 to 0.01 hPa
                      source: ground truth tuning #24
-HAS_TEMPORAL_RESOLUTION  its values are this far apart in time, e.g. daily
+HAS_TEMPORAL_RESOLUTION  its values are this far apart in time (a TemporalResolution), e.g. daily
                          rule 19: qualifier, a temporal resolution
                          source: ground truth tuning #2, #3
                          only: any -> TemporalResolution
@@ -247,7 +247,7 @@ HAS_DOI              has this Identifier, a Digital Object Identifier
                      only: any -> Identifier
 HAS_GRANULE_DURATION  each of its files covers this much time
                       source: ground truth tuning #2
-HAS_SPATIAL_REPRESENTATION  lays out its data as
+HAS_SPATIAL_REPRESENTATION  lays out its data as this SpatialRepresentation
                             source: ground truth tuning #2
                             only: any -> SpatialRepresentation
 BASED_IN             is based in this Country
@@ -324,7 +324,7 @@ SUPERSEDES           replaces this earlier one. A record states this when it say
 HAS_VARIABLE         holds this Variable in its files
                      source: ground truth tuning #4
                      only: any -> Variable
-HAS_ANCILLARY_DATA   holds this supporting information about its values, such as quality flags or viewing geometry
+HAS_ANCILLARY_DATA   holds this supporting information about its values (a Variable), such as quality flags or viewing geometry
                      source: ground truth tuning #6, #7
                      only: any -> Variable
 ESTIMATES            gives approximate values for
@@ -365,7 +365,7 @@ PRODUCTION_DISCONTINUED_DUE_TO  stopped being produced because of
 HAS_ISSUE            is affected by this Issue, a problem with its values (what restricts its use: LIMITED_BY)
                      source: ground truth tuning #19
                      only: any -> Issue
-CLEANED_OF           had this removed from its values, or corrected in them, e.g. noise lines; geometric distortion
+CLEANED_OF           had this Issue removed from its values, or corrected in them, e.g. noise lines; geometric distortion
                      source: ground truth tuning #13, #16
                      only: any -> Issue
 ENDED_ON             came to an end on this date (a Time)
@@ -388,7 +388,7 @@ HAS_MASS             weighs this much, e.g. approximately 20 kg
 CREATED_ON           was made on this date (a Time)
                      source: ground truth tuning #12
                      only: any -> Time
-AVAILABLE_AT         can be got from this WebPage
+AVAILABLE_AT         can be obtained from this WebPage
                      source: ground truth tuning #12
                      only: any -> WebPage
 REVISED_AFTER        was corrected after this review
@@ -408,7 +408,7 @@ HAS_COLLECTION_STATUS  its data collection is in this CollectionStatus
 OBTAINED_FROM        was got from this source, e.g. a table got from a journal's web site
                      held-out only
                      source: ground truth held-out #32, #104
-HAS_CHANGE           its release brings this change from the release before, e.g. adding of the FITS version
+HAS_CHANGE           its release brings this change (a Task) from the release before, e.g. adding of the FITS version
                      held-out only
                      only: any -> Task
                      source: ground truth held-out #56, #65

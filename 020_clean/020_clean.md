@@ -33,6 +33,7 @@ In `outputs/intermediate_results/020_clean/`:
 | File | Contents |
 |---|---|
 | `records.jsonl` | One cleaned [record](../docs/terminology.md#1-records-and-their-text) per line, in [harvest](../docs/terminology.md#1-records-and-their-text) order ([batch files](../docs/terminology.md#1-records-and-their-text) in order, records in their order within each file). |
+| `discarded.jsonl` | Every item this run discarded, one per line, with its stage, its reason and enough to find it again (written by every run, empty when nothing was discarded). Stage 1 records each record dropped for having no id (its batch file and position, name and title) and each later copy of a repeated id (folded into the first copy, with where that copy is and whether the two copies are the same); the records read must equal those kept plus those recorded, or the run stops. One line per item, its fields and the report's section on them: `helpers/audit.md`, *Items discarded*. |
 | `_manifest.json` | [Run id](../docs/terminology.md#8-the-pipeline), [settings](../docs/terminology.md#8-the-pipeline), input files and their hashes, output files and their hashes, headline numbers, and the [harvest date](../docs/terminology.md#1-records-and-their-text). Written when a [run](../docs/terminology.md#8-the-pipeline) finishes. |
 
 One record:

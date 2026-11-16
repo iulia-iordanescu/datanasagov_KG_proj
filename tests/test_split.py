@@ -131,5 +131,51 @@ class Split(unittest.TestCase):
         self.assertTrue((out / moves.OUTPUT_NAME).exists())
 
 
+class Discards(Split):
+    """Stages 2 and 3 record each pool record dropped (no longer in the catalog), each pool maintainer replaced by
+    020's, and each record that can't be an induction candidate (in the pool, or no text); the accounting checks stop
+    the run when a record vanishes without a record of it. A kept splits.json records this run's draw it didn't
+    keep."""
+
+    def setUp(self):
+        super().setUp()
+        from common import dropped
+        self.dropped = dropped
+        dropped.reset()
+        self.addCleanup(dropped.reset)
+
+    def test_recorded(self):
+        pool, induction = self.split()
+        by = lambda stage, action="discarded": sorted(e["record_id"] for e in self.dropped.DISCARDS
+                                                      if e["stage"] == stage and e["action"] == action)
+        self.assertEqual(by(moves.STAGE_2), ["gone"])
+        self.assertEqual(by(moves.STAGE_2, "replaced"), ["r05"])
+        self.assertEqual(by(moves.STAGE_3), ["r03", "r05", "r10", "r29"])     # 3 in the pool, 1 without text
+        why = {e["record_id"]: e["reason"] for e in self.dropped.DISCARDS if e["stage"] == moves.STAGE_3}
+        self.assertIn("no text", why["r29"])
+        out = self.tmp / "out"
+        out.mkdir()
+        records = moves.load_records(self.inputs)
+        moves.results(pool, induction, records, self.inputs, SETTINGS, out)
+        self.assertEqual(by(moves.STAGE_RESULTS), [])                       # written: nothing set aside
+        pool2 = moves.ground_truth_candidates(self.inputs, records)
+        moves.results(pool2, moves.induction_candidates(records, pool2, {"induction_seed": 8}), records, self.inputs,
+                      SETTINGS, out)
+        self.assertTrue(by(moves.STAGE_RESULTS))                            # another draw, not kept: each entry
+
+    def test_near_miss_a_record_left_out_unrecorded(self):
+        from unittest import mock
+        from common.stop import Stop
+        records = moves.load_records(self.inputs)
+        with mock.patch.object(self.dropped, "discard", lambda *a, **k: None), self.assertRaises(Stop) as caught:
+            moves.ground_truth_candidates(self.inputs, records)
+        self.assertIn("Accounting check failed in stage 2 (ground_truth_candidates)", str(caught.exception))
+        pool = moves.ground_truth_candidates(self.inputs, records)
+        with mock.patch.object(self.dropped, "discard", lambda *a, **k: None), self.assertRaises(Stop) as caught:
+            moves.induction_candidates(records, pool, SETTINGS)
+        self.assertIn("Accounting check failed in stage 3 (induction_candidates): 30 records from 020 went in, 26 "
+                      "were kept", str(caught.exception))
+
+
 if __name__ == "__main__":
     unittest.main()

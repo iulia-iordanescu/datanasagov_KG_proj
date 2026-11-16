@@ -12,6 +12,13 @@ The schema is built from stage 6's counts, never from the model's replies:
   - every other schema entry found is DEFERRED, with its reason: support
     below min_support, too vague (with the model's reason), or a pattern
     through a schema entry that isn't in the schema.
+  - a predicate in the schema that stage 5 pinned keeps its pin ("pinned",
+    as common/common_helpers/schema_io.py reads it), so step 060's check
+    pattern_not_pinned flags an extracted triple that breaks it. A pair of the
+    pin naming an entity class not in the schema is left out of it (recorded);
+    a pinned predicate left with no pair is deferred (a component class not in
+    the schema): every triple it allows would name an entity class the schema
+    lacks, as a pattern through one is deferred.
 
 What the model wrote is only the definitions. Checked here:
   - a schema entry in the schema with no definition gets MISSING_DEFINITION,
@@ -32,9 +39,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from common import dropped
 from common.audit import ORIGIN_FIELD, log, origin
+from common.schema_io import ANY
 from define import KINDS, WORD
 
+#: The stage name its discarded items carry (common/common_helpers/dropped.py).
+STAGE = "stage 8 (check_schema)"
 MISSING_DEFINITION = "(no definition: the model didn't return one for this schema entry)"
 
 
@@ -46,6 +57,7 @@ class Schema:
     deferred: list = field(default_factory=list)            # {DEFERRED_FIELDS…, "reason_code": a DEFERRED_REASONS key}
     missing_definitions: list = field(default_factory=list) # {"kind", "component_class"}
     single_maintainer: list = field(default_factory=list)   # {"kind", "component_class"}
+    pinned: dict = field(default_factory=dict)              # {predicate: [[subject class or "any", object class or "any"]]}
 
 
 def _origin(texts: list) -> list:
@@ -62,26 +74,55 @@ DEFERRED_REASONS = {LOW_SUPPORT: "support below min_support", TOO_VAGUE: "too va
 DEFERRED_FIELDS = ("entry_type", "schema_entry", "support", "reason")
 
 
-def _deferred(entry_type: str, schema_entry: str, support: int, code: str, detail: str) -> dict:
+def _deferred(entry_type: str, schema_entry: str, support: int, code: str, detail: str, cut: int) -> dict:
+    dropped.discard(STAGE, "schema entry", f"deferred: {DEFERRED_REASONS[code]} ({detail})",
+                    {"entry_type": entry_type, "schema_entry": schema_entry, "support": support},
+                    setting={"min_support": cut})
     return {"entry_type": entry_type, "schema_entry": schema_entry, "support": support, "reason": detail,
             "reason_code": code}
+
+
+def _pins_in_schema(predicate: str, pins, schema: Schema, cut: int) -> list:
+    """The pairs of a predicate's pin whose entity classes ("any" aside) are all in the schema, as lists; each other
+    pair recorded (a pin naming an entity class not in the schema allows only triples the checks flag anyway)."""
+    in_schema = {c["component_class"] for c in schema.entity_classes}
+    kept = []
+    for pair in pins:
+        if all(x == ANY or x in in_schema for x in pair):
+            kept.append(list(pair))
+        else:
+            dropped.discard(STAGE, "pinned predicate", "names an entity class not in the schema: left out of the pin",
+                            {"predicate": predicate, "only": list(pair)}, setting={"min_support": cut})
+    return kept
 
 
 def check_schema(counts, definitions, settings: dict) -> Schema:
     cut = settings["min_support"]
     schema = Schema()
-    for kind in KINDS:
+    since = dropped.mark()
+    pinned = getattr(counts, "pinned", {})              # stage 5's pins (counts of an older shape have none)
+    for kind in KINDS:                                  # entity classes first: a pin is read against them
         vague = definitions.too_vague.get(kind, {})
         target = getattr(schema, kind)
         for e in getattr(counts, kind):
             if e["support"] < cut:
                 schema.deferred.append(_deferred(WORD[kind], e["component_class"], e["support"], LOW_SUPPORT,
-                                                 f"support {e['support']} < min_support {cut}"))
+                                                 f"support {e['support']} < min_support {cut}", cut))
                 continue
             if e["component_class"] in vague:
                 schema.deferred.append(_deferred(WORD[kind], e["component_class"], e["support"], TOO_VAGUE,
-                                                 f"too vague: {vague[e['component_class']]}"))
+                                                 f"too vague: {vague[e['component_class']]}", cut))
                 continue
+            pins = pinned.get(e["component_class"]) if kind == "predicates" else None
+            if pins is not None:
+                kept_pins = _pins_in_schema(e["component_class"], pins, schema, cut)
+                if not kept_pins:
+                    schema.deferred.append(_deferred(
+                        WORD[kind], e["component_class"], e["support"], NOT_IN_SCHEMA,
+                        "its pin allows only entity classes not in the schema: " + ", ".join(dict.fromkeys(
+                            x for pair in pins for x in pair if x != ANY)), cut))
+                    continue
+                schema.pinned[e["component_class"]] = kept_pins
             definition = definitions.of.get(kind, {}).get(e["component_class"])
             if definition is None:
                 definition = MISSING_DEFINITION
@@ -107,7 +148,13 @@ def check_schema(counts, definitions, settings: dict) -> Schema:
                                     "maintainers": e["maintainers"], "texts": e["texts"],
                                     ORIGIN_FIELD: _origin(e["texts"])})
             continue
-        schema.deferred.append(_deferred("pattern", " ".join(e["pattern"]), e["support"], code, reason))
+        schema.deferred.append(_deferred("pattern", " ".join(e["pattern"]), e["support"], code, reason, cut))
+    for kind in (*KINDS, "patterns"):
+        entry_type = WORD.get(kind, "pattern")
+        dropped.account(STAGE, f"{entry_type} schema entries counted", len(getattr(counts, kind)),
+                        len(getattr(schema, kind)), since=since,
+                        only=lambda e, t=entry_type: e["item_type"] == "schema entry"
+                        and e["item"].get("entry_type") == t)
     log.info(f"  schema: {len(schema.entity_classes):,} entity classes, {len(schema.predicates):,} "
              f"predicates, {len(schema.patterns):,} patterns; {len(schema.deferred):,} deferred")
     return schema

@@ -42,6 +42,7 @@ import collections
 import random
 from dataclasses import dataclass, field
 
+from common import dropped
 from common.audit import log
 from common.chunking import full_text, pieces
 from common.files import read_json
@@ -59,6 +60,8 @@ SKIPPED = ("whole text", "notes only")
 KEPT_TWIN = "title only"
 #: What the reading order's random generator is seeded with, after 030's seed.
 READING_ORDER = "reading order"
+#: The stage name its discarded items carry (common/common_helpers/dropped.py).
+STAGE = "stage 1 (pick_texts)"
 
 
 @dataclass
@@ -82,7 +85,7 @@ class Texts:
 #: The step's settings' rules (common.step.Spec); run_step checks them before any input is read, and so does
 #: pick_texts, with the same table (the shared settings' rules: common.step.shared_specs).
 SPECS = {"texts_per_stratum": Spec(int, 1, 10_000), "min_support": Spec(int, 1, 10_000),
-         "max_new_predicates": Spec(int, 0, 10_000)}
+         "max_new_predicates": Spec(int, 0, 10_000), "min_split_texts": Spec(int, 1, 10_000)}
 
 #: The settings of the earlier design (the 10 largest maintainers, 15 texts each; the schema of 2026-10-12 was made
 #: with it), refused with this message so that no run mixes the two designs up (common.step.run_step, retired).
@@ -153,6 +156,23 @@ def _twin_of(record: dict, drawn: dict, kind: str) -> str:
     return next(lid for lid, r in drawn.items() if twin_kinds({"x": record}, {lid: r})["x"] == kind)
 
 
+def _record_not_taken(orders: dict, strata: list, taken: dict, skipped: list, records: dict, per: int) -> None:
+    """One entry per induction candidate draw didn't take: a twin skipped (folded into the text it is a twin of), or
+    one its stratum never reached, the stratum's texts_per_stratum texts being taken first."""
+    twins = {k["id"]: k for k in skipped}
+    for s in strata:
+        took = set(taken[s])
+        for rid in orders.get(s, []):
+            r = records[rid]
+            item = {"id": rid, "stratum": s, "maintainer": r.get("maintainer"), "title": r.get("title")}
+            if rid in twins:
+                dropped.fold(STAGE, "record", f"a {twins[rid]['twin_kind']} twin of a text already drawn, skipped",
+                             item, {"id": twins[rid]["twin_of"]}, record_id=rid)
+            elif rid not in took:
+                dropped.discard(STAGE, "record", "not reached: its stratum's texts were taken before it",
+                                item, record_id=rid, setting={"texts_per_stratum": per})
+
+
 def pick_texts(inputs: dict, settings: dict) -> Texts:
     check_settings(settings, SPECS)
     records = load_records(inputs["records"])
@@ -169,6 +189,11 @@ def pick_texts(inputs: dict, settings: dict) -> Texts:
 
     texts = Texts(seed=seed)
     texts.pool = {r["id"]: records[r["id"]] for r in splits["ground_truth_candidates"]["records"] if r["id"] in records}
+    for r in splits["ground_truth_candidates"]["records"]:
+        if r["id"] not in records:
+            dropped.discard(STAGE, "record", "a ground truth candidate not in 020's records, so left out of the pool "
+                            "texts a twin is looked for in", {"id": r["id"], "position": r.get("position")},
+                            record_id=r["id"], where=f"{repo_path(inputs['splits'])}#{r['id']}")
     orders, maintainers, unknown = collections.defaultdict(list), collections.defaultdict(set), collections.Counter()
     small = []
     for row in induction["records"]:                  # grouped by maintainer, each in 030's order
@@ -190,7 +215,9 @@ def pick_texts(inputs: dict, settings: dict) -> Texts:
             orders[s].append(row["id"])
     orders[SMALL] = _small_order(small, seed)
 
+    since = dropped.mark()
     taken, texts.skipped, title_only = draw(orders, strata, records, per)
+    _record_not_taken(orders, strata, taken, texts.skipped, records, per)
     skipped = collections.defaultdict(collections.Counter)
     for k in texts.skipped:
         skipped[k["stratum"]][k["twin_kind"]] += 1
@@ -198,6 +225,7 @@ def pick_texts(inputs: dict, settings: dict) -> Texts:
                      "taken": len(taken[s]), "skipped": {k: skipped[s][k] for k in SKIPPED},
                      "title_only_kept": title_only[s]} for s in strata]
     chosen = [rid for s in strata for rid in taken[s]]
+    dropped.account(STAGE, "induction candidates", sum(len(orders[s]) for s in strata), len(chosen), since=since)
     in_stratum = {rid: s for s in strata for rid in taken[s]}
     for rid in random.Random(f"{seed}/{READING_ORDER}").sample(sorted(chosen), len(chosen)):
         record = records[rid]

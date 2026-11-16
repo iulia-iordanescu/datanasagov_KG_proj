@@ -7,7 +7,7 @@ moves.py -- the main moves of 040_induce_schema, as called by
     stage 2  extract.py  extract_triple_instances   LLM: the triple instances each text states, checked
     stage 3  label.py    label_component_instances  LLM: a label for each component instance, read with its source text
     stage 4  merge.py    merge_labels               LLM: one call over all labels, merging synonyms; code: spelling folds
-    stage 5  split.py    split_predicates           LLM: splitting a predicate by its object's entity class; code checks
+    stage 5  split.py    split_predicates           LLM: splitting a predicate by its subject's or object's entity class or both; code checks; merging again
     stage 6  count.py    count_support              code: the texts and maintainers behind every schema entry
     stage 7  define.py   write_definitions          LLM: one sentence per entity class and predicate
     stage 8  check.py    check_schema               code: builds the schema from the evidence
@@ -39,8 +39,10 @@ from texts import RETIRED, SPECS                        # noqa: F401  (the contr
 from common import audit, dropped, llm
 from common.audit import check_origins, log, ref_path
 from common.files import write_json
-from common.ground_truth import ground_truth_schema_view, read_ground_truth, read_pool, twin_kinds, twin_table
-from common.schema_io import read_ground_truth_schema, schema_text, without_held_out_only
+from common.ground_truth import (ground_truth_schema_view, read_ground_truth, read_pool, record_skipped, twin_kinds,
+                                 twin_table)
+from common.schema_io import (read_ground_truth_schema, record_left_out_of_view, record_unread, schema_text,
+                              without_held_out_only)
 from common.report import cell, counted, listed_label, model_calls, named, per_text_headline, per_text_table
 from common.step import Results, repo_path
 
@@ -106,11 +108,16 @@ def check_schema(counts, definitions, settings):
 
 def compare_with_ground_truth_schema(inputs, schema) -> dict:
     hand = read_ground_truth_schema(inputs["ground_truth_schema"])
+    whole = hand
     # the file without its held-out-only entries, and as patterns the file's and every one the finished tuning
     # records use (the one view of the ground truth schema every step and the annotation tool use:
     # common/common_helpers/ground_truth.ground_truth_schema_view)
     gt = read_ground_truth(Path(inputs["ground_truth"]).parent, read_pool(inputs["splits"]))
     hand = {**without_held_out_only(hand), "patterns": ground_truth_schema_view(hand, gt)["patterns"]}
+    stage = "compare_with_ground_truth_schema (for the report)"
+    record_unread(stage, whole, ref_path(inputs["ground_truth_schema"]))
+    record_skipped(stage, gt)
+    record_left_out_of_view(stage, whole, hand, where=ref_path(inputs["ground_truth_schema"]))
     comparison = compare.compare(hand, schema)
     # the ground truth's own problems (a record annotated twice, a file missing a column, ...), shown as warnings
     # like every other step that reads it; results() takes them out before writing the evidence file
@@ -134,15 +141,14 @@ def _schema_shape(schema) -> dict:
 def schema_length(schema, splits) -> dict:
     """How long the schema's text is as step 060 sends it (common/common_helpers/schema_io.schema_text), and how much
     of it the predicates splitting added take: {"characters", "predicates", "added", "added_characters",
-    "per_added"}. A predicate's own share is its name-and-definition line and the start of its patterns line (the
-    indent and the line break); its patterns' text is not counted, since splitting moves patterns between
-    predicates without adding any."""
+    "per_added"}. A predicate's own share is its name-and-definition line and its line break (the text shows no
+    patterns, decided 2026-11-15)."""
     shape = _schema_shape(schema)
     text = schema_text(shape)
     width = max((len(n) for kind in ("entity_classes", "predicates") for n in shape[kind]), default=0) + 2
     new = {s["into"] for s in splits.kept} & set(shape["predicates"])
-    own = sum(len(f"{n.ljust(width)}{shape['predicates'][n]}".rstrip()) + 1 + width + 1 for n in new)
-    return {"characters": len(text), "predicates": len(shape["predicates"]), "added": splits.added,
+    own = sum(len(f"{n.ljust(width)}{shape['predicates'][n]}".rstrip()) + 1 for n in new)
+    return {"characters": len(text), "predicates": len(shape["predicates"]), "added": splits.net_added,
             "added_characters": own, "per_added": round(own / len(new)) if new else None}
 
 
@@ -159,11 +165,12 @@ def results(texts, triples, labels, splits, counts, definitions, schema, compari
             "texts": len(texts.items), "strata": strata, "maintainers": texts.maintainers}
     schema_path, evidence_path = output / SCHEMA_NAME, output / EVIDENCE_NAME
     write_json(schema_path, {"entity_classes": schema.entity_classes, "predicates": schema.predicates,
-                              "patterns": schema.patterns,
+                              "patterns": schema.patterns, "pinned": schema.pinned,
                               "deferred": [{k: d[k] for k in check.DEFERRED_FIELDS} for d in schema.deferred],
                               "made": made})
     calls_made = {"extract": triples.calls, "label": labels.calls, "merge": labels.merge_calls,
-                  "split": splits.calls, "define": definitions.calls, "test": calls.paid.test_calls}
+                  "split": splits.calls + splits.merge_calls, "define": definitions.calls,
+                  "test": calls.paid.test_calls}
     pieces = {t["id"]: len(t["pieces"]) for t in texts.items}
     # Would more texts have added schema entries? (saturation.py: code only, from the counts)
     sat = saturation.curve(counts, len(triples.texts), settings["min_support"])
@@ -195,14 +202,21 @@ def results(texts, triples, labels, splits, counts, definitions, schema, compari
         "unlabeled": labels.unlabeled, "merges": labels.merges, "merge_issues": labels.merge_issues,
         "spelling_folds": labels.spelling_folds,
         "splits": {"sent": splits.sent, "kept": splits.kept, "dropped": splits.dropped,
-                   "rejected": splits.rejected, "refused": splits.refused, "into": splits.into,
-                   "added": splits.added, "max_new_predicates": splits.cap},
+                   "rejected": splits.rejected, "refused": splits.refused, "undone": splits.undone,
+                   "into": splits.into, "merged_again": splits.merges, "merge_again_issues": splits.merge_issues,
+                   "merge_again_spelling_folds": splits.spelling_folds, "final": splits.final,
+                   "pinned": {p: [list(x) for x in pins] for p, pins in splits.pinned.items()},
+                   "added": splits.added, "net_added": splits.net_added, "max_new_predicates": splits.cap,
+                   "min_split_texts": splits.min_texts},
         "unlabeled_slots": counts.unlabeled_slots,
         "counts": {"entity_classes": counts.entity_classes, "predicates": counts.predicates,
                    "patterns": counts.patterns},
         "definitions": definitions.of, "too_vague": definitions.too_vague,
         "refused": {"labels": labels.refused, "definitions": definitions.refused, "splits": splits.refused},
         "unknown_schema_entries": definitions.unknown, "missing_definitions": schema.missing_definitions,
+        "definitions_asked_again": definitions.asked_again,
+        "definitions_naming_no_entity_class": definitions.not_entity_classes,
+        "definitions_not_naming_their_pin": definitions.pins_not_named,
         "calls": {**calls_made, "reused_extractions": triples.reused},
         "compared_with_ground_truth_schema": comparison,
         "saturation": {"curve": sat, "breadth": wide},
@@ -251,7 +265,8 @@ def results(texts, triples, labels, splits, counts, definitions, schema, compari
                         f"{evidence_shown} under `merge_issues`.")
     if splits.rejected:
         warnings.append(f"The splitting replies had {len(splits.rejected)} predicate split(s) code rejected: "
-                        + named([f"{r['predicate']} into {r['into']} ({r['why']})" for r in splits.rejected], 3, "; ")
+                        + named([f"{r['predicate']} into {r['into']} by {r['by']} ({r['why']})"
+                                 for r in splits.rejected], 3, "; ")
                         + f". A rejected predicate split leaves its predicate as it was. Nothing to do; each is listed, with "
                           f"why, in this report's section *Splitting* and in {evidence_shown} under `splits`.")
     if splits.dropped:
@@ -259,7 +274,7 @@ def results(texts, triples, labels, splits, counts, definitions, schema, compari
                         f"predicate splits kept already add max_new_predicates ({splits.cap}) predicates: "
                         + named([f"{s['predicate']} into {s['into']} ({s['texts']} texts)" for s in splits.dropped],
                                 3, "; ")
-                        + ". Their predicates keep those objects. To keep more, raise `--max_new_predicates` "
+                        + ". Their predicates keep those triple instances. To keep more, raise `--max_new_predicates` "
                           "(each added predicate makes every step 060 prompt longer: the report's section "
                           "*Splitting* gives by how much).")
     if schema.missing_definitions:
@@ -276,6 +291,29 @@ def results(texts, triples, labels, splits, counts, definitions, schema, compari
                         + named([f"{d['component_class']} ({d['kind']})" for d in definitions.unknown], 5)
                         + f". They were ignored, so they change nothing in the schema. Nothing to do; all are "
                         f"listed in {evidence_shown} under `unknown_schema_entries`.")
+    if definitions.not_entity_classes:
+        n = len(definitions.not_entity_classes)
+        warnings.append(f"{n} definition(s) name a word shaped like an entity class (CamelCase) that is no entity "
+                        f"class of this schema, even when asked once more: "
+                        + named([f"{d['component_class']} ({d['kind']}): {', '.join(d['words'])}"
+                                 for d in definitions.not_entity_classes], 5, "; ")
+                        + f". Each definition is kept as written (a definition is words only). Read each: a proper "
+                        f"noun (e.g. a place) is fine; a word meant as an entity class is the name of none in this "
+                        f"schema, so a model reading the definition in step 060 may look for an entity class that "
+                        f"isn't there. All are listed in {evidence_shown} under `definitions_naming_no_entity_class`.")
+    if definitions.pins_not_named:
+        n = len(definitions.pins_not_named)
+        warnings.append(f"{n} definition(s) of a pinned predicate (a new predicate of a predicate split, stage 5) "
+                        f"don't name every entity class its pin allows, even when asked once more: "
+                        + named([f"{d['component_class']}: {', '.join(d['entity_classes'])}"
+                                 for d in definitions.pins_not_named], 5, "; ")
+                        + f". Each definition is kept as written, and the pin is kept in {SCHEMA_NAME}. No prompt "
+                        f"shows a pin, so a model reading the schema in step 060 learns it only from the definition, "
+                        f"and may use the predicate with other entity classes; step 060 flags each such triple "
+                        f"(pattern_not_pinned). Nothing to do if few; to ask again, delete "
+                        f"{repo_path(calls.cache_dir / 'define.json')}, then run `py 040_induce_schema/run.py` again "
+                        f"(every definition is asked again). All are listed in {evidence_shown} under "
+                        f"`definitions_not_naming_their_pin`.")
     for items, what in ((schema.entity_classes, "entity classes"), (schema.predicates, "predicates"),
                         (schema.patterns, "patterns")):
         missing = check_origins(items, what)
@@ -386,6 +424,7 @@ def results(texts, triples, labels, splits, counts, definitions, schema, compari
                           (f"stage 3: label component instances ({label.LABEL_BATCH} per call)", labels.calls, labels.reused),
                           ("stage 4: merge labels (one call per kind)", labels.merge_calls, labels.merge_reused),
                           (f"stage 5: split predicates ({split.SPLIT_BATCH} per call)", splits.calls, splits.reused),
+                          ("stage 5: merge predicates again (one call)", splits.merge_calls, splits.merge_reused),
                           (f"stage 7: write definitions ({define.DEFINE_BATCH} per call)", definitions.calls,
                            definitions.reused)],
                          calls.paid.test_calls, llm.model_label())
@@ -402,7 +441,7 @@ def results(texts, triples, labels, splits, counts, definitions, schema, compari
         headline={"entity classes": len(schema.entity_classes), "predicates": len(schema.predicates),
                   "patterns": len(schema.patterns), "twins in the pool": f"{twins} of {len(texts.pool):,}",
                   "twins skipped while drawing": len(texts.skipped),
-                  "predicates added by splitting": splits.added,
+                  "predicates added by splitting": splits.net_added,
                   **per_text_headline([("raw triple instances", per_text["listed"]),
                                        ("verified triple instances", per_text["verified"])]),
                   "texts with no verified triple instance": len(empty["verified"]),
@@ -416,35 +455,59 @@ def results(texts, triples, labels, splits, counts, definitions, schema, compari
 def _splitting_lines(splits, length: dict, settings: dict) -> list:
     """The report's subsection *Splitting* (stage 5)."""
     lines = ["### Splitting", "",
-             f"Stage 5 sent {len(splits.sent)} predicate(s) whose triple instances reach several object entity "
-             f"classes; the model proposed {len(splits.kept) + len(splits.dropped) + len(splits.rejected)} predicate "
-             f"split(s), each a new predicate with the object entity classes it takes. "
-             f"Kept: {len(splits.kept)}, adding {splits.added} predicate(s) (max_new_predicates = "
-             f"{settings['max_new_predicates']}); dropped by that cap: {len(splits.dropped)}; rejected by code: "
-             f"{len(splits.rejected)}.", ""]
+             f"Stage 5 sent {len(splits.sent)} predicate(s) whose triple instances have several subject entity "
+             f"classes or several object entity classes; the model proposed "
+             f"{len(splits.kept) + len(splits.undone) + len(splits.dropped) + len(splits.rejected)} predicate "
+             f"split(s), each a new predicate with its grouping (subject, object or pattern) and the groups it takes. "
+             f"Kept by the checks and the cap: {len(splits.kept) + len(splits.undone)}, adding {splits.added} "
+             f"predicate(s) (max_new_predicates = {settings['max_new_predicates']}); dropped by that cap: "
+             f"{len(splits.dropped)}; rejected by code: {len(splits.rejected)} (min_split_texts = "
+             f"{settings['min_split_texts']}). Then the predicates were merged again: "
+             f"{len(splits.merges)} predicate(s) merged into others, {len(splits.undone)} predicate split(s) undone "
+             f"(every part of their predicate ended in one predicate). In all, splitting changed the number of "
+             f"predicates by {splits.net_added:+d}; {len(splits.pinned)} predicate(s) are pinned.", ""]
     if settings["max_new_predicates"] == 0:
         lines += ["max_new_predicates is 0, so no predicate was sent and none was split.", ""]
     for rows, title in ((splits.kept, "Predicate splits kept"),
                         (splits.dropped, "Predicate splits dropped by max_new_predicates (fewest texts)")):
         if rows:
-            lines += [f"{title}:", "", "| Predicate | New predicate | Object entity classes | Texts | Triple instances |",
-                      "|---|---|---|---:|---:|"]
-            lines += [f"| {cell(s['predicate'])} | {cell(s['into'])} | {cell(', '.join(s['object_classes']))} | "
-                      f"{s['texts']} | {s['triple_instances']} |" for s in rows]
+            lines += [f"{title}:", "", "| Predicate | Grouped by | New predicate | Takes | Pin | Texts | Triple instances |",
+                      "|---|---|---|---|---|---:|---:|"]
+            lines += [f"| {cell(s['predicate'])} | {s['by']} | {cell(s['into'])} | {cell(', '.join(s['takes']))} | "
+                      f"{cell('; '.join(' -> '.join(x) for x in s['only']))} | {s['texts']} | {s['triple_instances']} |"
+                      for s in rows]
             lines.append("")
+    if splits.undone:
+        lines += ["Predicate splits undone by merging again (each predicate is whole again, or merged into the "
+                  "predicate every part of it ended in):", "",
+                  "| Predicate | Grouped by | New predicate | Takes | Every part ended in | The predicate now |",
+                  "|---|---|---|---|---|---|"]
+        lines += [f"| {cell(s['predicate'])} | {s['by']} | {cell(s['into'])} | {cell(', '.join(s['takes']))} | "
+                  f"{cell(s['ends_in'])} | {cell(s['goes_to'])} |" for s in splits.undone]
+        lines.append("")
+    if splits.merges:
+        lines += ["Predicates merged again (check these: a wrong merge makes two ideas one):", "",
+                  "| Predicate | Merged into | Predicate instances | Texts |", "|---|---|---:|---:|"]
+        lines += [f"| {cell(m['label'])} | {cell(m['into'])} | {m['component_instances']} | {m['texts']} |"
+                  for m in splits.merges]
+        lines.append("")
+    set_aside = sum(len(v) for v in splits.merge_issues.values())
+    if set_aside:
+        lines += [f"Merges of the model's set aside while merging again: {set_aside} (each with why in "
+                  f"`discarded.jsonl`, stage {split.MERGE_AGAIN_STAGE.split(' ', 1)[1]}).", ""]
     if splits.rejected:
-        lines += ["Predicate splits rejected by code:", "", "| Predicate | New predicate | Object entity classes | Why |",
-                  "|---|---|---|---|"]
-        lines += [f"| {cell(str(r['predicate']))} | {cell(str(r['into']))} | "
-                  f"{cell(', '.join(map(str, r['object_classes'])))} | {cell(r['why'])} |" for r in splits.rejected]
+        lines += ["Predicate splits rejected by code:", "", "| Predicate | Grouped by | New predicate | Takes | Why |",
+                  "|---|---|---|---|---|"]
+        lines += [f"| {cell(str(r['predicate']))} | {cell(str(r['by']))} | {cell(str(r['into']))} | "
+                  f"{cell(', '.join(map(str, r['takes'])))} | {cell(r['why'])} |" for r in splits.rejected]
         lines.append("")
     per = (f"{length['per_added']:,} characters per added predicate" if length["per_added"] is not None
            else "no predicate was added")
     lines += [f"Schema text, as step 060 sends it in every prompt (`common/common_helpers/schema_io.py`, "
               f"`schema_text`): {length['characters']:,} characters for {length['predicates']} predicates. The "
               f"predicates splitting added take {length['added_characters']:,} of them ({per}: each one's name and "
-              f"definition line, and the start of its patterns line; the patterns themselves only move between "
-              f"predicates). A predicate split away entirely gives its own lines back. What share of a step 060 "
+              f"definition line; the text shows no patterns and no pins). A predicate split away entirely gives its "
+              f"own line back. What share of a step 060 "
               f"prompt that is: 040_induce_schema/040_induce_schema.md, *Settings*, `max_new_predicates`.", ""]
     return lines
 

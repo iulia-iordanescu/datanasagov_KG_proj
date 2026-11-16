@@ -22,7 +22,10 @@ For every component class of schema_used.json without a row:
     case and punctuation) gets a row at once, checked "same component class",
     match "same";
   - the others are proposed by the model (paid calls, after the usual
-    confirmation), as rows with checked "no".
+    confirmation), as rows with checked "no". A proposed predicate row whose
+    swap_subject_and_object disagrees with the patterns of both schemas is
+    flagged in the stop's message, for the person checking it (reversal_doubts);
+    the row is never changed.
 The new rows are ADDED at the end of the file; a row already there is never
 changed or deleted. This is one of two narrow exceptions to "no step writes
 into annotations/" (the other is held_out_looks.csv). After adding rows the
@@ -60,23 +63,26 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from common import dropped
 from common.audit import ref_path
 from common.cache import Cache, ask_cached, needs
 from common.files import append_csv
 from common.component_class_mapping import (COLUMNS, IN_CRT, IN_GTT, INEXACT, KINDS, NONE, SAME, condition,
                                             condition_text, conflicts, crt_definitions, gtt_definitions,
                                             inexact_alone, is_checked, is_conditional, is_missing_match,
-                                            is_missing_target, is_now_exists, read_mapping, repeats, stale_in,
-                                            symmetric_swaps, value_problems, values_text)
+                                            is_missing_target, is_now_exists, read_mapping, record_unread_rows, repeats,
+                                            stale_in, symmetric_swaps, value_problems, values_text)
 from common.prompt_files import fill, load
 from common.report import named
-from common.schema_io import read_ground_truth_schema, without_held_out_only
+from common.schema_io import read_ground_truth_schema, record_left_out_of_view, without_held_out_only
 from common.stop import Stop
 from common.triples_io import component_class_key
 
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "070_evaluate_prompts"   # 070_evaluate/070_evaluate_prompts/
 PROMPT = load(PROMPTS_DIR / "map_component_classes.txt")
 TABLE = "`py helpers/annotate.py`, view *Translation table*"     # where a person checks the translation table
+#: The stage name its discarded items carry (common/common_helpers/dropped.py).
+STAGE = "stage 2 (translate_component_classes)"
 #: Component classes per translation call: the answer lists one item per component class, so a long list in one call
 #: could be cut off at the length limit (llm.MAX_ANSWER_TOKENS).
 TRANSLATE_BATCH = 100
@@ -176,7 +182,14 @@ def _propose(missing: list, gtt: dict, schema_used: dict, calls, gtt_defs: dict)
                                                  f"call(s), {TRANSLATE_BATCH} per call", check=MAP_SHAPE)
         for item in reply["mapping"]:
             if isinstance(item, dict) and item.get("kind") in KINDS and isinstance(item.get("schema"), str):
+                if (item["kind"], component_class_key(item["schema"])) in answers:
+                    dropped.fold(STAGE, "translation proposed by the model", "a later item of the replies proposes a "
+                                 "translation for the same component class: the later one is used",
+                                 answers[(item["kind"], component_class_key(item["schema"]))], item)
                 answers[(item["kind"], component_class_key(item["schema"]))] = item
+            else:
+                dropped.discard(STAGE, "translation proposed by the model", "not a JSON object with a kind (entity class "
+                                "or predicate) and a component class of the current schema as text", {"raw": item})
     made = calls.paid.made - before
     by_key = {k: {component_class_key(n): n for n in v} for k, v in gtt.items()}
     rows, strays, left_out = [], [], []
@@ -188,6 +201,9 @@ def _propose(missing: list, gtt: dict, schema_used: dict, calls, gtt_defs: dict)
         gtt_name = by_key[kind].get(component_class_key(mine)) if mine else None
         if mine and gtt_name is None:
             strays.append(f"{name} (current schema) --> {mine} (not in the ground truth schema)")
+            dropped.replace(STAGE, "translation proposed by the model", "proposes a component class that isn't in the "
+                            "ground truth schema: the row says (none)", {"kind": kind, "component_class": name,
+                                                                          "ground_truth": mine}, {"ground_truth": NONE})
         rows.append({"kind": kind, "component_class_from_past_or_crt_schema": name, "component_class_in_gtt": gtt_name or NONE,
                      "definition_from_past_or_crt_schema": definitions.get((kind, name), ""),
                      "definition_in_gtt": gtt_defs[kind].get(component_class_key(gtt_name), "") if gtt_name else "",
@@ -205,6 +221,51 @@ def _propose(missing: list, gtt: dict, schema_used: dict, calls, gtt_defs: dict)
                      f"(the same meaning, else its main meaning when one clearly dominates: translation table in "
                      f"docs/terminology.md), else keep (none).")
     return rows, notes, made, cache.reused
+
+
+def reversal_doubts(proposed: list, rows: list, schema_used: dict, ground_truth_schema: dict) -> list:
+    """The proposed predicate rows whose swap_subject_and_object disagrees with the patterns of both schemas, one
+    message each. Each pattern of the current schema's predicate (schema_used.json) has its two entity classes
+    translated through the entity class rows (rows: the table's, and those added with the proposals; an entity
+    class whose row says (none), or that has none, is left out), then looked up for the target predicate in the ground truth
+    schema (ground_truth_schema: as schema_io reads it, held-out-only entries left out): a pattern of the file or
+    of a pin ("any" for any entity class). The row disagrees when no translated pattern fits the direction it
+    chose and at least one fits the other: "no" where only the swapped pair is a pattern of the target, "yes" where
+    only the unswapped one is. A row with no translated pattern, or one that fits both ways or neither, is not
+    flagged: the patterns say nothing either way."""
+    entity = {component_class_key(r["component_class_from_past_or_crt_schema"]): r["component_class_in_gtt"]
+              for r in rows if r.get("kind") == "entity class" and not is_conditional(r)}
+    allowed = {}
+    for s, p, o in ground_truth_schema.get("patterns", []):
+        allowed.setdefault(component_class_key(p), set()).add((component_class_key(s), component_class_key(o)))
+    pins = {component_class_key(p): [tuple("any" if x.strip().lower() == "any" else component_class_key(x) for x in pair)
+                                     for pair in pairs] for p, pairs in ground_truth_schema.get("pinned", {}).items()}
+
+    def fits(predicate: str, a: str, b: str) -> bool:
+        return (a, b) in allowed.get(predicate, set()) or any(ps in (a, "any") and po in (b, "any")
+                                                              for ps, po in pins.get(predicate, []))
+    out = []
+    for r in proposed:
+        target = r["component_class_in_gtt"]
+        if r["kind"] != "predicate" or target == NONE:
+            continue
+        g = component_class_key(target)
+        pairs = []
+        for e in schema_used.get("patterns", []):
+            s, p, o = e["pattern"] if isinstance(e, dict) else e
+            a, b = entity.get(component_class_key(s)), entity.get(component_class_key(o))
+            if component_class_key(p) == component_class_key(r["component_class_from_past_or_crt_schema"]) \
+                    and a and b and NONE not in (a, b):
+                pairs.append((component_class_key(a), component_class_key(b)))
+        swapped = r["swap_subject_and_object"] == "yes"
+        as_chosen = any(fits(g, b, a) if swapped else fits(g, a, b) for a, b in pairs)
+        other = any(fits(g, a, b) if swapped else fits(g, b, a) for a, b in pairs)
+        if pairs and other and not as_chosen:
+            out.append(f"{_row(r['component_class_from_past_or_crt_schema'], r)}, swap_subject_and_object "
+                       f"{r['swap_subject_and_object']}: the current schema's patterns of it, translated through the "
+                       f"entity class rows, fit {target}'s patterns in the ground truth schema only "
+                       + ("unswapped" if swapped else "swapped"))
+    return out
 
 
 def _row(name: str, r: dict) -> str:
@@ -282,6 +343,9 @@ def translate_component_classes(inputs: dict, evaluated, calls, suggest: bool = 
                    f"schema as it is now (`py 060_extract/run.py --schema annotations/ground_truth_schema.txt`, with "
                    f"annotations/schema_additions.txt holding no entries), {AGAIN}")
     rows = read_mapping(path)
+    record_unread_rows(STAGE, path)
+    whole = read_ground_truth_schema(inputs["ground_truth_schema"])
+    record_left_out_of_view(STAGE, whole, without_held_out_only(whole), where=ref_path(inputs["ground_truth_schema"]))
     repeated = repeats(rows)
     if repeated:
         raise Stop(f"{ref_path(path)} has {len(repeated)} component class(es) with more than one row, so 070 can't "
@@ -321,6 +385,11 @@ def translate_component_classes(inputs: dict, evaluated, calls, suggest: bool = 
     handled = set(have)                     # a component class spelled two ways in the schema gets one row
     for kind, name in needed:
         if (kind, component_class_key(name)) in handled:
+            if (kind, component_class_key(name)) not in have:
+                dropped.fold(STAGE, "component class", "the current schema spells it two ways (a loose match): the row "
+                             "added for its first spelling serves both", {"kind": kind, "component_class": name},
+                             {"kind": kind, "component_class": next(n for k, n in needed if k == kind and
+                                                                     component_class_key(n) == component_class_key(name))})
             continue
         handled.add((kind, component_class_key(name)))
         mine = gtt_key[kind].get(component_class_key(name))
@@ -344,6 +413,11 @@ def translate_component_classes(inputs: dict, evaluated, calls, suggest: bool = 
                      f"`py 070_evaluate/run.py --suggest false` again.")
     if missing:
         proposed, notes, translation.calls, translation.reused = _propose(missing, translation.gtt, evaluated.schema_used, calls, gtt_now)
+        doubts = reversal_doubts(proposed, rows + same + proposed, evaluated.schema_used, without_held_out_only(whole))
+        if doubts:
+            notes.append(f"{len(doubts)} proposed predicate row(s) may have the direction wrong: "
+                         + named(doubts, 5, "; ") + ". When you check each, read the two definitions and set "
+                         "swap_subject_and_object to the direction they say (the row is as the model proposed it).")
     if same or proposed:
         append_csv(path, COLUMNS, same + proposed)
         raise Stop(f"Added {len(same) + len(proposed)} row(s) to {ref_path(path)} for component classes of the current "
@@ -572,12 +646,19 @@ def _suggest(translation: Translation, schema_used: dict, calls) -> tuple:
     out = []
     for item in reply["suggestions"]:
         if not isinstance(item, dict) or item.get("kind") not in kinds:
+            dropped.discard(STAGE, "suggestion of the model", "not a JSON object with a kind that was asked about",
+                            {"raw": item})
             continue
         kind = item["kind"]
         key = (kind, component_class_key(item.get("schema")))
         gtt = offered[kind].get(component_class_key(item.get("ground_truth")))
         if not gtt:                                       # only component classes that were offered
+            dropped.discard(STAGE, "suggestion of the model", "names a component class of the ground truth schema that "
+                            "wasn't offered", item)
             continue
+        if key not in asked and key not in asked_inexact:
+            dropped.discard(STAGE, "suggestion of the model", "about a component class of the current schema that "
+                            "wasn't asked about", item)
         if key in asked:                                  # only component classes that were asked about
             out.append({"kind": kind, "component_class_from_past_or_crt_schema": asked[key], "component_class_in_gtt": gtt})
         elif key in asked_inexact:

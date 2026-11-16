@@ -22,6 +22,8 @@ and 060 is evaluated against 050 on equal terms.
     best_copies(...)           one copy of each fact: the first that passed its checks
     build_rows(...)            a record's replies -> checked rows + removed items
                                (050, 060: rows with entity classes)
+    in_schema_spelling(...)    a row with its entity classes and predicate written in the
+                               schema's spelling (050, 060), each change recorded
 
 Each step keeps only what is its own: the top of its prompt (040: no
 vocabulary, predicates in the model's own words; 050: a vocabulary to reuse
@@ -37,8 +39,8 @@ What build_rows does with a record's replies (one per text piece):
      list, or an object (a number is read as text), is removed as "malformed";
   3. every row checked (common/common_helpers/validate.py) against the record's WHOLE
      text: errors (no_source_text, source_not_in_text, describes_*) and
-     flags (reworded subject or object instances, component classes not in
-     the schema, …);
+     flags (reworded subject or object instances, a reply that disagrees
+     with rule 20's abbreviation test, component classes not in the schema, …);
   4. the same subject, predicate, object, and entity classes again (e.g.
      stated in two pieces): one copy is kept, the first without errors (the
      first copy when every copy has errors; best_copies), and the others are
@@ -61,16 +63,21 @@ from common.cache import NOT_ASKED_AGAIN, Cache, key, needs
 from common.chunking import text_fields
 from common.prompt_files import fill, load, text as prompt_text
 from common.report import named
+from common.schema_io import read_schema, schema_text
 from common.text_match import Text
 from common.triples_io import (classed_key, clean_triple, component_class_key, describes_triple, is_describes, triple_key)
-from common.validate import (CONFLICTING_CLASSES, DESCRIBES_CLASSES_DIFFER, SchemaEntries, check_against_schema,
-                             check_describes, check_triple_instance)
+from common.abbreviations import short_forms
+from common.validate import (CONFLICTING_CLASSES, DESCRIBES_CLASSES_DIFFER, SchemaEntries, check_abbreviations,
+                             check_against_schema, check_describes, check_triple_instance)
 
 PROMPTS = Path(__file__).resolve().parents[1] / "common_prompts"       # common/common_prompts/
 RULES = load(PROMPTS / "extraction_rules.txt")
 REPLY = load(PROMPTS / "extraction_reply.txt")
 PASSES = load(PROMPTS / "extraction_passes.txt")
 EXAMPLES = load(PROMPTS / "extraction_examples.txt")
+#: The worked examples' example schema (EXAMPLES' $example_schema), in the ground truth schema's text shape with its
+#: rule 19 marks: each prompt shows it as it shows its own schema (examples_text).
+EXAMPLE_SCHEMA = load(PROMPTS / "extraction_example_schema.txt")
 CLOSING = load(PROMPTS / "extraction_closing.txt")
 #: What each step asks to be complete about, for its prompt's $passes (passes): 050 every fact, whatever the schema
 #: can express; 060 only the facts its schema can express; 040, which is given no schema, every fact.
@@ -121,16 +128,25 @@ def passes(scope: str) -> str:
     return fill(PASSES, scope=scope)
 
 
-def task_parts(scope: str, examples: bool = True) -> dict:
+def examples_text(rule_19_marks: bool = False) -> str:
+    """The worked examples (EXAMPLES), their example schema written by common.schema_io.schema_text with the same
+    rule_19_marks as the prompt's own schema, so a prompt shows both schemas the same way: 050 with the rule 19 marks,
+    060 without (decided 2026-11-15, docs/improvements.md)."""
+    prompt_text(EXAMPLE_SCHEMA)                       # its file and fingerprint recorded for the run's report
+    return fill(EXAMPLES, example_schema=schema_text(read_schema(EXAMPLE_SCHEMA.path), rule_19_marks)).strip()
+
+
+def task_parts(scope: str, examples: bool = True, rule_19_marks: bool = False) -> dict:
     """The shared $passes, $examples and $closing (common/common_prompts/extraction_passes.txt,
     extraction_examples.txt, extraction_closing.txt), for scope (SCOPE_ALL, SCOPE_SCHEMA or SCOPE_NO_SCHEMA). The
     layout they fill: schema and rules first, then the worked examples, the task, the reply format, the record, and a
     closing line after the record (prompt audit F5, F7, 2026-10-30). examples False (040): no worked examples, since
     they come with an example schema and answers written with its entity classes and predicates, which would steer a
-    schema learned from the records."""
+    schema learned from the records. rule_19_marks: whether the examples' example schema shows the rule 19 marks
+    (examples_text), as the prompt's own schema does (050 True, 060 False)."""
     parts = {"passes": passes(scope), "closing": fill(CLOSING, scope=scope).strip()}
     if examples:
-        parts["examples"] = prompt_text(EXAMPLES).strip()
+        parts["examples"] = examples_text(rule_19_marks)
     return parts
 
 
@@ -209,6 +225,7 @@ def build_rows(record_id: str, title: str, text: str, replies: list, schema_entr
     rows = [{**head, "errors": errors, "flags": flags + ([DESCRIBES_CLASSES_DIFFER] if differ else [])}]
 
     whole = Text(text)
+    forms = short_forms(text)                   # rule 20's short forms, found once for the record
     checked = []
     for reply in replies:
         if not isinstance(reply, dict) or shape_error(reply):
@@ -224,6 +241,7 @@ def build_rows(record_id: str, title: str, text: str, replies: list, schema_entr
                 removed.append({"reason": DESCRIBES, **row})
                 continue
             errors, flags = check_triple_instance(row, whole, title)
+            flags += check_abbreviations(row, forms, title)
             checked.append({**row, "errors": errors, "flags": flags + check_against_schema(row, schema_entries)})
 
     def copy_key(row):                          # the same triple instance with the same entity classes
@@ -239,6 +257,68 @@ def build_rows(record_id: str, title: str, text: str, replies: list, schema_entr
             row["flags"].append(CONFLICTING_CLASSES)
     rows += kept
     return rows, removed
+
+
+def in_schema_spelling(stage: str, record_id: str, row: dict, schema_entries: SchemaEntries) -> dict:
+    """The row with its entity classes and predicate written the way the schema writes them: they are compared loosely
+    ("Space craft" is Spacecraft), but the output always uses the schema's spelling; one not in the schema stays as
+    written. Each component class written anew is recorded as replaced (common/common_helpers/dropped.py). Used by 050
+    (every drafted row) and 060 (the rows it keeps)."""
+    fixed = dict(row)
+    for column, kind in (("subject_class", "entity_classes"), ("object_class", "entity_classes"),
+                         ("predicate", "predicates")):
+        fixed[column] = schema_entries.spelling[kind].get(schema_entries.key(row.get(column)), row.get(column))
+        if fixed[column] != row.get(column):
+            dropped.replace(stage, "component class", "a loose match of the schema's: written in the schema's "
+                            "spelling", {column: row.get(column), "subject": row.get("subject"),
+                                         "object": row.get("object")}, {column: fixed[column]}, record_id=record_id)
+    return fixed
+
+
+def record_left_out(stage: str, replies, items: list, item_type: str = "record") -> None:
+    """One entry per item (a record, or a text in 040) left out because a model call for one of its text pieces failed
+    (common/common_helpers/dropped.py, left_out: the reason and why), then the stage's accounting check: items asked
+    about = items fully answered + items left out. Used by 040, 050 and 060."""
+    since = dropped.mark()
+    for entry in dropped.left_out(replies, items):
+        dropped.discard(stage, item_type, f"left out whole: a model call for one of its text pieces failed "
+                        f"({dropped.KINDS[entry['reason']]}); asked again on the next run", entry,
+                        record_id=entry["id"])
+    dropped.account(stage, f"{item_type}s asked about", len(items),
+                    sum(1 for i in items if i["id"] in replies.of), since=since, item_type=item_type)
+
+
+def record_removed(stage: str, record_id: str, replies: list, rows: list, removed: list) -> None:
+    """One entry per item build_rows (and 060's checks after it) removed from a record's replies, with its reason in
+    REMOVAL_REASONS' words, in the record of discarded items (common/common_helpers/dropped.py): a duplicate folded into the copy
+    kept; and the describes class a text piece named that lost to the one the most pieces named. Then the record's
+    accounting check: items in its replies (a reply without a "triples" list counts as one) = rows kept besides the
+    describes triple + items removed. rows: what the step keeps, the describes triple first. Used by 050 and 060."""
+    since = dropped.mark()
+    kept_by_key = {classed_key(r): r for r in rows[1:]}
+    for r in removed:
+        reason = r["reason"]
+        why = f"{reason}: " + "; ".join(str(REMOVAL_REASONS.get(r_, r_)) for r_ in str(reason).split())
+        item = {k: v for k, v in r.items() if k not in ("reason", "id")}
+        if reason == DUPLICATE:
+            kept = kept_by_key.get(classed_key(r)) or next(
+                (x for x in removed if x["reason"] not in NOT_BY_A_CHECK and classed_key(x) == classed_key(r)), {})
+            dropped.fold(stage, "classed triple", why, item,
+                         {**{k: kept.get(k) for k in ("subject", "subject_class", "predicate", "object", "object_class",
+                                                      "source_text")},
+                          **({"later removed": kept["reason"]} if "reason" in kept else {})},
+                         record_id=record_id)
+        else:
+            dropped.discard(stage, "classed triple", why, item, record_id=record_id)
+    named = [str(r.get("describes_class") or "").strip() for r in replies if isinstance(r, dict)]
+    chosen, _ = describes_class(named)
+    for n in named:
+        if n and component_class_key(n) != component_class_key(chosen):
+            dropped.replace(stage, "describes class", "named by a text piece, but more text pieces named another one "
+                            "(or as many, and it was named first)", {"describes_class": n},
+                            {"describes_class": chosen}, record_id=record_id)
+    n_items = sum(len(r["triples"]) if isinstance(r, dict) and not shape_error(r) else 1 for r in replies)
+    dropped.account(stage, f"items in the replies about record {record_id}", n_items, len(rows) - 1, since=since)
 
 
 # --------------------------------------------------------------------------

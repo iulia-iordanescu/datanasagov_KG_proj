@@ -5,6 +5,7 @@ from types import SimpleNamespace
 
 import support  # noqa: F401  (puts the repository on the import path)
 from common import dropped, llm
+from common.stop import Stop
 
 
 def replies(failed, cut_off=(), kinds=None):
@@ -167,14 +168,29 @@ class Step070(unittest.TestCase):
         schema = tmp / "ground_truth_schema.txt"     # without its held-out-only entries: the pool here is made up
         schema.write_text(support.without_held_out_only_text(
             (ROOT / "annotations" / "ground_truth_schema.txt").read_text(encoding="utf-8-sig")), encoding="utf-8")
-        ev = module.pick_records({"ground_truth": tmp / "ground_truth" / "batch_*.csv",
-                                  "ground_truth_schema": schema,
-                                  "splits": tmp / "splits.json", "candidates": tmp / "candidates.csv",
-                                  "extracted_triples_details": tmp / "details.json",
-                                  "extracted_triples": tmp / "extracted.csv",
-                                  "extracted_triples_removed": tmp / "removed.csv",
-                                  "schema_used": tmp / "schema_used.json", "records": tmp / "records.jsonl",
-                                  "partial_reviews": tmp / "reviews.csv"}, {"confirm_paid_calls": False})
+        inputs = {"ground_truth": tmp / "ground_truth" / "batch_*.csv",
+                  "ground_truth_schema": schema,
+                  "splits": tmp / "splits.json", "candidates": tmp / "candidates.csv",
+                  "extracted_triples_details": tmp / "details.json",
+                  "extracted_triples": tmp / "extracted.csv",
+                  "extracted_triples_removed": tmp / "removed.csv",
+                  "schema_used": tmp / "schema_used.json", "records": tmp / "records.jsonl",
+                  "partial_reviews": tmp / "reviews.csv"}
+        dropped.reset()
+        self.addCleanup(dropped.reset)
+        ev = module.pick_records(inputs, {"confirm_paid_calls": False})
+        # each finished record not evaluated is one entry of the record of discarded items, with why
+        not_evaluated = {e["record_id"]: e["reason"] for e in dropped.DISCARDS if e["item_type"] == "record"}
+        self.assertEqual(set(not_evaluated), {"r1", "r2", "r3"})
+        self.assertIn("060's model calls failed", not_evaluated["r1"])
+        self.assertIn("not extracted by 060's last run", not_evaluated["r3"])
+        # near miss: a record left out without its entry stops the run at the accounting check of stage 1
+        from unittest import mock
+        dropped.reset()
+        with mock.patch.object(dropped, "discard", lambda *a, **k: None), self.assertRaises(Stop) as caught:
+            module.pick_records(inputs, {"confirm_paid_calls": False})
+        self.assertIn("Accounting check failed in stage 1 (pick_records): 4 records in the ground truth went in, 1 "
+                      "were kept", str(caught.exception))
         self.assertEqual([(e["id"], e["reason"], e["maintainer"]) for e in ev.extraction_failed],
                          [("r1", "refused", "GeneLab Outreach"), ("r2", "refused", "M")])
         self.assertEqual(ev.left_out["finished, but not extracted by 060's last run"], ["r3"])
@@ -219,6 +235,234 @@ class ReAsks(unittest.TestCase):
             llm.call_llm_json("p", check=check)
         llm.call_llm_json("p", check=check)
         self.assertEqual(llm.REASKS, {"not_json": 1, "wrong_shape": 1, "fixed": 1, "still_failed": 1})
+
+
+class Discards(unittest.TestCase):
+    """The one record of discarded items every pipeline step keeps (dropped.discard, fold, replace, account, write,
+    discards_section): one entry per item, and an accounting check that stops a run when an item vanishes without
+    a record."""
+
+    def setUp(self):
+        dropped.reset()
+        self.addCleanup(dropped.reset)
+
+    def test_entries(self):
+        a = dropped.discard("stage 1 (x)", "record", "no id", {"title": "T"}, record_id="r1",
+                            setting={"max_records": 5}, where="010_harvest/batch_00000.json#3")
+        self.assertEqual(a, {"stage": "stage 1 (x)", "action": "discarded", "item_type": "record", "reason": "no id",
+                             "setting": {"max_records": 5}, "record_id": "r1", "item": {"title": "T"},
+                             "where": "010_harvest/batch_00000.json#3"})
+        b = dropped.fold("stage 1 (x)", "record", "repeat", {"id": "r1"}, {"where": "f#0"})
+        self.assertEqual((b["action"], b["kept_as"]), ("folded", {"where": "f#0"}))
+        self.assertNotIn("setting", b)                                    # only when a setting decided it
+        c = dropped.replace("stage 2 (y)", "maintainer", "joined", {"maintainer": "A"}, {"maintainer": "B"})
+        self.assertEqual(c["action"], "replaced")
+        self.assertEqual(len(dropped.DISCARDS), 3)
+        for bad in (("", "record", "why"), ("s", "", "why"), ("s", "record", "")):
+            with self.assertRaises(ValueError):                           # every entry says stage, type and why
+                dropped.discard(*bad, {})
+
+    def test_account_passes_when_every_item_is_recorded(self):
+        since = dropped.mark()
+        dropped.discard("s", "record", "a", {})
+        dropped.fold("s", "record", "b", {}, {})
+        dropped.replace("s", "record", "c", {}, {})                       # replaced: still kept, not counted
+        dropped.account("s", "records", 5, 3, since=since)
+
+    def test_near_miss_an_item_vanishes(self):
+        """An item removed without a record: the run stops, naming the stage and the counts."""
+        since = dropped.mark()
+        dropped.discard("s", "record", "a", {})
+        with self.assertRaises(Stop) as caught:
+            dropped.account("stage 3 (z)", "records read", 5, 3, since=since)
+        self.assertIn("Accounting check failed in stage 3 (z): 5 records read went in, 3 were kept and 0 were "
+                      "recorded as discarded, so 2 went missing without a record", str(caught.exception))
+        self.assertIn("fault in the step's code", str(caught.exception))
+        with self.assertRaises(Stop):                                     # another stage's entries don't count
+            dropped.account("s", "records", 5, 3, since=since)
+        with self.assertRaises(Stop) as caught:                           # recorded twice, or kept and recorded
+            dropped.account("s", "records", 3, 3, since=since)
+        self.assertIn("recorded as discarded more than once", str(caught.exception))
+
+    def test_account_counts_only_since_the_mark_and_the_type(self):
+        dropped.discard("s", "record", "before the mark", {})
+        since = dropped.mark()
+        dropped.discard("s", "text", "a", {})
+        dropped.discard("s", "triple instance", "b", {"kind": "entity class"})
+        dropped.account("s", "texts", 2, 1, since=since, item_type="text")
+        dropped.account("s", "items", 2, 1, since=since, only=lambda e: e["item"].get("kind") == "entity class")
+        with self.assertRaises(Stop):
+            dropped.account("s", "texts", 3, 1, since=since, item_type="text")
+
+    def test_write_and_section(self):
+        import json
+        import shutil
+        import tempfile
+        from pathlib import Path
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp)
+        (tmp / dropped.DISCARDS_FILE).write_text("an earlier run's\n", encoding="utf-8")
+        path = dropped.write(tmp)                                         # nothing discarded: an empty file
+        self.assertEqual(Path(path).read_text(encoding="utf-8"), "")
+        self.assertIn("None: no stage of this run discarded", "\n".join(dropped.discards_section("x/discarded.jsonl")))
+        dropped.discard("stage 1 (a)", "record", "no id", {"title": "T|U"})
+        dropped.discard("stage 1 (a)", "record", "no id", {"title": "V"})
+        dropped.fold("stage 1 (a)", "record", "repeat", {"id": "r"}, {"where": "f#1"})
+        path = dropped.write(tmp)
+        lines = [json.loads(x) for x in Path(path).read_text(encoding="utf-8").splitlines()]
+        self.assertEqual([e["item"] for e in lines], [{"title": "T|U"}, {"title": "V"}, {"id": "r"}])
+        text = "\n".join(dropped.discards_section("x/discarded.jsonl"))
+        self.assertIn("### Items discarded", text)
+        self.assertIn("3 item(s) were discarded", text)
+        self.assertIn("`x/discarded.jsonl`", text)
+        self.assertIn("| stage 1 (a) | record | discarded | no id | 2 |", text)
+        self.assertIn("| stage 1 (a) | record | folded | repeat | 1 |", text)
+
+    def test_run_step_writes_the_file_and_the_section(self):
+        """Every pipeline step's run writes the file (listed among its outputs) and the report's section; a step's
+        accounting check that fails stops the run, with no file and no manifest."""
+        import json
+        import logging
+        import shutil
+        import tempfile
+        from pathlib import Path
+        from unittest import mock
+        from common import step
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        self.addCleanup(logging.shutdown)
+
+        def main(inputs, settings, output):
+            since = dropped.mark()
+            dropped.discard("stage 1 (main)", "record", "no text", {"id": "b"}, record_id="b")
+            dropped.account("stage 1 (main)", "records", 2, 1, since=since)
+            return step.Results(headline={}, details="### What this run worked on")
+
+        def leaky(inputs, settings, output):
+            since = dropped.mark()                                     # a record removed without a record of it
+            dropped.account("stage 1 (main)", "records", 2, 1, since=since)
+            return step.Results(headline={})
+        patches = [mock.patch.object(step, "RESULTS_DIR", tmp / "results"),
+                   mock.patch.object(step, "REPORTS_DIR", tmp / "reports"),
+                   mock.patch.object(step, "LOGS_DIR", tmp / "logs"),
+                   mock.patch.object(step, "PIPELINE_STEPS", step.PIPELINE_STEPS + ["999_stand_in"])]
+        for p in patches:
+            p.start()
+            self.addCleanup(p.stop)
+        step.run_step("999_stand_in", {}, {}, main, argv=[])
+        out = tmp / "results" / "999_stand_in"
+        entries = [json.loads(x) for x in (out / dropped.DISCARDS_FILE).read_text(encoding="utf-8").splitlines()]
+        self.assertEqual([(e["stage"], e["record_id"], e["reason"]) for e in entries],
+                         [("stage 1 (main)", "b", "no text")])
+        manifest = json.loads((out / "_manifest.json").read_text(encoding="utf-8"))
+        self.assertIn(dropped.DISCARDS_FILE, [r["file"] for r in manifest["outputs"]])
+        first = manifest["run_id"]
+        report = max((tmp / "reports").glob("999_stand_in_*.md")).read_text(encoding="utf-8")
+        self.assertIn("### What this run worked on\n\n### Items discarded", report)
+        self.assertIn("| stage 1 (main) | record | discarded | no text | 1 |", report)
+        with self.assertRaises(SystemExit) as caught:
+            step.run_step("999_stand_in", {}, {}, leaky, argv=[])
+        self.assertEqual(caught.exception.code, 2)                         # stopped
+        report = max((tmp / "reports").glob("999_stand_in_*.md"), key=lambda p: p.stat().st_mtime_ns)
+        self.assertIn("Accounting check failed in stage 1 (main)", report.read_text(encoding="utf-8"))
+        # the stopped run wrote no file: the first run's file and manifest stand
+        self.assertEqual(json.loads((out / "_manifest.json").read_text(encoding="utf-8"))["run_id"], first)
+        self.assertEqual(len((out / dropped.DISCARDS_FILE).read_text(encoding="utf-8").splitlines()), 1)
+
+    def test_only_pipeline_steps_write_it(self):
+        """A helper that runs in run_step's frame (py helpers/second_opinion.py) writes no such file."""
+        import logging
+        import shutil
+        import tempfile
+        from pathlib import Path
+        from unittest import mock
+        from common import step
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        self.addCleanup(logging.shutdown)
+        with mock.patch.object(step, "RESULTS_DIR", tmp / "results"), mock.patch.object(step, "REPORTS_DIR", tmp / "r"), \
+                mock.patch.object(step, "LOGS_DIR", tmp / "logs"):
+            step.run_step("999_stand_in", {}, {}, lambda i, s, o: step.Results(headline={}), argv=[])
+        self.assertFalse((tmp / "results" / "999_stand_in" / dropped.DISCARDS_FILE).exists())
+
+    def test_every_step_records(self):
+        """Every pipeline step's helpers record what they discard through dropped.py (and so through run_step)."""
+        from support import ROOT
+        from common.step import PIPELINE_STEPS
+        for name in PIPELINE_STEPS:
+            text = "".join(p.read_text(encoding="utf-8") for p in (ROOT / name / f"{name}_helpers").glob("*.py"))
+            self.assertRegex(text, r"dropped\.(discard|fold)\(", name)
+            self.assertIn("dropped.account(", text + (ROOT / "common" / "common_helpers" / "extraction.py")
+                          .read_text(encoding="utf-8"), name)
+
+
+class ExtractionRows(unittest.TestCase):
+    """050 and 060 record each item build_rows (and 060's checks) removed from a record's replies, the duplicate folded
+    into the copy kept, and the describes class that lost (extraction.record_removed); and each record left out
+    after a failed model call (extraction.record_left_out). Near misses: an item left unrecorded stops the run."""
+
+    def setUp(self):
+        dropped.reset()
+        self.addCleanup(dropped.reset)
+
+    def build(self):
+        from common import extraction
+        from common.validate import SchemaEntries
+        text = "MODIS is aboard Aqua. Terra carries ASTER."
+        t1 = {"subject": "MODIS", "subject_class": "Instrument", "predicate": "IS_ABOARD", "object": "Aqua",
+              "object_class": "Spacecraft", "source_text": "MODIS is aboard Aqua."}
+        t2 = {"subject": "Terra", "subject_class": "Spacecraft", "predicate": "CARRIES", "object": "ASTER",
+              "object_class": "Instrument", "source_text": "Terra carries ASTER."}
+        replies = [{"describes_class": "Dataset", "triples": [t1, {"subject": ""}, t2]},
+                   {"describes_class": "Dataset", "triples": [dict(t1)]},
+                   {"describes_class": "Collection", "triples": []}]
+        entries = SchemaEntries({"entity_classes": {"Instrument": "", "Spacecraft": "", "Dataset": ""},
+                                 "predicates": {"IS_ABOARD": "", "CARRIES": ""}, "patterns": []})
+        rows, removed = extraction.build_rows("r1", "T", text, replies, entries)
+        return extraction, replies, rows, removed
+
+    def test_recorded(self):
+        extraction, replies, rows, removed = self.build()
+        extraction.record_removed("stage 3 (build_rows)", "r1", replies, rows, removed)
+        by = {e["reason"].split(":")[0]: e for e in dropped.DISCARDS}
+        self.assertEqual(set(by), {"malformed", "duplicate", "named by a text piece, but more text pieces named "
+                                                             "another one (or as many, and it was named first)"})
+        self.assertEqual(by["duplicate"]["action"], "folded")
+        self.assertEqual(by["duplicate"]["kept_as"]["subject"], "MODIS")
+        self.assertEqual(by["malformed"]["record_id"], "r1")
+        replaced = [e for e in dropped.DISCARDS if e["action"] == "replaced"]
+        self.assertEqual([e["item"] for e in replaced], [{"describes_class": "Collection"}])
+
+    def test_near_miss_an_unrecorded_removal(self):
+        extraction, replies, rows, removed = self.build()
+        with self.assertRaises(Stop):
+            extraction.record_removed("stage 3 (build_rows)", "r1", replies, rows, removed[:-1])   # one forgotten
+        dropped.reset()
+        with self.assertRaises(Stop):                                     # a row kept that the replies don't hold
+            extraction.record_removed("stage 3 (build_rows)", "r1", replies, rows + [rows[-1]], removed)
+
+    def test_left_out(self):
+        from common import extraction
+        r = replies({"b": "piece 1: refused"}, kinds={"b": "refused"})
+        r.of = {"a": [{}]}
+        extraction.record_left_out("stage 2 (ask_model)", r, [{"id": "a"}, {"id": "b", "maintainer": "M"}])
+        self.assertEqual([(e["record_id"], e["item_type"]) for e in dropped.DISCARDS], [("b", "record")])
+        self.assertIn(dropped.KINDS["refused"], dropped.DISCARDS[0]["reason"])
+        dropped.reset()
+        r.failed = {}                                                     # near miss: b neither answered nor failed
+        with self.assertRaises(Stop):
+            extraction.record_left_out("stage 2 (ask_model)", r, [{"id": "a"}, {"id": "b"}])
+
+
+class ReadIdsFolds(unittest.TestCase):
+    def test_repeated_id(self):
+        from common.records_io import read_ids
+        dropped.reset()
+        self.addCleanup(dropped.reset)
+        self.assertEqual(read_ids("a, b, a"), ["a", "b"])
+        self.assertEqual(dropped.DISCARDS, [])                            # no stage given: nothing recorded
+        self.assertEqual(read_ids("a, b, a", "stage 1 (pick_records)"), ["a", "b"])
+        self.assertEqual([(e["action"], e["record_id"]) for e in dropped.DISCARDS], [("folded", "a")])
 
 
 if __name__ == "__main__":

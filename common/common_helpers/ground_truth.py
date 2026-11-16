@@ -257,6 +257,8 @@ class GroundTruth:
     parts: dict | None = None                      # {id: "tuning" | "held-out"}, from the pool; None: no pool given
     _files_rows: list = field(default_factory=list)  # [(file name, [rows])]: what with_file() and with_pool() rebuild from
     _file_problems: list = field(default_factory=list)  # the problems of the files themselves (a name, a column)
+    skipped: list = field(default_factory=list)    # what read_ground_truth didn't read: {"where", "why", "row"?}
+                                                   # (record_skipped puts them in the record of discarded items)
 
     def state(self, rid: str) -> str:
         """The record's one state: ABSENT, or one of STATES."""
@@ -321,9 +323,10 @@ def marks_state(marks) -> str:
 def read_ground_truth(folder: Path = GROUND_TRUTH_DIR, pool=None) -> GroundTruth:
     """Every ground truth file of `folder` (NUMBERED), taken together. pool: read_pool()'s rows (030's splits.json),
     which give each record its part; without them, select() refuses what needs a part (SCHEMA_EVIDENCE, parts=)."""
-    files, files_rows, problems = [], [], []
+    files, files_rows, problems, skipped = [], [], [], []
     for path in sorted(Path(folder).glob(PATTERN)):
         if not NUMBERED.fullmatch(path.name):
+            skipped.append({"where": ref_path(path), "why": "a file whose name isn't batch_<number>.csv, not read"})
             problems.append(f"{ref_path(path)} isn't read: a ground truth file is named batch_, its batch number "
                             f"in three digits or more, then .csv (e.g. {file_name(6)}), so that reading the ground "
                             f"truth and numbering the next drafted batch agree. Rename it to that shape (a number no "
@@ -337,13 +340,31 @@ def read_ground_truth(folder: Path = GROUND_TRUTH_DIR, pool=None) -> GroundTruth
                 problems.append(f"{ref_path(path)} lacks the column(s) {', '.join(missing)}, so none of its rows "
                                 f"were read. Restore its header line, which names the columns: "
                                 f"{', '.join(COLUMNS)}.")
+                skipped.append({"where": ref_path(path), "why": f"a file without the column(s) {', '.join(missing)}: "
+                                f"none of its {len(raw_rows)} rows read"})
                 continue
             rows = []
             for position, raw in enumerate(raw_rows):
                 if (raw.get("id") or "").strip():                      # else a blank line
                     rows.append(_as_read(raw, ref_path(path), position, raw["_line"]))
+                elif any(str(v or "").strip() for k, v in raw.items() if k != "_line"):
+                    skipped.append({"where": f"{ref_path(path)}#{position}", "why": "a row with values but no id: "
+                                    "read as a blank line", "row": {k: v for k, v in raw.items() if k != "_line"},
+                                    "line": raw.get("_line")})
             files_rows.append((path.name, rows))
-    return _build(files_rows, files, problems, pool)
+    gt = _build(files_rows, files, problems, pool)
+    gt.skipped = skipped
+    return gt
+
+
+def record_skipped(stage: str, gt: GroundTruth) -> None:
+    """One entry per ground truth file or row read_ground_truth didn't read (gt.skipped), in the record of discarded
+    items (common/common_helpers/dropped.py). Every step that reads the ground truth calls it once."""
+    from common import dropped
+    for s in gt.skipped:
+        dropped.discard(stage, "ground truth triple" if "row" in s else "file", s["why"],
+                        {k: v for k, v in s.items() if k not in ("where", "why")} or {"file": s["where"]},
+                        where=s["where"])
 
 
 def _build(files_rows: list, files: list, file_problems: list, pool) -> GroundTruth:

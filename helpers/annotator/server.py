@@ -183,7 +183,8 @@ from common.validate import (DATASET_SUBJECT_NOT_TITLE, DESCRIBES_CLASS_NOT_IN_S
                              SOURCE_NOT_IN_TEXT,
                              SUBJECT_CLASS_NOT_IN_SCHEMA, SUBJECT_EQUALS_OBJECT, SUBJECT_NOT_IN_SOURCE,
                              SUBJECT_NOT_IN_TEXT, SchemaEntries, check_against_schema, check_describes,
-                             check_triple_instance)
+                             check_triple_instance, ABBREVIATION_FAILS_TEST, ABBREVIATION_SPELLED_OUT,
+                             ALSO_KNOWN_AS_FAILS_TEST, IDENTIFIER_PASSES_TEST)
 
 DRAFTS_DIR = RESULTS_DIR / "050_annotate"
 RECORDS = RESULTS_DIR / "020_clean" / "records.jsonl"
@@ -245,6 +246,21 @@ MESSAGES = {
     DATASET_SUBJECT_NOT_TITLE: "This triple's subject is a Dataset, but not this record's title ({title}). If it is this "
                                  "record's dataset, use the title (rule 23); if it is another dataset, such as an "
                                  "input, keep it.",
+    # rule 20's abbreviation test (common/common_helpers/validate.py, check_abbreviations): raised on a model's draft
+    ABBREVIATION_FAILS_TEST: "An instance keeps a short form set off by commas that fails rule 20's abbreviation test "
+                             "(its letters aren't letters of the words before it, in order, the first starting the "
+                             "first word): rule 20 then reads the commas as a list, and rule 22 writes one ground truth "
+                             "triple per item. Split it; if the short form is an abbreviation after all, nothing to do.",
+    ALSO_KNOWN_AS_FAILS_TEST: "The title's short name in parentheses fails rule 20's abbreviation test, so rule 20 makes "
+                              "it a code: the identifier of the title's instance (HAS_IDENTIFIER, Identifier), not "
+                              "ALSO_KNOWN_AS. Change the predicate and the object's entity class.",
+    IDENTIFIER_PASSES_TEST: "The title's short name in parentheses passes rule 20's abbreviation test, so rule 20 makes "
+                            "it another name of the title's instance (ALSO_KNOWN_AS, with the same entity class), not "
+                            "an identifier. Change the predicate and the object's entity class.",
+    ABBREVIATION_SPELLED_OUT: "The record spells this short form out (the full words, then the short form in "
+                              "parentheses or set off by commas), and this instance is the short form alone or the "
+                              "words alone: rule 23 (one wording) uses the wording that spells it out, as written "
+                              "(rule 20). Use it; the other wording belongs only in an ALSO_KNOWN_AS ground truth triple.",
     SUBJECT_CLASS_HELD_OUT_ONLY: "\"{subject_class}\" is marked held-out only in the ground truth schema, and this is a "
                                    "tuning record: press Unmark if the tuning record needs it (its definition then joins "
                                    "what every model sees: read it again), or use the entry that fits.",

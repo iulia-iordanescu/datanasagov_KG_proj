@@ -32,6 +32,7 @@ from pathlib import Path
 import maintainers
 import note_cleaning
 from ftfy import fix_encoding
+from common import dropped
 from common.audit import ORIGIN_FIELD, check_origins, log, origin
 from common.files import read_json, write_jsonl
 from common.records_io import CLEANING_FIELD, TEXT_FIELDS, has_text
@@ -40,6 +41,8 @@ from common.step import Results, Spec, input_files, repo_path
 from common.stop import Stop
 
 OUTPUT_NAME = "records.jsonl"
+#: The stage names its discarded items carry (common/common_helpers/dropped.py).
+STAGE_1 = "stage 1 (load_raw)"
 SHOW = 20                            # items listed in the report before "…"
 #: Text fields that are one line by nature: every run of line breaks and
 #: spaces inside becomes one space. (notes keeps its line breaks: they
@@ -104,7 +107,8 @@ def _text_fields(settings: dict) -> tuple:
 
 def load_raw(inputs: dict, settings: dict) -> Catalog:
     catalog = Catalog(text_fields=_text_fields(settings))
-    seen = set()
+    seen = {}                            # {id: (where its kept copy is, that copy)}
+    since = dropped.mark()
     files = input_files(inputs["batches"])
     catalog.files = len(files)
     for path in files:
@@ -118,20 +122,28 @@ def load_raw(inputs: dict, settings: dict) -> Catalog:
             rid = str(raw.get("id") or "").strip()
             if not rid:
                 # With no id, the record is named by where it sits and what it says.
-                dropped = {"file": path.name, "position": position,
-                           "name": raw.get("name"), "title": raw.get("title")}
-                catalog.dropped_no_id.append(dropped)
+                no_id = {"file": path.name, "position": position,
+                         "name": raw.get("name"), "title": raw.get("title")}
+                catalog.dropped_no_id.append(no_id)
+                dropped.discard(STAGE_1, "record", "no id: no later step could tell it apart from other records",
+                                {"name": no_id["name"], "title": no_id["title"]},
+                                where=origin(path, f"{position}"))
                 log.debug(f"{path.name}#{position}: no id; dropped "
-                          f"(name {dropped['name']!r}, title {dropped['title']!r})")
+                          f"(name {no_id['name']!r}, title {no_id['title']!r})")
                 continue
             if rid in seen:
                 # A record can arrive twice (the causes: 010's warning "N records appear
                 # twice"). The first copy is kept.
                 catalog.repeats.append(rid)
+                kept_where, kept_raw = seen[rid]
+                dropped.fold(STAGE_1, "record", "a later copy of a record id already read: the first copy is kept",
+                             {"id": rid, "title": raw.get("title"), "same as the kept copy": raw == kept_raw},
+                             {"where": kept_where}, record_id=rid, where=origin(path, f"{position}"))
                 log.debug(f"{path.name}#{position}: id {rid} seen before; later copy dropped")
                 continue
-            seen.add(rid)
+            seen[rid] = (origin(path, f"{position}"), raw)
             catalog.raw.append((path, raw))
+    dropped.account(STAGE_1, "records read from the batch files", catalog.read, len(catalog.raw), since=since)
     log.info(f"  read {catalog.read:,} records from {catalog.files} batch files")
     return catalog
 

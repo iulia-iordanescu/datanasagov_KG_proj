@@ -559,6 +559,41 @@ class ProposedRows(unittest.TestCase):
         self.assertIn("The model's answer left out 1 component class(es) it was asked about", notes[1])
         self.assertIn("Probe (entity class, current schema)", notes[1])
 
+    def test_reversal_doubts(self):
+        """A proposed predicate row whose swap disagrees with both schemas' patterns, translated through the entity
+        class rows, is flagged; one that agrees, fits both ways, fits neither, has no translated pattern, or
+        translates to (none), is not."""
+        import component_classes
+
+        def row(kind, crt, gtt, swap="no"):
+            return {"kind": kind, "component_class_from_past_or_crt_schema": crt, "component_class_in_gtt": gtt,
+                    "swap_subject_and_object": swap}
+        entity_rows = [row("entity class", "Satellite", "Spacecraft"), row("entity class", "Sensor", "Instrument"),
+                       row("entity class", "Gadget", "(none)")]
+        schema_used = {"patterns": [{"pattern": ["Satellite", "CARRIES", "Sensor"]},
+                                    {"pattern": ["Sensor", "RIDES", "Satellite"]},
+                                    {"pattern": ["Satellite", "LINKS", "Sensor"]},
+                                    {"pattern": ["Gadget", "TOUCHES", "Sensor"]},
+                                    {"pattern": ["Satellite", "PINNED", "Sensor"]}]}
+        gts = {"patterns": [("Instrument", "ABOARD", "Spacecraft"), ("Spacecraft", "NEAR", "Instrument"),
+                            ("Instrument", "NEAR", "Spacecraft")],
+               "pinned": {"CARRIED_BY": [("any", "Spacecraft")]}}
+        proposed = [row("predicate", "CARRIES", "ABOARD", "no"),     # only swapped fits: flagged
+                    row("predicate", "RIDES", "ABOARD", "no"),       # fits as chosen: not flagged
+                    row("predicate", "CARRIES", "ABOARD", "yes"),    # near miss: swapped, fits: not flagged
+                    row("predicate", "LINKS", "NEAR", "yes"),        # fits both ways: not flagged
+                    row("predicate", "TOUCHES", "ABOARD", "yes"),    # Gadget translates to (none): no pattern
+                    row("predicate", "RIDES", "(none)", "yes"),      # no target
+                    row("predicate", "PINNED", "CARRIED_BY", "no")]  # pin: only swapped fits (Sensor -> Satellite)
+        doubts = component_classes.reversal_doubts(proposed, entity_rows + proposed, schema_used, gts)
+        self.assertEqual(len(doubts), 2, doubts)
+        self.assertTrue(doubts[0].startswith("CARRIES (current schema) --> ABOARD (ground truth schema), "
+                                             "swap_subject_and_object no"))
+        self.assertTrue(doubts[0].endswith("only swapped"))
+        self.assertIn("PINNED", doubts[1])
+        self.assertEqual(component_classes.reversal_doubts([row("predicate", "RIDES", "ABOARD", "yes")], entity_rows,
+                                                           schema_used, gts)[0][-14:], "only unswapped")
+
 
 class RowStates(unittest.TestCase):
     """component_classes.translate_component_classes stops on a row of the current schema by the first state that

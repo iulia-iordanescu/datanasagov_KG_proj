@@ -96,7 +96,13 @@ translates the current schema into the ground truth schema.
     schema["unread"]          ["line 12: …"]: lines of a section that are neither an entry, a
                               source nor patterns, e.g. prose, or a repeated entry (the first
                               is kept) and the lines under it (text shape only)
-    schema_text(schema)       the text shape, for a prompt
+    unnamed_pinned(definition, pins)   the entity classes of a pin that its predicate's definition doesn't name
+    pins_not_in_definition(schema)     each pinned predicate whose definition doesn't name all of its pin
+    schema_text(schema)       what every prompt shows of a schema: its entity classes and predicates, each with
+                              its definition (no patterns, no pins: those are for code's checks)
+    schema_text(schema, rule_19_marks=True)   the same, with each entity class's rule 19 mark on a line under it: the
+                              prompts that write or check the ground truth (050's drafting, the second opinion, the
+                              second judge), never extraction (060)
     additions_text(header, entries)       the additions file, written by the annotation tool
     ground_truth_source_problem(source, parts)   why a schema entry's source isn't fair, or None
     parse_source(source, parts)   the one reading of a "source:" line: the tuning, held-out and unknown pool
@@ -118,7 +124,7 @@ from pathlib import Path
 from common.files import read_json, read_text
 from common.audit import ref_path
 from common.ground_truth import HELD_OUT
-from common.triples_io import KIND_KEYS, component_class_key
+from common.triples_io import KIND_KEYS, KIND_OF_KEY, component_class_key
 
 #: What a component class must look like, said the same way wherever one is typed (the annotation tool).
 ONE_WORD = ("the component class must be one word: letters or digits, no spaces, no ; and no -> "
@@ -139,6 +145,14 @@ RULE_19_QUALIFIER = "qualifier,"
 #: and spacing evened out, written as it is here.
 HELD_OUT_ONLY = "held-out only"
 ANY = "any"
+#: The one line schema_text writes under PREDICATES, before the predicates: how to read a definition.
+READS = "Each definition reads from the subject to the object."
+#: The lines schema_text writes under ENTITY CLASSES, before the entity classes, when it shows the rule 19 marks: what a
+#: mark says. What standalone and describing mean has one home, the rules each such prompt also shows (the words
+#: section of common/common_prompts/extraction_rules.txt; annotations/guidelines.md for the second judge).
+MARKS_READ = ("The line under an entity class, rule 19: standalone or rule 19: describing, says which of the two it is "
+              "(rule 19, Whose fact it is). An entity class without that line has no mark yet: decide which it is by "
+              "the rules.")
 #: The text shape's section headings ("CLASSES" is the older heading of the
 #: entity classes, still read).
 SECTIONS = {"ENTITY CLASSES": "entity_classes", "CLASSES": "entity_classes", "PREDICATES": "predicates",
@@ -300,25 +314,57 @@ def read_ground_truth_schema(path) -> dict:
     return _read_text(path)
 
 
-def schema_text(schema: dict) -> str:
-    """The schema in the text shape, for a model to read: every entity class
-    and predicate with its definition, and each predicate's patterns."""
+def schema_text(schema: dict, rule_19_marks: bool = False) -> str:
+    """The schema as every prompt shows it (060's extraction, 050's drafting, the second opinion and the second judge,
+    and the worked examples' example schema, written the same way): every entity class and predicate with its
+    definition, in the text shape, and nothing else. Patterns and pins are left out (decided 2026-11-15,
+    docs/improvements.md): a schema's patterns list what a sample contained (a labeling mistake becomes a listed
+    pattern; a correct pattern the sample lacked is missing), and the ground truth schema's include those of the
+    finished tuning records' ground truth, which would show extraction answers on those records; a pin's meaning is
+    in its predicate's definition, the one home of meaning (a test keeps the two in agreement). Code still checks
+    every row against both (common/common_helpers/validate.py: pattern_not_in_schema, pattern_not_pinned).
+
+    rule_19_marks True: each entity class's rule 19 mark (schema["rule_19_classes"]) on its own line under it, as the
+    ground truth schema's file writes it ("rule 19: standalone" or "rule 19: describing"), after MARKS_READ; an entity
+    class without a mark gets no such line, and MARKS_READ tells the model to decide it by the rules. Only the prompts
+    that write or check the ground truth show the marks (decided 2026-11-15, docs/improvements.md): 050's drafting and
+    the second opinion, which follow the person's decisions, and the second judge, which judges them; nothing they
+    produce is scored against the ground truth. Extraction (060) never shows them, with either schema: it is scored
+    against the ground truth, and the marks are the person's answer key for where a qualifier goes, which the induced
+    schema doesn't have, so showing them with the ground truth schema would favour it in the comparison."""
     width = max((len(n) for kind in ("entity_classes", "predicates") for n in schema[kind]), default=0) + 2
-    lines = ["ENTITY CLASSES", "--------------"]
-    lines += [f"{name.ljust(width)}{d}".rstrip() for name, d in schema["entity_classes"].items()]
-    lines += ["", "PREDICATES", "----------",
-              "Each entry reads subject -> object, with its patterns (subject class -> object class).", ""]
-    by_predicate = {}
-    for s_, p_, o_ in schema["patterns"]:
-        by_predicate.setdefault(p_, []).append(f"{s_} -> {o_}")
-    for name, d in schema["predicates"].items():
+    marks = schema.get("rule_19_classes", {}) if rule_19_marks else {}
+    lines = ["ENTITY CLASSES", "--------------"] + ([MARKS_READ, ""] if rule_19_marks else [])
+    for name, d in schema["entity_classes"].items():
         lines.append(f"{name.ljust(width)}{d}".rstrip())
-        if by_predicate.get(name):
-            lines.append(" " * width + "; ".join(by_predicate[name]))
-        if schema.get("pinned", {}).get(name):
-            lines.append(" " * width + PINNED + " " + _pairs_text(schema["pinned"][name]))
+        if name in marks:
+            lines.append(" " * width + f"{RULE_19} {marks[name]}")
+    lines += ["", "PREDICATES", "----------", READS, ""]
+    lines += [f"{name.ljust(width)}{d}".rstrip() for name, d in schema["predicates"].items()]
     return "\n".join(lines)
 
+
+
+def unnamed_pinned(definition: str, pins) -> list:
+    """The entity classes a pin names (pins: [(subject class, object class)], "any" left out), in order, that the
+    definition doesn't name. Named means written as a whole word, in the entity class's own spelling, or with a plural
+    "s" ("one of the Channels"); "grid" or "Gridded" doesn't name Grid. A predicate's definition is the one home of its
+    meaning and no prompt shows a pin (schema_text), so a pinned predicate's definition must name what the pin allows:
+    the ground truth schema's test (tests/test_schema_io.py, DefinitionsNamePins) and 040's defining (stage 7) both
+    check it with this."""
+    named = dict.fromkeys(x for pair in pins for x in pair if x != ANY)
+    return [c for c in named if not re.search(r"(?<![\w-])" + re.escape(c) + r"s?(?![\w-])", definition or "")]
+
+
+def pins_not_in_definition(schema: dict) -> list:
+    """Each pinned predicate whose definition doesn't name every entity class of its pin (unnamed_pinned), as
+    "PREDICATE: EntityClass, ...", in the schema's order."""
+    out = []
+    for predicate, pins in schema.get("pinned", {}).items():
+        missing = unnamed_pinned(schema["predicates"].get(predicate, ""), pins)
+        if missing:
+            out.append(f"{predicate}: {', '.join(missing)}")
+    return out
 
 # --------------------------------------------------------------------------
 # the additions file (annotations/schema_additions.txt)
@@ -703,55 +749,6 @@ def rename_in_ground_truth_schema(path, kind: str, old: str, new: str) -> tuple:
     return data, how
 
 
-def text_without_held_out_only(text: str, schema: dict) -> str:
-    """The ground truth schema's file text (schema: as read from it) without its held-out-only entries, for a prompt
-    that shows the file as written (050's and the second opinion's): each marked entry's line and the lines under it,
-    every pattern or pin naming a marked entity class (a line left with none goes too), and every PATTERNS entry
-    naming one. The text as it is when nothing is marked, so a prompt's fingerprint changes only with a mark."""
-    marked = schema.get("held_out_only") or {}
-    out_e = {component_class_key(n) for n in marked.get("entity_classes", ())}
-    out_p = {component_class_key(n) for n in marked.get("predicates", ())}
-    if not (out_e or out_p):
-        return text
-    keep_e = lambda n: n == ANY or component_class_key(n) not in out_e        # noqa: E731
-    lines, kept, section, skipping = text.split("\n"), [], None, False
-    for line in lines:
-        head = line.strip()
-        if head in SECTIONS:
-            section, skipping = SECTIONS[head], False
-            kept.append(line)
-            continue
-        if line[:1].isspace() and head:
-            if skipping:
-                continue
-            if section == "predicates" and head.lower().startswith(PINNED):
-                pins = [(s, o) for s, o in _pins_of(head) if keep_e(s) and keep_e(o)]
-                if _pins_of(head) and not pins:
-                    continue
-                if pins and len(pins) != len(_pins_of(head)):
-                    line = _indent(line) + PINNED + " " + _pairs_text(pins)
-            elif section == "predicates" and _is_pairs_line(line):
-                pairs = [(s, o) for s, o in _pairs_of(line) if keep_e(s) and keep_e(o)]
-                if not pairs:
-                    continue
-                if len(pairs) != len(_pairs_of(line)):
-                    line = _indent(line) + _pairs_text(pairs)
-            kept.append(line)
-            continue
-        skipping = False
-        if section in ("entity_classes", "predicates") and (m := ENTRY.match(line)):
-            if component_class_key(m.group(1)) in (out_e if section == "entity_classes" else out_p):
-                skipping = True
-                continue
-        elif section == "patterns" and (m := PATTERN_LINE.match(head)) and not line[:1].isspace():
-            s, p, o = m.groups()
-            if not (keep_e(s) and component_class_key(p) not in out_p and keep_e(o)):
-                skipping = True
-                continue
-        kept.append(line)
-    return "\n".join(kept)
-
-
 def unmark_held_out_only(path, kind: str, name: str, tuning_positions, held_out_positions=()) -> bytes:
     """The ground truth schema with the held-out-only entry `name` made a normal one: its "held-out only" line deleted,
     and its "source:" line written anew, source_line(tuning_positions, held_out_positions) (the held-out records kept,
@@ -826,6 +823,46 @@ def without_held_out_only(schema: dict) -> dict:
                                    if len(n.split(" ")) != 3 or pattern_ok(tuple(n.split(" ")))}}
     out["held_out_only"] = {"entity_classes": set(), "predicates": set()}
     return out
+
+
+#: Why a view of the ground truth schema leaves an entry out, in the record of discarded items (record_left_out_of_view).
+HELD_OUT_ONLY_LEFT_OUT = ("a held-out-only entry, or a pattern or pin naming one: no model and no check sees it "
+                          "(docs/terminology.md, held-out-only entry)")
+
+
+def record_left_out_of_view(stage: str, before: dict, after: dict, why: str = HELD_OUT_ONLY_LEFT_OUT,
+                            where: str = "") -> None:
+    """One entry per entity class, predicate, pattern or pin of the schema before that a view of it (after) leaves
+    out, in the record of discarded items (common/common_helpers/dropped.py), with why: the held-out-only entries
+    and what names them (without_held_out_only), or the patterns a ground truth schema view replaces. where: the
+    schema's file."""
+    from common import dropped
+    for kind in KIND_KEYS.values():
+        keys = {component_class_key(n) for n in after.get(kind, {})}
+        for name in before.get(kind, {}):
+            if component_class_key(name) not in keys:
+                dropped.discard(stage, "schema entry", why, {"entry_type": KIND_OF_KEY[kind],
+                                                             "schema_entry": name}, where=where)
+    kept = {tuple(map(component_class_key, p)) for p in after.get("patterns", [])}
+    for p in dict.fromkeys(tuple(p) for p in before.get("patterns", [])):
+        if tuple(map(component_class_key, p)) not in kept:
+            dropped.discard(stage, "pattern", why, {"pattern": list(p)}, where=where)
+    kept_pins = {(component_class_key(p), tuple(map(component_class_key, pair)))
+                 for p, pins in after.get("pinned", {}).items() for pair in pins}
+    for p, pins in before.get("pinned", {}).items():
+        for pair in pins:
+            if (component_class_key(p), tuple(map(component_class_key, pair))) not in kept_pins:
+                dropped.discard(stage, "pinned predicate", why, {"predicate": p, "only": list(pair)}, where=where)
+
+
+def record_unread(stage: str, schema: dict, where: str) -> None:
+    """One entry per line of a schema file read as no entry (schema["unread"]: a repeat, a second mark, prose or a
+    mistake), in the record of discarded items (common/common_helpers/dropped.py)."""
+    from common import dropped
+    for line in schema.get("unread") or []:
+        dropped.discard(stage, "line of a schema file", "not read as an entry, a source, a mark or patterns (a repeat "
+                        "of an earlier line, prose, or a mistake): it adds nothing to the schema", {"line": line},
+                        where=where)
 
 
 # --------------------------------------------------------------------------

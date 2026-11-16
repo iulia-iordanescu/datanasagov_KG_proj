@@ -33,6 +33,9 @@ from common.triples_io import is_describes
 #: each row came from.
 COLUMNS = GROUND_TRUTH_COLUMNS + [DRAFTED_BY, RULES, "flags", ORIGIN_COLUMN]
 SHOW = 20                        # rows listed in the report before "…"
+#: The stage names its discarded items carry (common/common_helpers/dropped.py).
+STAGE_2 = "stage 2 (ask_model)"
+STAGE_3 = "stage 3 (build_rows)"
 
 
 @dataclass
@@ -60,11 +63,15 @@ def ask_model(chosen, calls, settings, plan=None):
 def build_rows(chosen, replies) -> Drafts:
     drafts = Drafts()
     errors, flags = collections.Counter(), collections.Counter()
+    extraction.record_left_out(STAGE_2, replies, chosen.items)
     for item in chosen.items:
         if item["id"] not in replies.of:
             continue
         rows, removed = extraction.build_rows(item["id"], item["title"], item["text"],
                                               replies.of[item["id"]], chosen.schema_entries)
+        # written in the ground truth schema's spelling, as 060 writes its schema's; a coined one stays as written
+        rows = [extraction.in_schema_spelling(STAGE_3, item["id"], r, chosen.schema_entries) for r in rows]
+        extraction.record_removed(STAGE_3, item["id"], replies.of[item["id"]], rows, removed)
         drafts.rows[item["id"]], drafts.removed[item["id"]] = rows, removed
         for r in rows:
             errors.update(r["errors"])

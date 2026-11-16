@@ -39,7 +39,7 @@ How a dataset's data are laid out over the ground, its spatial representation, i
 ### Ground truth schema
 
 - entity class SpatialRepresentation: a form data are laid out in: over the ground, typically along a satellite's path, as observed (swath), or on a fixed map grid (gridded); or as images, image cubes, spectra or maps, e.g. swath; map; raw near-IR spectral image cubes
-- predicate HAS_SPATIAL_REPRESENTATION: lays out its data as
+- predicate HAS_SPATIAL_REPRESENTATION: lays out its data as this SpatialRepresentation
 - entity class Grid: a fixed set of cells or points that data values are given on, e.g. ISEAG; pressure grid with 24 levels per decade
 - predicate ON_GRID: its values are given on the cells or points of this Grid
 
@@ -1233,7 +1233,7 @@ Records state time in several ways, and our schema has a predicate for each kind
 - entity class TemporalResolution: an amount of time between one value of the data and the next, e.g. daily; weekly (8 day)
 - entity class Time: a point or period on the calendar, which happens once, e.g. March 11, 2016 19:08:03; May 4, 2002; first week of February 2003; 2015-10-22 to 2015-12-31
 - entity class Value: an amount, or a range of amounts, as a number with its unit or in words, e.g. 36 spectral bands; 5 minutes
-- predicate HAS_TEMPORAL_RESOLUTION: its values are this far apart in time, e.g. daily
+- predicate HAS_TEMPORAL_RESOLUTION: its values are this far apart in time (a TemporalResolution), e.g. daily
 - predicate HAS_GRANULE_DURATION: each of its files covers this much time
 - predicate HAS_DURATION: covers this much time, from its first value to its last
 - predicate HAS_TIME_SPAN: covers this period
@@ -1972,7 +1972,7 @@ Our schema has an entity class Purpose and a predicate HAS_PURPOSE (both defined
 ### Ground truth schema
 
 - entity class Purpose: an aim something is meant to achieve
-- predicate HAS_PURPOSE: is meant to achieve
+- predicate HAS_PURPOSE: is meant to achieve this Purpose
 
 ### Options
 
@@ -3932,7 +3932,7 @@ The title of the example below says "4km", and its notes say the products "are a
 ### Ground truth schema
 
 - entity class SpatialResolution: an amount of ground each value of the data covers, e.g. 500 m; 4.63 km
-- predicate HAS_SPATIAL_RESOLUTION: each of its values covers this much ground, e.g. 500 m
+- predicate HAS_SPATIAL_RESOLUTION: each of its values covers this much ground (a SpatialResolution), e.g. 500 m
 
 ### Options
 
@@ -4153,9 +4153,9 @@ Checked on 2026-10-31, for the expert's (b), in NASA's metadata (it corrects the
 ### Quoted for us
 
 - entity class TemporalResolution: an amount of time between one value of the data and the next, e.g. daily; weekly (8 day)
-- predicate HAS_TEMPORAL_RESOLUTION: its values are this far apart in time, e.g. daily
+- predicate HAS_TEMPORAL_RESOLUTION: its values are this far apart in time (a TemporalResolution), e.g. daily
 - entity class SpatialResolution: an amount of ground each value of the data covers, e.g. 500 m; 4.63 km
-- predicate HAS_SPATIAL_RESOLUTION: each of its values covers this much ground, e.g. 500 m
+- predicate HAS_SPATIAL_RESOLUTION: each of its values covers this much ground (a SpatialResolution), e.g. 500 m
 - predicate SUPERSEDES: replaces this earlier one. A record states this when it says the older one is discontinued or decommissioned and directs users to the newer one
 - Writing a classed triple, rule 21: Another dataset. Include facts about another dataset when the record states a chain of "part of" or "made from" links that connects it to the record's dataset: its parts, what it is part of, what it is made from, and so on through further datasets or variables the record names. Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it. In every case, include the connection the record states (rule 1, only what the record states).
 
@@ -4439,7 +4439,7 @@ Withdrawn on 2026-10-31: settled by me, so it is no longer asked of the experts;
 
 - entity class Purpose: an aim something is meant to achieve
 - entity class Algorithm: a method applied to data to compute a result, e.g. series of screens; modified nonlinear SST algorithm
-- predicate HAS_PURPOSE: is meant to achieve
+- predicate HAS_PURPOSE: is meant to achieve this Purpose
 - What counts as a fact, rule 2: Every fact the record states, unless a rule leaves it out: rule 1 (only what the record states), this rule's part *A fact inside a name*, rules 3 to 10, and rules 16, 20, 21, 22, 23 and 24 (rule 22 for an item of a list that names no specific entity and for the abbreviation of a list of several entities, rule 23 for a type word), or it waits on an expert's answer (`annotations/questions_for_experts.md`). The rule holds whether or not the ground truth schema has an entity class or predicate for the fact.
 - What counts as a fact, rule 6: Not negated facts.
 - What counts as a fact, rule 7: Not facts the record doesn't assert as true: uncertain ones, and ones it requires, requests or recommends.

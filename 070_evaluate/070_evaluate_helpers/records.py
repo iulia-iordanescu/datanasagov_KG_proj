@@ -45,11 +45,12 @@ from pathlib import Path
 
 from common.audit import ref_path
 from common.files import read_csv, read_json
-from common.ground_truth import (BAD_MARK, EVALUABLE, HELD_OUT, IN_TWO_FILES, TO_FIX, UNFINISHED, evaluable_problems,
-                                 fair_prefix, pool_parts, read_ground_truth, read_pool, twin_kinds)
+from common.ground_truth import (ANNOTATED, BAD_MARK, EVALUABLE, HELD_OUT, IN_TWO_FILES, TO_FIX, UNFINISHED,
+                                 evaluable_problems, fair_prefix, pool_parts, read_ground_truth, read_pool,
+                                 record_skipped, twin_kinds)
 from common.left_out import read_pending
 from common.llm import confirm, numbered, show_warnings
-from common.partial_reviews import read_reviews, review_problems
+from common.partial_reviews import read_reviews, record_unused, review_problems
 from common.records_io import has_text, load_records
 from common.second_opinion import groups_of, key_of, read_table as read_second_opinion, repeats_of
 from common import dropped
@@ -60,6 +61,8 @@ from common.stop import Stop
 from common.triples_io import canonical_row, is_describes
 
 AGAIN = "then run `py 070_evaluate/run.py` again."
+#: The stage name its discarded items carry (common/common_helpers/dropped.py).
+STAGE = "stage 1 (pick_records)"
 
 
 @dataclass
@@ -102,6 +105,36 @@ def _triples(rows: list) -> tuple:
         else:
             triples.append(r)
     return triples, describes
+
+
+def _record_rows(rid: str, rows: list, side: str) -> None:
+    """One entry per row of a record that _triples doesn't keep, with _triples' own tests: a row with some but not all
+    of subject, predicate and object (a row with none is a record's "states no triples" row, no triple), or a second
+    describes triple (folded into the first); then the record's accounting check. side: "ground truth" or
+    "extracted"."""
+    since, describes, kept, empty = dropped.mark(), None, 0, 0
+    for r in (canonical_row(r, blank="") for r in rows):
+        filled = [k for k in ("subject", "predicate", "object") if r.get(k)]
+        if len(filled) < 3:
+            if filled:
+                dropped.discard(STAGE, "classed triple", f"a row of the {side} triples without its "
+                                + ", ".join(k for k in ("subject", "predicate", "object") if k not in filled)
+                                + ": not a triple, so not evaluated", _row_item(r), record_id=rid,
+                                where=r.get("origin") or f"#{r.get('_position', '')}")
+            else:
+                empty += 1
+        elif is_describes(r) and describes is not None:
+            dropped.fold(STAGE, "describes triple", f"a second describes triple among the {side} triples: the first "
+                         "is the one evaluated", _row_item(r), _row_item(describes), record_id=rid)
+        else:
+            describes = describes or (r if is_describes(r) else None)
+            kept += 1
+    dropped.account(STAGE, f"{side} rows of record {rid}", len(rows), kept + empty, since=since)
+
+
+def _row_item(r: dict) -> dict:
+    """A row as a discarded item: its classed triple and source text."""
+    return {k: r.get(k, "") for k in ("subject", "subject_class", "predicate", "object", "object_class", "source_text")}
 
 
 def refusal(repeats: list) -> str:
@@ -173,6 +206,10 @@ def _mark_twins(evaluated: Evaluated, catalog: dict, inputs: dict) -> None:
         return
     kind = twin_kinds({r["id"]: catalog.get(r["id"], {}) for r in evaluated.records},
                        {i: catalog[i] for i in learned["ids"] if i in catalog})
+    for i in learned["ids"]:
+        if i not in catalog:
+            dropped.discard(STAGE, "record", "the current schema was learned from it, but it isn't in 020's records, so "
+                            "no evaluated record is compared with it for twins", {"id": i}, record_id=i)
     for r in evaluated.records:
         r["twin"] = kind[r["id"]]
 
@@ -232,7 +269,7 @@ def _read_second_opinion(inputs: dict) -> dict:
         return {}
     path = Path(inputs["second_opinion"])
     try:
-        return read_second_opinion(path)
+        return read_second_opinion(path, stage=STAGE)    # a row with values but no id: recorded as discarded
     except ValueError as e:
         raise Stop(f"{repo_path(path)} can't be read, so 070 can't tell which ground truth triples the second opinion "
                    f"found: {e}. Restore its header line (`git checkout -- {repo_path(path)}` gives the file with its "
@@ -248,6 +285,10 @@ def _note_second_opinion(evaluated: Evaluated, table: dict, inputs: dict) -> Non
     stale = [row for k, row in table.items() if row["id"] in evaluated_ids and k not in live]
     evaluated.second_opinion_models = sorted({m for k, row in table.items() if row["id"] in evaluated_ids
                                               for m in row["by"]})
+    for row in stale:
+        dropped.discard(STAGE, "row of the second opinion table", "names a classed triple that is no longer a ground truth triple of "
+                        "its record, so it counts for nothing", {k: v for k, v in row.items() if k != "_line"},
+                        record_id=row["id"], where=f"{repo_path(Path(inputs['second_opinion']))}, line {row['_line']}")
     if stale:
         path = repo_path(Path(inputs["second_opinion"]))
         evaluated.notes.append(f"{len(stale)} row(s) of {path} name a classed triple that is no longer a ground truth "
@@ -263,6 +304,48 @@ def _note_second_opinion(evaluated: Evaluated, table: dict, inputs: dict) -> Non
 SPECS = {"evaluate_held_out": Spec(bool), "suggest": Spec(bool)}
 
 
+def _record_not_evaluated(gt, evaluated: Evaluated, not_chosen: list, outside: list, extracted: dict, catalog: dict,
+                          since: int) -> None:
+    """One entry per record of the ground truth this run doesn't evaluate, with why (not finished; finished, but
+    060's model calls failed for it, or 060's last run didn't choose it; outside the fair sample), and per record
+    060 extracted from that isn't in the ground truth; then the accounting check: records in the ground truth =
+    records evaluated + records recorded here."""
+    annotated = set(gt.select(ANNOTATED).ids)
+    for rid in gt.select(TO_FIX).ids:
+        dropped.discard(STAGE, "record", f"not finished in the ground truth (its state: {gt.state(rid)}), so not "
+                        "evaluated", {"id": rid, "title": (catalog.get(rid) or {}).get("title")}, record_id=rid)
+    for e in evaluated.extraction_failed:
+        dropped.discard(STAGE, "record", f"finished, but 060's model calls failed for it in its last run "
+                        f"({dropped.KINDS[e['reason']]}), so not evaluated", e, record_id=e["id"])
+    for rid in not_chosen:
+        dropped.discard(STAGE, "record", "finished, but not extracted by 060's last run, so not evaluated",
+                        {"id": rid, "title": (catalog.get(rid) or {}).get("title")}, record_id=rid)
+    for rid in outside:
+        dropped.discard(STAGE, "record", "outside the fair sample (after an unfinished or unextracted record of its own "
+                        "part of the pool, or not in the pool), so not evaluated",
+                        {"id": rid, "title": (catalog.get(rid) or {}).get("title")}, record_id=rid)
+    dropped.account(STAGE, "records in the ground truth", len(annotated), len(evaluated.records), since=since,
+                    item_type="record", only=lambda e: e.get("record_id") in annotated)
+    for rid, rows in extracted.items():
+        if rid not in annotated:
+            dropped.discard(STAGE, "record", "060 extracted from it, but it isn't in the ground truth, so its "
+                            "extracted triples aren't evaluated", {"id": rid, "extracted triples": len(rows)},
+                            record_id=rid)
+
+
+def _record_repeated_candidates(inputs: dict) -> None:
+    """One entry per row of the pool file whose id a later row lists again: the stratum of the last row is the one
+    used."""
+    rows = read_csv(Path(inputs["candidates"]))
+    last = {r["id"].strip(): i for i, r in enumerate(rows)}
+    for i, r in enumerate(rows):
+        if last[r["id"].strip()] != i:
+            dropped.fold(STAGE, "record", "listed again in the pool file: the stratum of its last row is used",
+                         {"id": r["id"].strip(), "stratum": r.get("stratum")},
+                         {"where": f"{repo_path(inputs['candidates'])}#{last[r['id'].strip()]}"},
+                         record_id=r["id"].strip(), where=f"{repo_path(inputs['candidates'])}#{i}")
+
+
 def pick_records(inputs: dict, settings: dict) -> Evaluated:
     check_settings(settings, SPECS)
     evaluated = Evaluated()
@@ -270,6 +353,7 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
     pool_rows = read_pool(inputs["splits"])
     gt = evaluated.ground_truth = read_ground_truth(gt_files[0].parent, pool_rows)   # run_step made sure there is one
     evaluated.notes += [f"Ground truth, {p}" for p in gt.problems]
+    record_skipped(STAGE, gt)
     if gt.repeats:
         raise Stop(refusal(gt.repeats))
     catalog = load_records(inputs["records"])
@@ -297,6 +381,7 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
               "record needs, not what the held-out record said; " + AGAIN)
     by_id = {r["id"]: r for r in pool_rows}
     strata = {r["id"].strip(): (r.get("stratum") or "").strip() for r in read_csv(Path(inputs["candidates"]))}
+    _record_repeated_candidates(inputs)
     for r in pool_rows:
         g = strata.get(r["id"], "")
         evaluated.pool_strata[g] = evaluated.pool_strata.get(g, 0) + 1
@@ -379,11 +464,14 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
     for r in gt.select(EVALUABLE).rows:
         rows_of.setdefault(r["id"], []).append(r)
     second_opinion = _read_second_opinion(inputs)
+    since = dropped.mark()
     for rid in evaluated.pool:
         if rid not in fair:
             continue
         gt_triples, gt_describes = _triples(rows_of.get(rid, []))
         ex_triples, ex_describes = _triples(extracted.get(rid, []))
+        _record_rows(rid, rows_of.get(rid, []), "ground truth")
+        _record_rows(rid, extracted.get(rid, []), "extracted")
         evaluated.records.append({
             "id": rid, "position": by_id[rid]["position"], "part": by_id[rid]["part"],
             "stratum": strata.get(rid, ""), "title": titles.get(rid, ""),
@@ -392,6 +480,7 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
             "second_opinion": groups_of(rid, gt_triples, second_opinion),
             "second_opinion_repeats": repeats_of(rid, gt_triples, second_opinion),
         })
+    _record_not_evaluated(gt, evaluated, not_chosen, outside, extracted, catalog, since)
     _note_second_opinion(evaluated, second_opinion, inputs)
     _mark_twins(evaluated, catalog, inputs)
     missing_stratum = [r["id"] for r in evaluated.records if not r["stratum"]]
@@ -413,4 +502,5 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
             confirm("Press Enter to evaluate anyway, or anything else to cancel.")
     evaluated.reviews = read_reviews(Path(inputs["partial_reviews"]))
     evaluated.review_problems = review_problems(Path(inputs["partial_reviews"]))
+    record_unused(STAGE, Path(inputs["partial_reviews"]))
     return evaluated

@@ -60,7 +60,7 @@ import random
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from common import audit
+from common import audit, dropped
 from common.audit import ORIGIN_FIELD, check_origins, log, origin, ref_path
 from common.files import read_csv, read_json, write_json
 from common.ground_truth import HELD_OUT, TUNING, twin_table
@@ -73,6 +73,10 @@ from common.stop import Stop
 OUTPUT_NAME = "splits.json"
 CANDIDATES = "ground_truth_candidates"      # the pool, in splits.json and messages
 INDUCTION = "induction_candidates"
+#: The stage names its discarded items carry (common/common_helpers/dropped.py).
+STAGE_2 = "stage 2 (ground_truth_candidates)"
+STAGE_3 = "stage 3 (induction_candidates)"
+STAGE_RESULTS = "results (writes splits.json once)"
 SHOW = 20                                   # rows listed in the report before "…"
 #: The tuning / held-out rule (see above). Fixed, not settings: changing them
 #: after metrics have been looked at would defeat the held-out part.
@@ -128,19 +132,26 @@ def ground_truth_candidates(inputs: dict, records: dict) -> Candidates:
                    f"`py 030_split/run.py` again.")
 
     pool = Candidates(in_file=len(rows), pool_ids=set(ids))
+    since = dropped.mark()
     for position, row in enumerate(rows):
         rid = row["id"].strip()
         record = records.get(rid)
         if record is None:
             pool.dropped.append({"id": rid, "position": position,
                                  "reason": "not in 020's records: no longer in the catalog"})
+            dropped.discard(STAGE_2, "record", pool.dropped[-1]["reason"], dict(row), record_id=rid,
+                            where=origin("candidates", f"{position}"))
             log.debug(f"candidate #{position} {rid}: not in the records; dropped")
             continue
         if row["maintainer"] != record["maintainer"]:
             pool.renamed.append({"id": rid, "in_pool": row["maintainer"], "now": record["maintainer"]})
+            dropped.replace(STAGE_2, "maintainer", "the pool file's maintainer differs from 020's: 020's is kept",
+                            {"maintainer": row["maintainer"]}, {"maintainer": record["maintainer"]}, record_id=rid,
+                            where=origin("candidates", f"{position}"))
         pool.records.append({"id": rid, "position": position, "maintainer": record["maintainer"],
                              "part": part_of(position),
                              ORIGIN_FIELD: [origin("candidates", rid), origin("records", rid)]})
+    dropped.account(STAGE_2, f"rows of {ref_path(path)}", pool.in_file, len(pool.records), since=since)
     log.info(f"  {len(pool.records):,} of {pool.in_file:,} ground truth candidates are in the records")
     return pool
 
@@ -158,11 +169,18 @@ def induction_candidates(records: dict, pool: Candidates, settings: dict) -> Ind
     # no title or notes, which gives the schema nothing to learn from.
     eligible = collections.defaultdict(list)
     induction = Induction()
+    since = dropped.mark()
     for rid, r in records.items():
         if rid in pool.pool_ids:
             induction.in_pool += 1
+            dropped.discard(STAGE_3, "record", "a ground truth candidate (in the pool), so never learned from",
+                            {"id": rid, "title": r.get("title"), "maintainer": r.get("maintainer")}, record_id=rid,
+                            where=origin("records", rid))
         elif not has_text(r):
             induction.without_text += 1
+            dropped.discard(STAGE_3, "record", "no text (no title or notes), which gives the schema nothing to learn "
+                            "from", {"id": rid, "title": r.get("title"), "maintainer": r.get("maintainer")},
+                            record_id=rid, where=origin("records", rid))
         else:
             eligible[r["maintainer"]].append(rid)
 
@@ -181,6 +199,7 @@ def induction_candidates(records: dict, pool: Candidates, settings: dict) -> Ind
                               for i, rid in enumerate(order)]
         induction.maintainers.append({"maintainer": m, "rank": rank,
                                       "records": size[m], "eligible": len(order)})
+    dropped.account(STAGE_3, "records from 020", len(records), len(induction.records), since=since)
     log.info(f"  {len(induction.records):,} induction candidates across {len(ranked):,} maintainers")
     return induction
 
@@ -213,6 +232,21 @@ def _from_trial_harvest(inputs: dict) -> bool:
         return False
 
 
+def _record_unkept_draw(drawn: dict, existing: dict, path: Path) -> None:
+    """splits.json is kept as it was, so every entry of this run's draw that differs from the kept file's entry for
+    that record (or that the kept file lacks) is discarded: one record each."""
+    for k, lists in drawn.items():
+        for key in ("records", "dropped"):
+            kept = {e.get("id"): e for e in (existing.get(k) or {}).get(key) or [] if isinstance(e, dict)}
+            for entry in lists.get(key) or []:
+                if kept.get(entry["id"]) != entry:
+                    dropped.discard(STAGE_RESULTS, "record", f"{repo_path(path)} already exists and is kept, and its "
+                                    f"{k} {key} " + ("have another entry for this record" if entry["id"] in kept
+                                                     else "don't have this record"),
+                                    {"list": k, "entry": {e: v for e, v in entry.items() if e != ORIGIN_FIELD}},
+                                    record_id=entry["id"])
+
+
 def results(pool: Candidates, induction: Induction, records: dict, inputs: dict, settings: dict,
             output: Path) -> Results:
     path = output / OUTPUT_NAME
@@ -226,6 +260,7 @@ def results(pool: Candidates, induction: Induction, records: dict, inputs: dict,
         log.info(f"  {OUTPUT_NAME} already exists: kept as it is"
                  + ("" if same else " (this run's draw differs)"))
         if not same:
+            _record_unkept_draw(drawn, existing, path)
             differs = " and ".join("the ground truth candidates pool" if k == CANDIDATES else "the induction candidates"
                                    for k in drawn if existing.get(k) != drawn[k])
             warnings.append(f"{repo_path(path)} already exists and was kept, but this run's draw "

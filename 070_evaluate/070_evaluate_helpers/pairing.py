@@ -84,6 +84,7 @@ from __future__ import annotations
 import collections
 import re
 
+from common import dropped
 from common.audit import log
 from common.partial_reviews import NOT_SAME, pair_key
 from common.text_match import instance_key, norm_text, quantity_words
@@ -92,6 +93,8 @@ from common.llm import model_name_key
 from common.triples_io import component_class_key, is_symmetric as _symmetric, is_undecided
 
 LEVELS = ("exact", "partial")
+#: The stage name its discarded items carry (common/common_helpers/dropped.py).
+STAGE = "stage 3 (compare)"
 # SYMMETRIC_PREDICATES (the ground truth schema's predicates that say the same fact either way round, so subject and
 # object may be swapped when pairing) live in common/common_helpers/triples_io.py, with the key of the same fact.
 MISMATCH_WARN = 2                 # a component class mismatch seen this often is a warning: a row to look at
@@ -588,6 +591,10 @@ def compare_record(record: dict, translation, reviews: dict | None = None) -> di
     candidates = verdict_keys(record["id"], gt, ex)
     applied = sorted(k for k in reviews if k[0] == record["id"].strip() and k in candidates)
     stale_reviews = sorted(k for k in reviews if k[0] == record["id"].strip() and k not in candidates)
+    for k in stale_reviews:
+        dropped.discard(STAGE, "partial pair review", "no longer applies: its ground truth triple and occurrence no "
+                        "longer pair at the partial level (a triple or a translation changed since the review)",
+                        {"pair": list(k), "verdict": reviews[k]}, record_id=record["id"])
     unreviewed = sum(1 for gi, ei, lv in pairs
                      if lv == "partial" and pair_key(record["id"], gt[gi], ex[ei]) not in reviews)
     record["compared"] = {

@@ -1,4 +1,6 @@
-"""Records left out of a run because a model call for one of their text pieces failed (040, 050, 060; 070 reads 060's).
+"""Records left out of a run because a model call for one of their text pieces failed (040, 050, 060; 070 reads 060's),
+and, below, the record of every item any stage of any pipeline step discards (discard, fold, replace, account: written
+by run_step to discarded.jsonl, helpers/audit.md, *Items discarded*).
 
 One implementation for every step, so every report counts them the same way and says the same thing:
 
@@ -138,3 +140,136 @@ def reasks_headline(counts: dict) -> dict:
     return {"replies asked again": counts.get("not_json", 0) + counts.get("wrong_shape", 0),
             "replies fixed by asking again": counts.get("fixed", 0),
             "replies still unusable": counts.get("still_failed", 0)}
+
+
+# --------------------------------------------------------------------------
+# Every item any stage discards (docs/improvements.md, 2026-11-15: nothing is dropped without a record)
+# --------------------------------------------------------------------------
+#
+#     reset()                                           run_step, before a step's main: an empty list for the run
+#     discard(stage, item_type, reason, item, ...)      one entry per item a stage removes, filters, skips or caps
+#     fold(stage, item_type, reason, item, kept_as, ...)
+#                                                       one entry per item folded into another (a duplicate, a merge)
+#     replace(stage, item_type, reason, item, kept_as, ...)
+#                                                       one entry per value replaced (the item itself stays)
+#     mark(); account(stage, what, items_in, kept, since)
+#                                                       items in = items kept + items discarded or folded since
+#                                                       the mark, for that stage, or the run stops (a fault in
+#                                                       the step's code: something vanished without a record)
+#     write(output) -> path; discards_section(path)     run_step, after main: DISCARDS_FILE in the step's output
+#                                                       folder and the report's section "Items discarded"
+#
+# One entry, one line of DISCARDS_FILE:
+#     {"stage": "stage 2 (extract)", "action": "discarded" | "folded" | "replaced", "item_type": "triple instance",
+#      "reason": "...", "setting": {"max_new_predicates": 50} (when a setting decided it), "record_id": "..." (when
+#      the item belongs to one record), "item": {the item's own words and values}, "kept_as": {what it folded into,
+#      or its new value} (folded and replaced), "where": "file#position" (when the item came from a file)}
+
+#: The file every pipeline step writes in its output folder, one entry per line (JSON Lines), every run.
+DISCARDS_FILE = "discarded.jsonl"
+ACTIONS = ("discarded", "folded", "replaced")
+#: The entries of the run in progress (run_step resets it before main and writes it after).
+DISCARDS: list = []
+
+
+def reset() -> None:
+    """An empty list of discarded items, for a new run (run_step, before the step's main; tests between cases)."""
+    DISCARDS.clear()
+
+
+def _entry(action: str, stage: str, item_type: str, reason: str, item, record_id=None, setting: dict | None = None,
+           kept_as=None, where: str | None = None) -> dict:
+    if action not in ACTIONS:
+        raise ValueError(f"action must be one of {ACTIONS}, not {action!r}")
+    if not stage or not item_type or not reason:
+        raise ValueError(f"every discarded item needs its stage, item type and reason (got {stage!r}, {item_type!r}, "
+                         f"{reason!r})")
+    entry = {"stage": stage, "action": action, "item_type": item_type, "reason": reason}
+    if setting:
+        entry["setting"] = dict(setting)
+    if record_id not in (None, ""):
+        entry["record_id"] = record_id
+    entry["item"] = item
+    if action != "discarded":
+        entry["kept_as"] = kept_as
+    if where:
+        entry["where"] = where
+    DISCARDS.append(entry)
+    return entry
+
+
+def discard(stage: str, item_type: str, reason: str, item, record_id=None, setting: dict | None = None,
+            where: str | None = None) -> dict:
+    """Record one item a stage removed, filtered, skipped or capped: the stage, the item's type (docs/terminology.md),
+    why (which check; setting: {name: value} when a setting decided it), the item's own words and values, its record
+    id and where it came from, when it has them."""
+    return _entry("discarded", stage, item_type, reason, item, record_id, setting, None, where)
+
+
+def fold(stage: str, item_type: str, reason: str, item, kept_as, record_id=None, setting: dict | None = None,
+         where: str | None = None) -> dict:
+    """Record one item folded into another that is kept (a duplicate into its kept copy, a label into the one it
+    merges into): kept_as says which."""
+    return _entry("folded", stage, item_type, reason, item, record_id, setting, kept_as, where)
+
+
+def replace(stage: str, item_type: str, reason: str, item, kept_as, record_id=None, setting: dict | None = None,
+            where: str | None = None) -> dict:
+    """Record one value a stage replaced (the item it belongs to is kept): item holds the old value, kept_as the
+    new. An accounting check (account) doesn't count these: nothing left."""
+    return _entry("replaced", stage, item_type, reason, item, record_id, setting, kept_as, where)
+
+
+def mark() -> int:
+    """Where the list stands now, for account(since=...)."""
+    return len(DISCARDS)
+
+
+def account(stage: str, what: str, items_in: int, kept: int, since: int = 0, item_type: str | None = None,
+            only=None) -> None:
+    """The accounting check of one stage: items_in items went in, kept were kept, and every other one must have been
+    recorded, by discard or fold, under this stage since the mark (since=mark(), taken before the stage looked at
+    them; item_type: only entries of that item type, for a stage that checks two types of items; only(entry): only
+    the entries it is true for, e.g. one kind's). Else something vanished without a record, a fault in the step's
+    code: the run stops, naming the stage and the counts. what: the items, in words ("records read from the batch
+    files")."""
+    recorded = sum(1 for e in DISCARDS[since:] if e["stage"] == stage and e["action"] != "replaced"
+                   and (item_type is None or e["item_type"] == item_type) and (only is None or only(e)))
+    if items_in != kept + recorded:
+        from common.stop import Stop
+        missing = items_in - kept - recorded
+        raise Stop(f"Accounting check failed in {stage}: {items_in:,} {what} went in, {kept:,} were kept and "
+                   f"{recorded:,} were recorded as discarded, so {abs(missing):,} "
+                   + ("went missing without a record" if missing > 0 else
+                      "were recorded as discarded more than once, or were both kept and recorded as discarded")
+                   + ". This is a fault in the step's code, not in its inputs, so no manifest is written for this "
+                     "run's outputs. Nothing to fix in the files: tell whoever maintains the code, giving this run's "
+                     "log (outputs/logs/), then run the step again once it is fixed.")
+
+
+def write(output) -> str:
+    """Write the run's discarded items to DISCARDS_FILE in the step's output folder (an empty file when nothing was
+    discarded, so a file from an earlier run never stays), and return its path."""
+    from pathlib import Path
+
+    from common.files import write_jsonl
+    path = Path(output) / DISCARDS_FILE
+    write_jsonl(path, DISCARDS)
+    return str(path)
+
+
+def discards_section(path: str, entries: list | None = None) -> list:
+    """The report's section on the items this run discarded, the same in every step: counted by stage, item type,
+    action and reason, with the file that lists each one (path: as the report names it)."""
+    entries = DISCARDS if entries is None else entries
+    lines = ["### Items discarded", ""]
+    if not entries:
+        return lines + [f"None: no stage of this run discarded, folded or replaced an item, so `{path}` is empty.", ""]
+    lines += [f"{len(entries):,} item(s) were discarded, folded into another item or had a value replaced by a stage "
+              f"of this run. Each one is one line of `{path}`, with its stage, its reason, its own words and values, "
+              f"its record id and where it came from (search the file for the reason or the record id). Nothing to "
+              f"do, unless a count below is not what you expect.", "",
+              "| Stage | Item type | Action | Reason | Items |", "|---|---|---|---|---:|"]
+    counts = collections.Counter((e["stage"], e["item_type"], e["action"], e["reason"]) for e in entries)
+    lines += [f"| {cell(s)} | {cell(t)} | {a} | {cell(r)} | {n:,} |" for (s, t, a, r), n in counts.items()]
+    return lines + [""]

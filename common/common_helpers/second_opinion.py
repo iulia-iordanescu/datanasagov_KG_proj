@@ -119,11 +119,13 @@ def _counts_of(r: dict, path: Path) -> dict:
     return counts(n, k, j)
 
 
-def read_table(path: Path = PATH) -> dict:
+def read_table(path: Path = PATH, stage: str | None = None) -> dict:
     """{key_of(...): entry} of the file: each entry has the id, the triple's columns, "_line" (its first line in the
     file) and "by", {model: counts(...) with "_line"}, models in the file's order. A missing file, or one with its
     header only, reads as empty. A file lacking a column, a row without a model, a count that isn't a whole number in
-    bounds, or two rows of one model for one triple raise ValueError naming the line."""
+    bounds, or two rows of one model for one triple raise ValueError naming the line. A row without an id names no
+    ground truth triple and is skipped: an empty row silently, a row with values in other columns with an entry in
+    the record of discarded items (common/common_helpers/dropped.py) under stage, when a step reads the file (070)."""
     path = Path(path)
     if not path.is_file():
         return {}
@@ -139,6 +141,13 @@ def read_table(path: Path = PATH) -> dict:
     out = {}
     for r in raw:
         if not (r.get("id") or "").strip():
+            values = {str(c): v for c, v in ((c, ", ".join(v).strip() if isinstance(v, list) else str(v or "").strip())
+                                             for c, v in r.items() if c != "_line") if v}   # cells past the header too
+            if values and stage:
+                from common import dropped
+                dropped.discard(stage, "row of the second opinion table", "has values but no id, so it names no "
+                                "ground truth triple and counts for nothing (fill in the record's id, or delete the "
+                                "row)", values, where=f"{path.name}, line {r.get('_line')}")
             continue
         model = (r.get("model") or "").strip()
         if not model:

@@ -55,12 +55,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from common import dropped
 from common.files import read_json
 from common.audit import log, ref_path
 from common.ground_truth import (GROUND_TRUTH_DIR, GROUND_TRUTH_SCHEMA, SCHEMA_EVIDENCE, ground_truth_schema_view,
                                  read_ground_truth, read_pool)
 from common.report import named
-from common.schema_io import ANY, ground_truth_source_problem, parse_source, pattern_key, read_schema, schema_text, without_held_out_only
+from common.schema_io import (ANY, ground_truth_source_problem, parse_source, pattern_key, read_schema,
+                              record_left_out_of_view, record_unread, schema_text, without_held_out_only)
 from common.step import repo_path
 from common.stop import Stop
 from common.triples_io import KIND_OF_KEY, component_class_key
@@ -69,6 +71,8 @@ from common.validate import SchemaEntries
 KINDS = tuple(KIND_OF_KEY)                  # the schema's keys: ("entity_classes", "predicates")
 #: entry_type, as every output file writes it (docs/terminology.md, *schema entry*).
 ENTRY_TYPE = {**KIND_OF_KEY, "patterns": "pattern"}
+#: The stage name its discarded items carry (common/common_helpers/dropped.py).
+STAGE = "stage 2 (load_schema)"
 
 
 @dataclass
@@ -169,6 +173,8 @@ def load_schema(inputs: dict) -> Schema:
                    f"060_extract/060_extract.md (section The shape of a schema), or pass another with --schema, "
                    f"then run `py 060_extract/run.py` again.")
 
+    record_unread(STAGE, base, ref_path(inputs["schema"]))
+    record_unread(STAGE, extra, ref_path(inputs["additions"]))
     pool = read_pool(inputs["splits"])
     parts = {r["position"]: r.get("part") for r in pool}
     evidence = set()
@@ -181,12 +187,15 @@ def load_schema(inputs: dict) -> Schema:
         gt = read_ground_truth(folder, pool)
         evidence = set(gt.select(SCHEMA_EVIDENCE).ids)
         view = ground_truth_schema_view(base, gt)
+        whole = base
         base = {**without_held_out_only(base), "patterns": view["patterns"]}
+        record_left_out_of_view(STAGE, whole, base, where=ref_path(inputs["schema"]))
 
     merged = {kind: dict(base[kind]) for kind in KINDS}
     result.came_from = {kind: {name: "schema" for name in base[kind]} for kind in KINDS}
     result.sources = {kind: {} for kind in KINDS}
     no_source = []
+    since = dropped.mark()
     for kind in KINDS:
         have = {component_class_key(n): n for n in merged[kind]}
         for name, definition in extra[kind].items():
@@ -194,9 +203,16 @@ def load_schema(inputs: dict) -> Schema:
             if why:
                 result.not_tuning.append({"entry_type": ENTRY_TYPE[kind], "schema_entry": name,
                                           "source": extra["sources"][kind][name], "why": why})
+                dropped.discard(STAGE, "schema entry", f"says it comes from the ground truth, but doesn't show it "
+                                f"comes from tuning records only: {why}", {"file": "additions", **result.not_tuning[-1]},
+                                where=ref_path(inputs["additions"]))
                 continue
             if component_class_key(name) in have:
                 result.left_out.append({"kind": kind, "component_class": name, "kept": have[component_class_key(name)]})
+                dropped.fold(STAGE, "schema entry", "already in the schema (in the schema file, or earlier in the "
+                             "additions file, as a loose match): the entry already there is used",
+                             {"file": "additions", "entry_type": ENTRY_TYPE[kind], "schema_entry": name},
+                             {"schema_entry": have[component_class_key(name)]}, where=ref_path(inputs["additions"]))
                 continue
             have[component_class_key(name)] = name
             merged[kind][name] = definition
@@ -206,6 +222,11 @@ def load_schema(inputs: dict) -> Schema:
                 result.sources[kind][name] = source
             else:
                 no_source.append(name)
+    for kind in KINDS:
+        dropped.account(STAGE, f"{KIND_OF_KEY[kind]} entries of the additions file", len(extra[kind]),
+                        sum(v == "additions" for v in result.came_from[kind].values()), since=since,
+                        only=lambda e, t=ENTRY_TYPE[kind]: e["item"].get("file") == "additions"
+                        and e["item"].get("entry_type") == t)
     spelling = {kind: {component_class_key(n): n for n in merged[kind]} for kind in KINDS}
 
     def spelled(pattern: tuple) -> tuple:
@@ -222,12 +243,19 @@ def load_schema(inputs: dict) -> Schema:
         if tuple(q) not in standalone:
             if component_class_key(q[1]) not in rejected:
                 added_patterns.append(q)
+            else:
+                dropped.discard(STAGE, "pattern", "under a predicate of the additions file left out for not showing "
+                                "it comes from tuning records only: left out with it", {"pattern": list(q)},
+                                where=ref_path(inputs["additions"]))
             continue
         source = extra["sources"].get("patterns", {}).get(pattern_key(q), "")
         why = ground_truth_source_problem(source, parts)
         if why:
             result.not_tuning.append({"entry_type": "pattern", "schema_entry": pattern_key(q), "source": source,
                                       "why": why})
+            dropped.discard(STAGE, "schema entry", f"says it comes from the ground truth, but doesn't show it comes "
+                            f"from tuning records only: {why}", {"file": "additions", **result.not_tuning[-1]},
+                            where=ref_path(inputs["additions"]))
             continue
         added_patterns.append(q)
         if source:
@@ -236,6 +264,12 @@ def load_schema(inputs: dict) -> Schema:
             no_source.append(pattern_key(q))
     in_base = {spelled(p) for p in base["patterns"]}
     patterns = list(dict.fromkeys(spelled(p) for p in base["patterns"] + added_patterns))
+    first = {}
+    for p_ in base["patterns"] + added_patterns:
+        if spelled(p_) in first:
+            dropped.fold(STAGE, "pattern", "the same pattern again, in the merged schema's spelling: counted once",
+                         {"pattern": list(p_)}, {"pattern": list(spelled(p_))})
+        first.setdefault(spelled(p_), p_)
     merged["patterns"] = patterns
     result.came_from["patterns"] = {p: "schema" if p in in_base else "additions" for p in patterns}
     # The pins ("only:" lines, text shape only): the schema file's, then the additions file's, under the merged
@@ -245,6 +279,10 @@ def load_schema(inputs: dict) -> Schema:
     for source_schema, skip in ((base, set()), (extra, rejected)):
         for predicate, pins in source_schema.get("pinned", {}).items():
             if component_class_key(predicate) in skip:
+                for s, o in pins:
+                    dropped.discard(STAGE, "pinned predicate", "under a predicate of the additions file left out for "
+                                    "not showing it comes from tuning records only: left out with it",
+                                    {"predicate": predicate, "only": [s, o]}, where=ref_path(inputs["additions"]))
                 continue
             name = spelling["predicates"].get(component_class_key(predicate), predicate)
             for s, o in pins:
@@ -252,6 +290,10 @@ def load_schema(inputs: dict) -> Schema:
                              else spelling["entity_classes"].get(component_class_key(x), x) for x in (s, o))
                 if pair not in pinned.setdefault(name, []):
                     pinned[name].append(pair)
+                else:
+                    dropped.fold(STAGE, "pinned predicate", "the same pin again (both files, or twice), in the merged "
+                                 "schema's spelling: counted once", {"predicate": predicate, "only": [s, o]},
+                                 {"predicate": name, "only": list(pair)})
     merged["pinned"] = pinned
     result.content = merged
     result.text = schema_text(merged)

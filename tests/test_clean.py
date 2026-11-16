@@ -215,5 +215,37 @@ class Moves(unittest.TestCase):
         self.assertTrue(re.search(r"Dropped: no id \| 2 \|", r.details))
 
 
+class Discards(Moves):
+    """Stage 1 records each record it drops (no id) and each later copy of a repeated id (folded into the first copy,
+    saying whether the two are the same), in the record of discarded items (common/common_helpers/dropped.py); its
+    accounting check stops the run when a record vanishes without a record of it."""
+
+    def setUp(self):
+        super().setUp()
+        from common import dropped
+        self.dropped = dropped
+        dropped.reset()
+        self.addCleanup(dropped.reset)
+
+    def test_recorded(self):
+        c = moves.load_raw(self.inputs, {"extra_text_fields": "", "join_maintainers": True})
+        self.assertEqual(len(c.raw), 2)
+        no_id = [e for e in self.dropped.DISCARDS if e["action"] == "discarded"]
+        self.assertEqual([(e["item"]["title"], e["where"].rsplit("/", 1)[-1]) for e in no_id],
+                         [("dropped", "batch_00000.json#1"), ("dropped too", "batch_00000.json#2")])
+        repeat = [e for e in self.dropped.DISCARDS if e["action"] == "folded"]
+        self.assertEqual([(e["record_id"], e["item"]["same as the kept copy"]) for e in repeat], [("a", False)])
+        self.assertTrue(repeat[0]["kept_as"]["where"].endswith("batch_00000.json#0"))
+        self.assertTrue(repeat[0]["where"].endswith("batch_01000.json#1"))
+
+    def test_near_miss_a_record_dropped_unrecorded(self):
+        from unittest import mock
+        from common.stop import Stop
+        with mock.patch.object(self.dropped, "fold", lambda *a, **k: None), self.assertRaises(Stop) as caught:
+            moves.load_raw(self.inputs, {"extra_text_fields": "", "join_maintainers": True})
+        self.assertIn("Accounting check failed in stage 1 (load_raw): 5 records read from the batch files went in, 2 "
+                      "were kept and 2 were recorded as discarded, so 1 went missing", str(caught.exception))
+
+
 if __name__ == "__main__":
     unittest.main()

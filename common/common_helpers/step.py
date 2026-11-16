@@ -60,7 +60,7 @@ import traceback
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from common import audit, prompt_files
+from common import audit, dropped, prompt_files
 from common.files import read_json, read_text, write_text
 from common.stop import Stop
 from common.audit import log
@@ -530,6 +530,17 @@ def _failed_calls() -> dict | None:
     return {"file": llm.OUTCOMES["file"], "entries": llm.OUTCOMES["failed"] + llm.OUTCOMES["not_sent"]}
 
 
+def _record_discards(output: Path, results: Results) -> None:
+    """Write the run's discarded items (common/common_helpers/dropped.py, discard) to dropped.DISCARDS_FILE in the
+    step's output folder, list that file among the outputs, and add the report's section *Items discarded*, the same
+    in every pipeline step. The file is written even when empty, so one from an earlier run never stays."""
+    path = dropped.write(output)
+    if path not in map(str, results.files):
+        results.files = list(results.files) + [path]
+    section = "\n".join(dropped.discards_section(repo_path(path)))
+    results.details = (results.details.rstrip() + "\n\n" + section) if results.details.strip() else section
+
+
 @dataclass
 class RunError:
     summary: str                    # the one line people need
@@ -606,11 +617,14 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None, may_
         log.debug(f"output folder: {repo_path(output)}")
         audit.begin_run(run_id, chosen_inputs)
         prompt_files.reset_prompts()
+        dropped.reset()                  # the items this run's stages discard (dropped.discard), written below
 
         results = main(chosen_inputs, chosen_settings, output)
         if not isinstance(results, Results):
             raise TypeError(f"main() must return common.step.Results, got {type(results).__name__}")
         results.warnings = input_warnings + list(results.warnings) + _model_call_warnings()
+        if step_name in PIPELINE_STEPS:  # every pipeline step: one entry per item its stages discarded, every run
+            _record_discards(output, results)
         run["harvest_date"] = results.harvest_date or (
             ", ".join(sorted(harvest_dates)) if harvest_dates else None)
         if results.harvest_partial is not None:

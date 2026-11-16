@@ -27,10 +27,11 @@ each part, whether the ground truth, the drafted batches waiting and this
 drafted batch together are still exactly the first N records of that part
 in pool order.
 
-The model is shown the ground truth schema plus the component classes coined, and
-the patterns used, in the FINISHED TUNING records of the ground truth that the
-file lacks (common/common_helpers/ground_truth.ground_truth_schema_view): what a
-person has checked, so a coined one is reused from the next drafted batch on, while
+The model is shown the ground truth schema's entity classes and predicates with their
+definitions, each entity class with its rule 19 mark (common/common_helpers/schema_io.schema_text
+with rule_19_marks: no pattern and no pin; 060 shows a schema the same way but without the
+marks), plus the component classes coined in the FINISHED TUNING records of the ground truth
+that the file lacks (common/common_helpers/ground_truth.ground_truth_schema_view): what a person has checked, so a coined one is reused from the next drafted batch on, while
 a model's uncorrected draft (an unfinished record) or a held-out record never
 reaches the prompt or the checks. The checks compare entity classes and predicates
 with the ground truth schema alone, so a coined component class (or a typo) stays an
@@ -43,16 +44,22 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from common.files import read_csv, read_text
+from common import dropped
+from common.files import read_csv
 from common.chunking import full_text, pieces
 from common.ground_truth import (ANNOTATED, DRAFT_NUMBERED, DRAFT_PATTERN, HELD_OUT, NUMBERED, PARTS, TUNING, fair_sample,
-                                 fair_words, ground_truth_schema_view, pool_parts, read_ground_truth, read_pool)
+                                 fair_words, ground_truth_schema_view, pool_parts, read_ground_truth, read_pool,
+                                 record_skipped)
 from common.records_io import NOT_IN_CATALOG, WITHOUT_TEXT, WITHOUT_TEXT_TO_DO, has_text, load_records, read_ids
 from common.report import named
-from common.schema_io import read_ground_truth_schema, text_without_held_out_only, without_held_out_only
+from common.schema_io import (read_ground_truth_schema, record_left_out_of_view, record_unread, schema_text,
+                              without_held_out_only)
 from common.step import Spec, check_settings, input_files, repo_path
 from common.stop import Stop
 from common.validate import SchemaEntries
+
+#: The stage name its discarded items carry (common/common_helpers/dropped.py).
+STAGE = "stage 1 (pick_records)"
 
 
 #: 050's own reasons for skipping a record (the shared ones: common/common_helpers/records_io.py).
@@ -70,6 +77,12 @@ class Chosen:
     pool: list = field(default_factory=list)       # the pool's ids, in order
     positions: dict = field(default_factory=dict)  # {id: pool position}
     schema_text: str = ""                          # the ground truth schema, as the prompt shows it
+    # Whether the prompt shows each entity class's rule 19 mark ("rule 19: standalone" / "rule 19: describing"), in
+    # the ground truth schema (read_inputs) and in the worked examples' example schema (draft.prompt_for; both through
+    # common/common_helpers/schema_io.schema_text). True (decided 2026-11-15, docs/improvements.md): drafting writes the
+    # ground truth, so it follows the person's decisions, and nothing it produces is scored against the ground truth.
+    # The second opinion and the second judge show the schema as 050 does (read_inputs). 060 never shows the marks.
+    rule_19_marks: bool = True
     schema_entries: object = None  # the ground truth schema's entries, as the checks compare them (common.validate.SchemaEntries)
     coined: dict = field(default_factory=dict)     # {kind: [component classes]} the finished tuning records use, not in the ground truth schema
     fair: dict = field(default_factory=dict)       # {part: common/common_helpers/ground_truth.fair_sample()'s answer}
@@ -78,25 +91,16 @@ class Chosen:
     skipped: dict = field(default_factory=dict)    # {reason: [ids]} passed over while choosing
 
 
-def vocabulary_text(hand_text: str, coined: dict, used_patterns: list = ()) -> str:
-    """The ground truth schema as the model sees it: the ground truth
-    schema's text as written, then the component classes coined in the ground truth,
-    which have no definition yet, and the patterns the ground truth uses that the
-    file doesn't list (common.ground_truth.ground_truth_schema_view's
-    used_patterns: the finished tuning records'). With nothing of either, just the schema's text, so earlier
-    answers stay in the cache."""
-    out = hand_text
+def vocabulary_text(shown: str, coined: dict) -> str:
+    """The ground truth schema as the model sees it: shown (common.schema_io.schema_text of the file without its
+    held-out-only entries: entity classes and predicates with their definitions, and each entity class's rule 19
+    mark),
+    then the component classes coined in the finished tuning records of the ground truth
+    (common.ground_truth.ground_truth_schema_view's coined), which have no definition yet. With none coined, just
+    shown. No pattern and no pin is shown (decided 2026-11-15, docs/improvements.md); the checks still use them."""
     lines = [f"{label}: {', '.join(coined[kind])}"
              for kind, label in (("entity_classes", "Entity classes"), ("predicates", "Predicates")) if coined[kind]]
-    if lines:
-        out += "\n\nALSO USED IN THE GROUND TRUTH (no definition yet)\n" + "\n".join(lines)
-    pairs = {}
-    for s, p, o in used_patterns:
-        pairs.setdefault(p, []).append(f"{s} -> {o}")
-    if pairs:
-        out += ("\n\nMORE PATTERNS THE GROUND TRUTH USES (subject class -> object class)\n"
-                + "\n".join(f"{p}: {'; '.join(v)}" for p, v in pairs.items()))
-    return out
+    return shown + ("\n\nALSO USED IN THE GROUND TRUTH (no definition yet)\n" + "\n".join(lines) if lines else "")
 
 
 def _waiting(output: Path) -> tuple:
@@ -140,9 +144,12 @@ def read_inputs(inputs: dict) -> tuple:
     # the checks: the file's entity classes and predicates, less the held-out-only ones (no model and no check sees
     # them: docs/terminology.md, *held-out-only entry*); its patterns and every one the finished tuning records use
     chosen.schema_entries = SchemaEntries({**without_held_out_only(hand), "patterns": vocab["patterns"]})
+    record_unread(STAGE, hand, repo_path(inputs["ground_truth_schema"]))
+    record_skipped(STAGE, chosen.ground_truth)
+    record_left_out_of_view(STAGE, hand, {**without_held_out_only(hand), "patterns": vocab["patterns"]},
+                            where=repo_path(inputs["ground_truth_schema"]))
     chosen.coined = vocab["coined"]
-    chosen.schema_text = vocabulary_text(text_without_held_out_only(read_text(inputs["ground_truth_schema"]), hand).strip(),
-                                         chosen.coined, vocab["used_patterns"])
+    chosen.schema_text = vocabulary_text(schema_text(without_held_out_only(hand), chosen.rule_19_marks), chosen.coined)
     chosen.notes += [f"Ground truth, {p}" for p in chosen.ground_truth.problems]
     return chosen, pool_rows
 
@@ -169,17 +176,25 @@ def pick_records(inputs: dict, settings: dict, output: Path) -> Chosen:
     gt_numbers = [int(m.group(1)) for f in gt_files if (m := NUMBERED.fullmatch(f.name))]
     chosen.batch = max([highest, *gt_numbers]) + 1
 
-    per, ids = settings["records_per_batch"], read_ids(settings["ids"])
+    since = dropped.mark()
+    per, ids = settings["records_per_batch"], read_ids(settings["ids"], STAGE)
     skipped = {NOT_IN_CATALOG: [], WITHOUT_TEXT: [], ALREADY_ANNOTATED: [], WAITING: []}
     picked = []
+    considered = []                                   # every record usable() judged
 
     def usable(rid: str) -> bool:
         reason = (NOT_IN_CATALOG if rid not in chosen.records else
                   WITHOUT_TEXT if not has_text(chosen.records[rid]) else
                   ALREADY_ANNOTATED if rid in chosen.done else
                   WAITING if rid in chosen.waiting else None)
+        considered.append(rid)
         if reason:
             skipped[reason].append(rid)
+            r = chosen.records.get(rid) or {}
+            dropped.discard(STAGE, "record", f"skipped while choosing: {reason}"
+                            + (f" (drafted batch {chosen.waiting[rid]})" if reason == WAITING else ""),
+                            {"id": rid, "title": r.get("title"), "pool_position": chosen.positions.get(rid)},
+                            record_id=rid)
         return reason is None
 
     if ids:
@@ -193,6 +208,11 @@ def pick_records(inputs: dict, settings: dict, output: Path) -> Chosen:
                                 f"from a pool position instead, leave ids empty.")
         ok = [i for i in ids if usable(i)]
         picked = ok[:per]
+        for rid in ok[per:]:
+            dropped.discard(STAGE, "record", "listed in the setting ids, but beyond records_per_batch: waits for a "
+                            "later run", {"id": rid, "title": chosen.records[rid].get("title"),
+                                          "pool_position": chosen.positions.get(rid)},
+                            record_id=rid, setting={"records_per_batch": per})
         if len(ok) > per:
             chosen.notes.append(f"You listed {len(ok)} records that can be drafted, but records_per_batch "
                                 f"is {per}, so this run drafts the first {per}, and these {len(ok) - per} "
@@ -223,6 +243,7 @@ def pick_records(inputs: dict, settings: dict, output: Path) -> Chosen:
                                    if start else "Nothing to do: the pool has no other record to draft."))
 
     chosen.skipped = {reason: rids for reason, rids in skipped.items() if rids}
+    dropped.account(STAGE, "records listed in the setting ids, or reached in the pool", len(considered), len(picked), since=since, item_type="record")
     to_do = {      # what to do about records skipped for each reason (the first two worded as in 060)
         NOT_IN_CATALOG: f"Check these ids in the setting ids for typos: each must be a record id in "
                               f"{repo_path(inputs['records'])}.",

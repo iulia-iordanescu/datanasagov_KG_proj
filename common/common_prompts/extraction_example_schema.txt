@@ -1,0 +1,68 @@
+# The worked examples' example schema (common/common_prompts/extraction_examples.txt, $example_schema), in the
+# ground truth schema's text shape (common/common_helpers/schema_io.py). Each prompt shows it as it shows its own
+# schema (schema_io.schema_text): 050's drafting with the rule 19 marks, 060's extraction without them.
+# The marks follow rule 19 of Writing a classed triple (annotations/guidelines.md) and the examples' answers.
+ENTITY CLASSES
+--------------
+Dataset                   a set of observations, measurements, or derived values
+                          rule 19: standalone
+Instrument                a device that measures, or a part of one
+                          rule 19: standalone
+Spacecraft                a vehicle that flies in space
+                          rule 19: standalone
+Organization              a named institution or one of its named parts
+                          rule 19: standalone
+PhysicalQuantity          a property that can be measured
+                          rule 19: describing
+Content                   what a dataset holds, in its own words
+                          rule 19: standalone
+Algorithm                 a method applied to data to compute a result
+                          rule 19: standalone
+Channel                   a wavelength band an instrument measures in
+                          rule 19: standalone
+Purpose                   what something is for
+                          rule 19: describing
+CelestialBody             a natural body in space
+                          rule 19: standalone
+SpatialExtent             the area the data cover
+                          rule 19: describing
+TemporalResolution        the time between one value of the data and the next
+                          rule 19: describing
+SpatialResolution         the amount of ground or sky each value of the data covers
+                          rule 19: describing
+ProcessingLevel           how far the data are processed
+                          rule 19: describing
+Version                   a release of a dataset
+                          rule 19: describing
+Time                      a point or period of time
+                          rule 19: describing
+MissionPhase              a named period of a mission
+                          rule 19: standalone
+AngleRange                a range of angles
+                          rule 19: describing
+
+PREDICATES
+----------
+Each definition reads from the subject to the object.
+
+HAS_MEASUREMENTS_OF       holds measurements of this
+HAS_CONTENT               holds this
+HAS_TEMPORAL_RESOLUTION   gives values this often
+HAS_SPATIAL_COVERAGE      covers this area
+HAS_SPATIAL_RESOLUTION    each of its values covers this much ground
+HAS_PROCESSING_LEVEL      is processed to this level
+HAS_VERSION               is this release
+ACQUIRED_BY_INSTRUMENT    was collected by this instrument
+FROM_SPACECRAFT           came from this spacecraft
+ABOARD                    is carried by this spacecraft
+HAS_PART                  has this as one of its parts
+LAUNCHED_BY               was launched by this organization
+HAS_TARGET                is about this body
+HAS_PURPOSE               is meant to do this
+COMPUTED_FROM             is computed from this input
+PRODUCED_USING_ALGORITHM  is computed with this method
+PRODUCED_BY               was made by this organization
+HAS_TIME_SPAN             covers this period
+HAS_MISSION_PHASE         was observed during this phase
+HAS_LOWER_NOISE_THAN      has lower noise than this
+HAS_PHASE_ANGLE_RANGE     covers phase angles in this range
