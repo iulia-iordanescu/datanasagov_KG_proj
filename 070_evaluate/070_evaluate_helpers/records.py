@@ -45,7 +45,7 @@ from pathlib import Path
 
 from common.audit import ref_path
 from common.files import read_csv, read_json
-from common.ground_truth import (ANNOTATED, BAD_MARK, EVALUABLE, HELD_OUT, IN_TWO_FILES, TO_FIX, UNFINISHED,
+from common.ground_truth import (ANNOTATED, BAD_MARK, EVALUABLE, HELD_OUT, IN_TWO_FILES, TO_FIX, TUNING, UNFINISHED,
                                  evaluable_problems, fair_prefix, pool_parts, read_ground_truth, read_pool,
                                  record_skipped, twin_kinds)
 from common.left_out import read_pending
@@ -301,7 +301,51 @@ def _note_second_opinion(evaluated: Evaluated, table: dict, inputs: dict) -> Non
 
 #: The step's settings' rules (common.step.Spec); run_step checks them before any input is read, and so does
 #: pick_records, with the same table (the shared settings' rules: common.step.shared_specs).
-SPECS = {"evaluate_held_out": Spec(bool), "suggest": Spec(bool)}
+SPECS = {"evaluate_held_out": Spec(bool), "suggest": Spec(bool), "extraction_run": Spec(str)}
+
+#: Step 070's four inputs from step 060: the files the setting extraction_run takes from one kept run of 060.
+FROM_060 = ("extracted_triples", "extracted_triples_removed", "extracted_triples_details", "schema_used")
+#: Where a kept run's four files are gathered beside its manifest when they aren't all in its own folder (in 070's
+#: output folder): extractions/<060 run id>/.
+EXTRACTIONS_DIR = "extractions"
+
+
+def _check_named_run(settings: dict, said: dict) -> None:
+    """With extraction_run set: Stop when a file read names another run of 060 as the one that wrote it (said: {file:
+    the run id it records}; a file that records none is passed over), so a look and a recipe never name the wrong
+    run. Found by the sha256 that run's manifest records, the files can't differ unless one was edited by hand."""
+    named = str(settings.get("extraction_run") or "").strip()
+    other = {f: r for f, r in said.items() if named and r and r != named}
+    if other:
+        raise Stop(f"--extraction_run {named} names the run of 060 to score, but "
+                   + "; ".join(f"{f} says run {r} wrote it" for f, r in other.items())
+                   + ". The files of one run name that run, so one of them was edited or copied by hand. Nothing was "
+                     "evaluated. Restore 060's folder (outputs/intermediate_results/060_extract/) from a backup, or "
+                     f"run `py 060_extract/run.py` again, {AGAIN}")
+
+
+def extraction_inputs(inputs: dict, settings: dict, given: set) -> dict:
+    """The inputs with 060's four files (FROM_060) taken from the run of 060 that the setting extraction_run names,
+    each as that run wrote it (common.step.gather_run: by the sha256 its manifest records, in 060's live folder or
+    previous_runs/), beside that run's own manifest, which pick_records reads from the folder of the extracted
+    triples. An empty setting leaves the inputs as they are (060's latest run, or the files given). Stop when the
+    run or one of its files isn't kept, or when one of the four files is also given on the command line (two
+    answers to one question). given: the inputs given on the command line (run_step)."""
+    run_id = str(settings.get("extraction_run") or "").strip()
+    if not run_id:
+        return inputs
+    both = [k for k in FROM_060 if k in given]
+    if both:
+        raise Stop(f"--extraction_run {run_id} names the run of 060 to score, and "
+                   f"{', '.join(f'--{k}' for k in both)} also give{'s' if len(both) == 1 else ''} "
+                   f"{'one of its files' if len(both) == 1 else 'some of its files'}, so which to score is unclear. "
+                   f"Nothing was evaluated. Give the run alone (its four files are found by the sha256 its manifest "
+                   f"records), or the four files alone, without --extraction_run, {AGAIN}")
+    from common.step import RESULTS_DIR, gather_run
+    output = Path(inputs[FROM_060[0]]).parent                    # 060's output folder (the four inputs' default)
+    files = gather_run(output, run_id, [Path(inputs[k]).name for k in FROM_060],
+                       RESULTS_DIR / "070_evaluate" / EXTRACTIONS_DIR, again=AGAIN)
+    return {**inputs, **{k: files[Path(inputs[k]).name] for k in FROM_060}}
 
 
 def _record_not_evaluated(gt, evaluated: Evaluated, not_chosen: list, outside: list, extracted: dict, catalog: dict,
@@ -391,6 +435,9 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
     evaluated.extraction_manifest = read_json(manifest) if manifest.is_file() else {}
     extracted_ids = {r["id"] for r in details["records"] if r["status"] == "extracted"}
     evaluated.schema_used = read_json(inputs["schema_used"])
+    _check_named_run(settings, {"extracted_triples_details": evaluated.extraction_made.get("run_id"),
+                                "schema_used": (evaluated.schema_used.get("made") or {}).get("run_id"),
+                                MANIFEST_NAME: evaluated.extraction_manifest.get("run_id")})
     removed = {}
     for row in read_csv(Path(inputs["extracted_triples_removed"])):
         removed.setdefault(row["id"], collections.Counter())[row["reason"]] += 1
@@ -447,9 +494,26 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
                             + ". The report's section *Records left out* counts them by reason and by maintainer, and "
                               "says for each reason whether running `py 060_extract/run.py` again can bring them in "
                               "(then run `py 070_evaluate/run.py` again).")
-    if not_chosen:
-        evaluated.notes.append(f"{len(not_chosen)} finished ground truth record(s) weren't extracted by 060's "
-                            f"last run, so this run leaves them out: {named(not_chosen)}. To evaluate them, run "
+    # 060's run may have extracted from the tuning records only (its setting extract_from, with no ids): then the
+    # finished records of the other part were left out on purpose, and running 060 the same way again wouldn't
+    # bring them in.
+    made_settings = evaluated.extraction_made.get("settings") or evaluated.extraction_manifest.get("settings") or {}
+    tuning_only = (str(made_settings.get("extract_from") or "").strip().lower() == TUNING
+                   and not str(made_settings.get("ids") or "").strip())
+    by_setting = [rid for rid in not_chosen if tuning_only and part_of.get(rid) != TUNING]
+    others = [rid for rid in not_chosen if rid not in set(by_setting)]
+    if by_setting:
+        held = sum(part_of.get(rid) == HELD_OUT for rid in by_setting)
+        evaluated.notes.append(f"060's last run extracted from the tuning records only (its setting extract_from was "
+                            f"tuning), so {len(by_setting)} finished ground truth record(s) that aren't tuning records "
+                            f"({held} held-out, {len(by_setting) - held} outside the pool) weren't extracted and this "
+                            f"run leaves them out: {named(by_setting)}. Nothing to do if you meant it: the tuning "
+                            f"part's numbers lack no record for this reason, and no held-out number can come from "
+                            f"this extraction. To evaluate those records, run `py 060_extract/run.py --extract_from "
+                            f"ground_truth`, then run `py 070_evaluate/run.py` again.")
+    if others:
+        evaluated.notes.append(f"{len(others)} finished ground truth record(s) weren't extracted by 060's "
+                            f"last run, so this run leaves them out: {named(others)}. To evaluate them, run "
                             f"`py 060_extract/run.py`, then run `py 070_evaluate/run.py` again.")
     if outside:
         not_in_pool = [rid for rid in outside if rid not in positions]

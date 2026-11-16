@@ -221,7 +221,7 @@ class FairSampleByPart(unittest.TestCase):
 
     # --- step 070
 
-    def evaluated(self, finished, unfinished=(), extracted=None):
+    def evaluated(self, finished, unfinished=(), extracted=None, made=None):
         import importlib.util
         import sys
         spec = importlib.util.spec_from_file_location("records_070", ROOT / "070_evaluate" / "070_evaluate_helpers" / "records.py")
@@ -230,7 +230,7 @@ class FairSampleByPart(unittest.TestCase):
         spec.loader.exec_module(module)
         self.write_ground_truth(finished, unfinished)
         extracted = list(finished) if extracted is None else extracted
-        (self.tmp / "details.json").write_text(json.dumps({"made": {}, "records": [
+        (self.tmp / "details.json").write_text(json.dumps({"made": made or {}, "records": [
             {"id": i, "status": "extracted"} for i in extracted]}), encoding="utf-8")
         write_csv(self.tmp / "extracted.csv", ["id"], [])
         write_csv(self.tmp / "removed.csv", ["id", "reason"], [])
@@ -283,6 +283,102 @@ class FairSampleByPart(unittest.TestCase):
         self.assertIn("The first held-out record missing", text)
         self.assertIn("not in the ground truth yet", text)
         self.assertIn("set --part tuning", text)
+
+    def test_070_extraction_from_tuning_records_only(self):
+        """060 extracted from the tuning records only (its setting extract_from was tuning): 070 evaluates the tuning
+        records as usual, and says the finished held-out records were left out by that setting, not that 060 should
+        be run again the same way."""
+        tuning_only = {"settings": {"extract_from": "tuning", "ids": ""}}
+        ev = self.evaluated(finished=["r0", "r1", "r2", "r3", "r4"], extracted=["r0", "r1", "r3"], made=tuning_only)
+        self.assertEqual([r["id"] for r in ev.records], ["r0", "r1", "r3"])
+        self.assertEqual({r["part"] for r in ev.records}, {"tuning"})
+        self.assertEqual(ev.left_out["finished, but not extracted by 060's last run"], ["r2", "r4"])
+        notes = [n for n in ev.notes if "weren't extracted" in n]
+        self.assertEqual(len(notes), 1)
+        self.assertIn("060's last run extracted from the tuning records only (its setting extract_from was tuning), "
+                      "so 2 finished ground truth record(s) that aren't tuning records (2 held-out, 0 outside the "
+                      "pool) weren't extracted", notes[0])
+        self.assertIn("r2", notes[0])
+        self.assertIn("--extract_from ground_truth", notes[0])
+        # near-miss 1: a finished TUNING record such a run didn't extract is not explained by the setting
+        ev = self.evaluated(finished=["r0", "r1", "r2", "r3"], extracted=["r0", "r1"], made=tuning_only)
+        notes = [n for n in ev.notes if "weren't extracted" in n]
+        self.assertEqual(len(notes), 2)
+        self.assertIn("1 finished ground truth record(s) that aren't tuning records (1 held-out", notes[0])
+        self.assertIn("1 finished ground truth record(s) weren't extracted by 060's last run, so this run leaves "
+                      "them out: r3. To evaluate them, run `py 060_extract/run.py`, then", notes[1])
+        # near-miss 2: the same records missing from a run that extracted from the ground truth (or whose setting
+        # isn't recorded), or from one that named its records with ids: the general note, as before
+        for made in ({"settings": {"extract_from": "ground_truth", "ids": ""}}, {},
+                     {"settings": {"extract_from": "tuning", "ids": "r0,r1,r3"}}):
+            ev = self.evaluated(finished=["r0", "r1", "r2", "r3", "r4"], extracted=["r0", "r1", "r3"], made=made)
+            notes = [n for n in ev.notes if "weren't extracted" in n]
+            self.assertEqual(len(notes), 1, made)
+            self.assertIn("2 finished ground truth record(s) weren't extracted by 060's last run", notes[0])
+            self.assertNotIn("tuning records only", notes[0])
+
+    # --- step 060
+
+    def extract_from(self, value, finished, unfinished=(), ids=""):
+        import importlib.util
+        import sys
+        spec = importlib.util.spec_from_file_location("records_060", ROOT / "060_extract" / "060_extract_helpers" / "records.py")
+        module = importlib.util.module_from_spec(spec)
+        sys.modules["records_060"] = module
+        spec.loader.exec_module(module)
+        self.write_ground_truth(finished, unfinished)
+        inputs = {"records": self.tmp / "records.jsonl", "splits": self.tmp / "splits.json",
+                  "ground_truth": self.tmp / "ground_truth" / "batch_*.csv"}
+        return module, module.pick_records(inputs, {"extract_from": value, "ids": ids, "max_chars": 8000,
+                                                    "workers": 1, "model": "m"})
+
+    def test_060_extract_from_tuning(self):
+        """extract_from tuning: the finished tuning records only; a finished held-out record, and a finished record
+        outside the pool, are not extracted from (a note counts them); of the unfinished records, only the tuning
+        ones are named as skipped. extract_from ground_truth takes every finished record, as before."""
+        with open(self.tmp / "records.jsonl", "a", encoding="utf-8") as fh:            # a hand-picked record, not in the pool
+            fh.write("\n" + json.dumps({"id": "x9", "title": "title x9", "notes": "notes of x9"}))
+        finished, unfinished = ["r0", "r1", "r2", "r4", "x9"], ["r3", "r7"]           # r2 r4 r7 are held-out
+        module, chosen = self.extract_from("tuning", finished, unfinished)
+        self.assertIn("tuning", module.SPECS["extract_from"].choices)
+        self.assertEqual([i["id"] for i in chosen.items], ["r0", "r1"])
+        self.assertEqual(chosen.how, "the 2 finished tuning record(s) of the ground truth")
+        self.assertEqual(chosen.skipped, {module.NOT_FINISHED: ["r3"]})
+        self.assertEqual(chosen.ground_truth, set(finished + unfinished))             # what is annotated: every part
+        self.assertEqual(chosen.schema_evidence, {"r0", "r1"})
+        other = [n for n in chosen.notes if n.startswith("extract_from is tuning")]
+        self.assertEqual(len(other), 1)
+        self.assertIn("so 3 finished record(s) of the ground truth that aren't tuning records", other[0])
+        unfinished_note = next(n for n in chosen.notes if "aren't finished yet" in n)
+        self.assertTrue(unfinished_note.startswith("1 tuning record(s) of the ground truth aren't finished yet"))
+        self.assertIn("r3", unfinished_note)
+        self.assertNotIn("r7", unfinished_note)
+        # read without case, as the other values are
+        self.assertEqual([i["id"] for i in self.extract_from(" Tuning ", finished, unfinished)[1].items], ["r0", "r1"])
+        # the default is unchanged: every finished record, every unfinished one named
+        _, chosen = self.extract_from("ground_truth", finished, unfinished)
+        self.assertEqual([i["id"] for i in chosen.items], finished)
+        self.assertEqual(chosen.skipped, {module.NOT_FINISHED: ["r3", "r7"]})
+        self.assertFalse([n for n in chosen.notes if n.startswith("extract_from is tuning")])
+        self.assertTrue(next(n for n in chosen.notes if "aren't finished yet" in n).startswith("2 record(s) of the"))
+        # near-miss: every finished record is a tuning record, so there is nothing to say about other parts
+        _, chosen = self.extract_from("tuning", ["r0", "r1"])
+        self.assertEqual([i["id"] for i in chosen.items], ["r0", "r1"])
+        self.assertEqual(chosen.notes, [])
+        # ids name the records whatever extract_from says: a held-out record listed is extracted from, with the note
+        _, chosen = self.extract_from("tuning", finished, unfinished, ids="r2")
+        self.assertEqual([i["id"] for i in chosen.items], ["r2"])
+        self.assertTrue(any("extract_from (tuning) is ignored" in n for n in chosen.notes))
+
+    def test_060_extract_from_tuning_stops(self):
+        """No finished tuning record: the run stops, and the message says why nothing can be extracted."""
+        from common.stop import Stop
+        with self.assertRaises(Stop) as stop:
+            self.extract_from("tuning", ["r2", "r4"], ["r0"])
+        text = str(stop.exception)
+        self.assertIn("Nothing to extract", text)
+        self.assertIn("1 tuning record(s) of the ground truth aren't finished yet", text)
+        self.assertIn("extract_from is tuning, so 2 finished record(s)", text)
 
     # --- step 050
 
@@ -1275,10 +1371,194 @@ class ExtractWithoutGroundTruth(unittest.TestCase):
 
     def test_ground_truth_stops(self):
         from common.stop import Stop
+        for value in ("ground_truth", "tuning"):                               # both take records of the ground truth
+            with self.assertRaises(Stop) as stop:
+                self.pick(value)
+            self.assertIn("No ground truth files at", str(stop.exception))
+            self.assertIn(f"(extract_from is {value})", str(stop.exception))
+            self.assertIn("--extract_from all", str(stop.exception))
+
+    def test_a_value_that_is_none_of_them_stops(self):
+        from common.stop import Stop
         with self.assertRaises(Stop) as stop:
-            self.pick("ground_truth")
-        self.assertIn("No ground truth files at", str(stop.exception))
-        self.assertIn("--extract_from all", str(stop.exception))
+            self.pick("held-out")                                              # a near-miss: no such value, by design
+        self.assertIn("ground_truth, tuning, all", str(stop.exception))
+
+
+class OutputOfRun(unittest.TestCase):
+    """common.step.output_of_run: an output file as one run of a step wrote it. previous_runs/<run id>/ holds a
+    run's file only when the next run changed it, so the file is found by the sha256 the run's manifest records, in
+    the run's folder, in a later run's folder, or live; never the live file by default. The folders are made by the
+    step runner's own keeping (step._keep_previous, step._settle_previous), three runs in a row. And
+    common.step.gather_run gives a run's files beside its own manifest, for step 070's setting extraction_run, which
+    py helpers/analysis/rescore_runs.py uses; both stop, naming the file, when a copy is gone."""
+
+    FILES = ("extracted_triples.csv", "extracted_triples_removed.csv", "extracted_triples_details.json", "schema_used.json")
+    #: what each run writes: the removed file is the same in runs A and B, and changes in run C
+    RUNS = {"060_extract_2026-11-05_1816": {"extracted_triples.csv": "a", "extracted_triples_removed.csv": "removed 1",
+                                            "extracted_triples_details.json": "da", "schema_used.json": "s"},
+            "060_extract_2026-11-05_1816-2": {"extracted_triples.csv": "b", "extracted_triples_removed.csv": "removed 1",
+                                              "extracted_triples_details.json": "db", "schema_used.json": "s"},
+            "060_extract_2026-11-06_2341": {"extracted_triples.csv": "c", "extracted_triples_removed.csv": "removed 2",
+                                            "extracted_triples_details.json": "dc", "schema_used.json": "s"}}
+
+    def setUp(self):
+        import hashlib
+        from common import step
+        self.step = step
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp)
+        self.out = self.tmp / "060_extract"
+        self.out.mkdir()
+        manifest_text = None
+        for run_id, files in self.RUNS.items():                                # each run, as run_step keeps the one before
+            folder, kept = step._keep_previous(self.out, manifest_text)
+            for name, text in files.items():
+                path = self.out / name
+                path.unlink(missing_ok=True)                                   # a write replaces the file with a new one
+                path.write_text(text, encoding="utf-8")
+            step._settle_previous(self.out, folder, kept)
+            manifest_text = json.dumps({"run_id": run_id, "outputs": [
+                {"file": name, "sha256": hashlib.sha256(text.encode("utf-8")).hexdigest()} for name, text in files.items()]})
+            (self.out / step.MANIFEST_NAME).write_text(manifest_text, encoding="utf-8")
+        self.a, self.b, self.c = self.RUNS
+
+    def read(self, run_id, name):
+        path = self.step.output_of_run(self.out, run_id, name)
+        return None if path is None else (path.parent.name, path.read_text(encoding="utf-8"))
+
+    def test_what_the_runner_kept(self):
+        kept = {p.name: sorted(f.name for f in p.iterdir()) for p in (self.out / "previous_runs").iterdir()}
+        self.assertEqual(kept, {self.a: ["_manifest.json", "extracted_triples.csv", "extracted_triples_details.json"],
+                                self.b: ["_manifest.json", "extracted_triples.csv", "extracted_triples_details.json",
+                                         "extracted_triples_removed.csv"]})
+
+    def test_each_file_as_its_run_wrote_it(self):
+        # run A's removed file isn't in A's folder (B left it as it was) and isn't the live one (C changed it): it is
+        # the copy kept in B's folder
+        self.assertEqual(self.read(self.a, "extracted_triples_removed.csv"), (self.b, "removed 1"))
+        self.assertEqual(self.read(self.b, "extracted_triples_removed.csv"), (self.b, "removed 1"))
+        self.assertEqual(self.read(self.c, "extracted_triples_removed.csv"), ("060_extract", "removed 2"))
+        self.assertEqual(self.read(self.a, "extracted_triples.csv"), (self.a, "a"))
+        self.assertEqual(self.read(self.b, "extracted_triples.csv"), (self.b, "b"))
+        # a file no run changed has one copy, the live one, and it is every run's
+        for run_id in self.RUNS:
+            self.assertEqual(self.read(run_id, "schema_used.json"), ("060_extract", "s"))
+        self.assertEqual(sorted(self.step.run_manifests(self.out)), sorted(self.RUNS))
+
+    def test_no_copy_left_is_none_never_another_runs_file(self):
+        (self.out / "previous_runs" / self.b / "extracted_triples_removed.csv").unlink()
+        self.assertIsNone(self.read(self.a, "extracted_triples_removed.csv"))          # the live file is run C's
+        self.assertIsNone(self.read(self.a, "discarded.jsonl"))                        # not a file run A's manifest lists
+        (self.out / "discarded.jsonl").write_text("x", encoding="utf-8")
+        self.assertIsNone(self.read(self.a, "discarded.jsonl"))                        # ... also when a later run wrote one
+        self.assertIsNone(self.read("060_extract_2026-01-01_0000", "extracted_triples.csv"))   # no such run kept
+
+    def rescore(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("rescore_runs", ROOT / "helpers" / "analysis" / "rescore_runs.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    def records_070(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("records_070", ROOT / "070_evaluate" / "070_evaluate_helpers" / "records.py")
+        module = importlib.util.module_from_spec(spec)
+        sys.modules["records_070"] = module                                    # its dataclass needs it registered
+        spec.loader.exec_module(module)
+        return module
+
+    def gather(self, run_id, names=FILES):
+        return self.step.gather_run(self.out, run_id, list(names), self.tmp / "gathered", again="then try again.")
+
+    def test_gathered_beside_the_runs_own_manifest(self):
+        """A kept run whose files are spread over folders (A's removed file is in B's folder, its schema live) is
+        gathered, with its own manifest, in <into>/<run id>/, where step 070 reads 060's manifest from; the live run,
+        whose files are all live, beside the live manifest, is given as it is, and so is nothing copied."""
+        given = self.gather(self.a)
+        folder = self.tmp / "gathered" / self.a
+        self.assertEqual({p.parent for p in given.values()}, {folder})
+        self.assertEqual({n: p.read_text(encoding="utf-8") for n, p in given.items()}, self.RUNS[self.a])
+        self.assertEqual(json.loads((folder / "_manifest.json").read_text(encoding="utf-8"))["run_id"], self.a)
+        again = self.gather(self.a)                                         # gathered again: the same copies
+        self.assertEqual({n: p.read_text(encoding="utf-8") for n, p in again.items()}, self.RUNS[self.a])
+        live = self.gather(self.c)
+        self.assertEqual({p.parent for p in live.values()}, {self.out})
+        self.assertEqual({n: p.read_text(encoding="utf-8") for n, p in live.items()}, self.RUNS[self.c])
+        self.assertFalse((self.tmp / "gathered" / self.c).exists())
+
+    def test_gather_stops_naming_what_is_missing(self):
+        from common.stop import Stop
+        (self.out / "previous_runs" / self.b / "extracted_triples_removed.csv").unlink()
+        with self.assertRaises(Stop) as stop:
+            self.gather(self.a)
+        text = str(stop.exception)
+        self.assertIn(f"Run {self.a} of step 060_extract: no copy is left of extracted_triples_removed.csv as that "
+                      f"run wrote it", text)
+        self.assertIn("Restore the file from a backup, then try again.", text)
+        self.assertNotIn("extracted_triples.csv", text)                                # only the missing file is named
+        self.assertFalse((self.tmp / "gathered").exists())                             # nothing copied
+        # near-miss: a run id that was never kept; the message lists the runs kept, latest first
+        with self.assertRaises(Stop) as stop:
+            self.gather("060_extract_2026-01-01_0000")
+        self.assertIn("Run 060_extract_2026-01-01_0000 of step 060_extract isn't kept", str(stop.exception))
+        self.assertIn(f"the runs kept, latest first: {self.c}, {self.b}, {self.a}", str(stop.exception))
+
+    def test_extraction_run_setting(self):
+        """Step 070's setting extraction_run gives its four inputs from 060 as the named run wrote them, and stops
+        when one of them is also given on the command line; empty, it changes nothing."""
+        from unittest import mock
+        from common.stop import Stop
+        records = self.records_070()
+        inputs = {k: self.out / name for k, name in zip(records.FROM_060, self.FILES)}
+        inputs["records"] = self.tmp / "records.jsonl"
+        self.assertIs(records.extraction_inputs(inputs, {"extraction_run": " "}, set()), inputs)
+        with mock.patch.object(self.step, "RESULTS_DIR", self.tmp / "results"):
+            got = records.extraction_inputs(inputs, {"extraction_run": self.a}, {"records"})
+        self.assertEqual(got["records"], inputs["records"])
+        self.assertEqual({k: got[k].read_text(encoding="utf-8") for k in records.FROM_060},
+                         {k: self.RUNS[self.a][name] for k, name in zip(records.FROM_060, self.FILES)})
+        self.assertEqual({got[k].parent for k in records.FROM_060},
+                         {self.tmp / "results" / "070_evaluate" / records.EXTRACTIONS_DIR / self.a})
+        with self.assertRaises(Stop) as stop:
+            records.extraction_inputs(inputs, {"extraction_run": self.a}, {"schema_used"})
+        self.assertIn(f"--extraction_run {self.a} names the run of 060 to score, and --schema_used also gives one "
+                      f"of its files", str(stop.exception))
+        # the files read must name the run named: one edited by hand stops the run
+        records._check_named_run({"extraction_run": self.a}, {"schema_used": self.a, "_manifest.json": None})
+        with self.assertRaises(Stop) as stop:
+            records._check_named_run({"extraction_run": self.a}, {"schema_used": self.b})
+        self.assertIn(f"schema_used says run {self.b} wrote it", str(stop.exception))
+        records._check_named_run({"extraction_run": ""}, {"schema_used": self.b})     # no run named: no check
+
+    def test_rescore_runs_checks_every_run_first(self):
+        rescore = self.rescore()
+        self.assertEqual(sorted(rescore.FILES), sorted(self.FILES))
+        found = self.step.run_manifests(self.out)
+        paths = rescore.check_kept(self.a, self.out, found)
+        self.assertEqual({n: p.read_text(encoding="utf-8") for n, p in paths.items()}, self.RUNS[self.a])
+        (self.out / "previous_runs" / self.b / "extracted_triples_removed.csv").unlink()
+        with self.assertRaises(SystemExit) as stop:
+            rescore.check_kept(self.a, self.out)
+        text = str(stop.exception)
+        self.assertIn(f"Run {self.a} of step 060_extract: no copy is left of extracted_triples_removed.csv", text)
+        self.assertIn("or take the run out of RUNS in helpers/analysis/rescore_runs.py", text)
+        self.assertIn("Nothing was scored.", text)
+        with self.assertRaises(SystemExit) as stop:
+            rescore.check_kept("060_extract_2026-01-01_0000", self.out)
+        self.assertIn("Run 060_extract_2026-01-01_0000 of step 060_extract isn't kept", str(stop.exception))
+
+    def test_the_four_inputs_from_060(self):
+        """The four inputs 070 reads from step 060's folder are the ones the setting extraction_run takes (records.
+        FROM_060), and rescore_runs' file names are theirs."""
+        import re
+        records = self.records_070()
+        text = (ROOT / "070_evaluate" / "run.py").read_text(encoding="utf-8")
+        from_060 = dict(re.findall(r'"(\w+)":\s+"060_extract/([\w.]+)"', text))
+        self.assertEqual(set(from_060), set(records.FROM_060))
+        self.assertEqual(sorted(from_060.values()), sorted(self.rescore().FILES))
+        self.assertIn("prepare_inputs=evaluate.extraction_inputs", text)
 
 
 class WorkedExamples(unittest.TestCase):

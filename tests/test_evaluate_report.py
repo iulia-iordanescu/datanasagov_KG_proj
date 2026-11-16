@@ -89,6 +89,345 @@ class HeldOutLook(unittest.TestCase):
                 self.assertIsNone(moves._log_look(evaluated, SimpleNamespace(entity={}, predicate={}), "s.json"))
             self.assertFalse(looks.exists())
 
+    def test_a_look_keeps_its_held_out_counts_apart(self):
+        """A run that looked keeps its held-out records' counts in held_out_evaluations/<run id>.json, with the
+        look's line of the log and its number, and its tuning records' counts in evaluations/ as every run does:
+        neither file holds a record of the other part."""
+        import json
+        import tempfile
+        from types import SimpleNamespace
+        from unittest import mock
+        from pathlib import Path
+        from common.files import read_csv
+        tr = translation(CLASSES, PREDICATES)
+        records = []
+        for n, (rid, part) in enumerate((("t1", "tuning"), ("h1", "held-out"), ("h2", "held-out"))):
+            records.append(pairing.compare_record({**record(GT, EXTRACTED[:n + 1], rid=rid, part=part), "position": n}, tr))
+        evaluated = SimpleNamespace(records=records, schema_used={"made": {"run_id": "060_extract_2026-01-01_0000"}},
+                                    extraction_made={}, pending=[])
+        with tempfile.TemporaryDirectory() as tmp:
+            out, log = Path(tmp) / "out", Path(tmp) / "held_out_looks.csv"
+            with mock.patch.object(moves, "LOOKS", log):
+                first = moves._log_look(evaluated, tr, "s.json")
+                second = moves._log_look(evaluated, tr, "s.json")
+            self.assertEqual((first["count"], second["count"]), (1, 2))
+            self.assertEqual(read_csv(log), [first["row"], second["row"]])            # what is kept is the logged line
+            tuning = moves._keep_evaluation(evaluated, tr, out, records[:1], {})
+            held = moves._keep_evaluation(evaluated, tr, out, records[1:], {}, look=second)
+            self.assertEqual((tuning.parent.name, held.parent.name), ("evaluations", "held_out_evaluations"))
+            kept_tuning, kept_held = (json.loads(p.read_text(encoding="utf-8")) for p in (tuning, held))
+            self.assertEqual([r["id"] for r in kept_tuning["records"]], ["t1"])
+            self.assertNotIn("look", kept_tuning)
+            self.assertNotIn("part", kept_tuning)
+            self.assertEqual([r["id"] for r in kept_held["records"]], ["h1", "h2"])
+            self.assertEqual(kept_held["part"], "held-out")
+            self.assertEqual(kept_held["look"], {**second["row"], "number": 2})
+            self.assertEqual(kept_held["look"]["held_out_records"], "2")
+            self.assertEqual(kept_held["look"]["extraction_run_id"], "060_extract_2026-01-01_0000")
+            self.assertEqual(kept_held["recipe"], kept_tuning["recipe"])              # one recipe, written the one way
+            for kept, source in ((kept_tuning, records[:1]), (kept_held, records[1:])):
+                self.assertEqual([r["counts"] for r in kept["records"]],
+                                 [dict(r["compared"]["counts"]) for r in source])
+                # and what 070's split by drafting model reads, so py helpers/held_out_results.py can give it
+                self.assertEqual([r["groups"] for r in kept["records"]],
+                                 [{n: {k: dict(c) for k, c in g.items()} for n, g in r["compared"]["groups"].items()}
+                                  for r in source])
+                self.assertEqual([r["drafted_by_spellings"] for r in kept["records"]],
+                                 [r["compared"]["drafted_by_spellings"] for r in source])
+            self.assertEqual(sorted(p.name for p in out.iterdir()), ["evaluations", "held_out_evaluations"])
+
+
+class HeldOutResults(unittest.TestCase):
+    """py helpers/held_out_results.py: the held-out looks kept by 070, grouped by recipe (repeats together), each
+    group pooled over its repeats as py helpers/compare_runs.py pools, with and without records left out on request;
+    how many looks the log holds for each extraction, and whether the fingerprints agree across the looks. It reads
+    kept results only."""
+
+    @classmethod
+    def setUpClass(cls):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("held_out_results", ROOT / "helpers" / "held_out_results.py")
+        cls.h = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cls.h)
+
+    #: (pairs, of) per record and repeat, pool positions 2, 5, 8, 11: record h08 is the one left out on request
+    SIZES = [4, 10, 5, 8]
+    PAIRS = {"model-a": [[4, 5, 1, 8], [2, 5, 1, 8], [3, 8, 0, 4]], "model-b": [[1, 2, 5, 3], [1, 4, 5, 3]]}
+
+    def look(self, model, repeat, pairs, **more):
+        """A kept look as 070 writes it: the extraction's recipe, the look's line, each record's counts."""
+        records = []
+        for i, (m, n) in enumerate(zip(pairs, self.SIZES)):
+            counts = {"extracted": n, "untranslatable": 0, "gt": n, "within_reach": n, "within_strict_reach": n}
+            for level in ("exact", "partial"):
+                counts.update({f"{level}_pairs": m, f"{level}_strict_pairs": m, f"{level}_subject_class_pairs": m,
+                               f"{level}_object_class_pairs": m, f"{level}_pairs_within_reach": m,
+                               f"{level}_strict_pairs_within_strict_reach": m, f"{level}_pending_pairs": 0})
+            records.append({"id": f"h{3 * i + 2:02d}", "position": 3 * i + 2, "stratum": "s", "twin": "",
+                            "ground_truth_sha256": "g", "pending_sha256": "p", "translation": {}, "counts": counts,
+                            "describes": {"truth": "D", "said": "D", "right": True}})
+        run_id, ex = f"070_evaluate_2026-11-20_10{repeat:02d}-{model[-1]}", f"060_extract_2026-11-19_09{repeat:02d}-{model[-1]}"
+        row = {"date": "2026-11-20", "run_id": run_id, "schema": "the_schema.json", "held_out_records": str(len(records)),
+               "extraction_run_id": ex, "translation_sha256": more.get("translation", "t" * 64),
+               "held_out_ground_truth_sha256": more.get("ground_truth", "g" * 64)}
+        recipe = {"extraction (060)": {"run_id": ex, "git_commit": "abc", "schema": "the_schema.json",
+                                       "settings": {"service": "anthropic", "model": model, "repeat": repeat},
+                                       "model_calls": {"model": model, "repeat": repeat}},
+                  "evaluation (070)": {"git_commit": more.get("commit", "def"), "translation": "the translation table",
+                                       "translation_sha256": row["translation_sha256"], "evaluation_version": 3}}
+        return {"run_id": run_id, "part": "held-out", "look": {**row, "number": more.get("number", repeat)},
+                "recipe": recipe, "records": records}
+
+    def looks(self):
+        return [self.look(model, k + 1, pairs) for model, repeats in self.PAIRS.items() for k, pairs in enumerate(repeats)]
+
+    def test_groups_are_repeats_of_one_recipe(self):
+        runs = self.looks()
+        groups = self.h.groups_of(runs)
+        self.assertEqual([[self.h.extraction_of(r)["model"] for r in g] for g in groups],
+                         [["model-a"] * 3, ["model-b"] * 2])
+        self.assertEqual([[self.h.extraction_of(r)["repeat"] for r in g] for g in groups], [[1, 2, 3], [1, 2]])
+        # near-miss: the same model with another code version of 070 isn't a repeat of that recipe, so it isn't pooled
+        other = self.look("model-a", 4, self.PAIRS["model-a"][0], commit="other")
+        self.assertEqual([len(g) for g in self.h.groups_of(runs + [other])], [3, 2, 1])
+        self.assertIn("**More than one group extracts with model-a:**", self.h.report(runs + [other], []))
+
+    def test_pooled_over_the_repeats_with_and_without(self):
+        """Worked out by hand: model-a's exact recall pooled over 3 repeats is all its pairs over 3 x all its ground
+        truth triples, (4+5+1+8 + 2+5+1+8 + 3+8+0+4) / (3 x 27) = 49/81; without h08 (5 ground truth triples; 1, 1, 0
+        pairs) it is 47/66."""
+        runs = self.looks()
+        leave, unknown = self.h.leave_out_ids("#8", runs)
+        self.assertEqual((leave, unknown), (["h08"], []))
+        s = self.h.summary(self.h.groups_of(runs)[0], leave)
+        self.assertEqual((s["ids"], s["without_ids"], s["left_out_here"]),
+                         (["h02", "h05", "h08", "h11"], ["h02", "h05", "h11"], ["h08"]))
+        pooled = {r["label"]: r for r in s["pooled"]}
+        without = {r["label"]: r for r in s["pooled_without"]}
+        self.assertAlmostEqual(pooled["exact: recall"]["value"], 49 / 81)
+        self.assertAlmostEqual(without["exact: recall"]["value"], 47 / 66)
+        self.assertLess(pooled["exact: recall"]["low"], 49 / 81)
+        self.assertGreater(pooled["exact: recall"]["high"], 49 / 81)
+        # each repeat's own value, on the same records
+        each = {r["label"]: r for r in s["spread"]}["exact: recall"]
+        self.assertEqual([round(v * 27) for v in each["values"]], [18, 16, 15])
+        # the second group, by its own counts: (1+2+5+3 + 1+4+5+3) / (2 x 27); without h08, 14/44
+        s = self.h.summary(self.h.groups_of(runs)[1], leave)
+        self.assertAlmostEqual({r["label"]: r for r in s["pooled"]}["exact: recall"]["value"], 24 / 54)
+        self.assertAlmostEqual({r["label"]: r for r in s["pooled_without"]}["exact: recall"]["value"], 14 / 44)
+        text = self.h.report(runs, [r["look"] for r in runs], leave)
+        self.assertIn("## Group 1: anthropic model-a, 3 repeat(s)", text)
+        self.assertIn("## Group 2: anthropic model-b, 2 repeat(s)", text)
+        self.assertIn("| Number | Pooled over the 3 repeat(s), all 4 records | 95% range | Without the 1 left out "
+                      "(3 records) | 95% range |", text)
+        self.assertRegex(text, r"\| exact: recall \| 60\.5% \| [0-9.]+% to [0-9.]+% \| 71\.2% \|")
+        self.assertRegex(text, r"\| exact: recall \| 44\.4% \| [0-9.]+% to [0-9.]+% \| 31\.8% \|")
+        self.assertIn("1 record(s), named with `--leave_out`: #8 (`h08`)", text)
+        # nothing left out: one column, and no section on records left out
+        text = self.h.report(runs, [r["look"] for r in runs])
+        self.assertIn("| Number | Pooled over the 3 repeat(s), all 4 records | 95% range |\n", text)
+        self.assertNotIn("left out on request", text)
+
+    def test_leave_out_names_records_by_position_or_id(self):
+        runs = self.looks()
+        self.assertEqual(self.h.leave_out_ids("5, #11 ,h02,5", runs), (["h05", "h11", "h02"], []))
+        self.assertEqual(self.h.leave_out_ids("", runs), ([], []))
+        # near-misses: a position no held-out record of these runs has (a tuning record's), and an unknown id
+        self.assertEqual(self.h.leave_out_ids("3,#8,nope", runs), (["h08"], ["3", "nope"]))
+
+    def test_a_record_not_in_every_repeat_is_left_out_and_said(self):
+        runs = self.looks()[:3]
+        runs[1]["records"] = [r for r in runs[1]["records"] if r["id"] != "h05"]      # e.g. its model call failed
+        runs[2]["records"][0]["ground_truth_sha256"] = "changed"                      # h02's ground truth changed
+        s = self.h.summary(runs, [])
+        self.assertEqual(s["ids"], [])                                                # h02 out, so nothing before it
+        self.assertEqual(s["left"]["not evaluated in every run"], ["h05"])
+        self.assertEqual(s["left"]["ground truth changed between the runs"], ["h02"])
+        text = self.h.report(runs, [])
+        self.assertIn("No record is left to pool, so this group has no numbers.", text)
+        self.assertIn("Left out, ground truth changed between the runs: 1 (#2 (`h02`))", text)
+
+    def test_the_looks_and_their_fingerprints(self):
+        runs = self.looks()
+        log = [r["look"] for r in runs]
+        text = self.h.report(runs, [{k: v for k, v in row.items() if k != "number"} for row in log])
+        self.assertIn("5 run(s) of step 070, each a look at the held-out part, in 2 group(s)", text)
+        self.assertIn("- **Fingerprint of the translation** (`translation_sha256`): the same in all 5 looks.", text)
+        self.assertIn("- **Fingerprint of the held-out records' ground truth** (`held_out_ground_truth_sha256`): the "
+                      "same in all 5 looks.", text)
+        self.assertIn("- **Looks per extraction:** every extraction summarized here has one look in the log.", text)
+        self.assertIn("holds 5 look(s) in all; all are summarized here.", text)
+        self.assertTrue(all(len(e["looks"]) == 1 and e["in_log"] == 1 for e in self.h.looks_of(runs, log)))
+        # an extraction looked at twice, the ground truth changed in between; a look of the log not summarized; a
+        # kept look whose line is gone from the log; and a translation fingerprint that differs between the looks
+        earlier = {**runs[0]["look"], "run_id": "070_evaluate_2026-11-18_0800", "held_out_ground_truth_sha256": "x" * 64}
+        stranger = {**runs[0]["look"], "run_id": "070_evaluate_2026-11-17_0700", "extraction_run_id": "060_other"}
+        runs[4]["look"]["translation_sha256"] = "u" * 64
+        log = [stranger, earlier] + [r["look"] for r in runs[:4]]
+        entries = self.h.looks_of(runs, log)
+        self.assertEqual([len(e["looks"]) for e in entries], [2, 1, 1, 1, 0])
+        self.assertEqual(entries[0]["same"], {"translation_sha256": True, "held_out_ground_truth_sha256": False})
+        self.assertEqual([e["in_log"] for e in entries], [1, 1, 1, 1, 0])
+        self.assertEqual(self.h.same_everywhere(runs), {"translation_sha256": False, "held_out_ground_truth_sha256": True})
+        text = self.h.report(runs, log)
+        self.assertIn("(`translation_sha256`): NOT the same in all 5 looks", text)
+        self.assertIn(f"- **Looked at more than once:** 060's run `{entries[0]['extraction']['run_id']}` has 2 looks "
+                      f"in the log (070's runs `070_evaluate_2026-11-18_0800`, `{runs[0]['run_id']}`); between them, "
+                      f"the held-out records' ground truth changed, so a change was made after a look.", text)
+        self.assertIn(f"- **Looks not in the log as kept:** `{runs[4]['run_id']}` has 0 line(s)", text)
+        self.assertIn("holds 6 look(s) in all; 2 of them are not summarized here", text)
+        self.assertNotIn("every extraction summarized here has one look", text)
+
+    def test_two_looks_at_one_extraction_are_refused(self):
+        runs = self.looks()
+        self.assertIsNone(self.h.check(runs))
+        self.assertIn("given more than once", self.h.check(runs + runs[:1]))
+        again = self.look("model-a", 1, self.PAIRS["model-a"][0])
+        again["run_id"] = "070_evaluate_2026-11-21_1200"                               # a second look, the same 060 run
+        self.assertIn("looks at the same extraction, whose repeat would count twice", self.h.check(runs + [again]))
+
+    def test_reads_kept_results_only(self):
+        """The command lists and summarizes from the files kept: no line is added to the log, nothing is written
+        beside the report, and no model call can leave (llm.forbid_model_calls, which the listing sets too)."""
+        import io
+        import json
+        import os
+        import tempfile
+        from contextlib import redirect_stdout
+        from pathlib import Path
+        from unittest import mock
+        from common import llm
+        self.addCleanup(llm.allow_model_calls)                                       # the other tests of this file
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ):
+            tmp = Path(tmp)
+            kept, log, reports = tmp / "held_out_evaluations", tmp / "held_out_looks.csv", tmp / "reports"
+            kept.mkdir()
+            runs = self.looks()
+            for run in runs:
+                (kept / f"{run['run_id']}.json").write_text(json.dumps(run), encoding="utf-8")
+            columns = moves.LOOKS_COLUMNS
+            log.write_text("\n".join([",".join(columns)] + [",".join(r["look"][c] for c in columns) for r in runs])
+                           + "\n", encoding="utf-8")
+            before = log.read_bytes()
+            with mock.patch.object(self.h, "KEPT", kept), mock.patch.object(self.h, "LOOKS", log), \
+                    mock.patch.object(self.h, "REPORTS_DIR", reports):
+                said = io.StringIO()
+                with redirect_stdout(said):
+                    self.assertEqual(self.h.main([]), 0)
+                self.assertEqual(said.getvalue().count("070_evaluate_2026-11-20"), 5)
+                said = io.StringIO()
+                with redirect_stdout(said):
+                    self.assertEqual(self.h.main(["--leave_out", "8"] + [str(kept / f"{r['run_id']}.json") for r in runs]), 0)
+                self.assertIn("Summarized 5 held-out look(s) in 2 group(s), with and without 1 record(s)", said.getvalue())
+                with self.assertRaises(SystemExit) as stop:                          # a mismatch with what was asked: said, nothing written
+                    self.h.main(["--leave_out", "999"] + [str(kept / f"{r['run_id']}.json") for r in runs])
+                self.assertIn("--leave_out names 1 record(s) that are not held-out records of these runs (999)", str(stop.exception))
+                with self.assertRaises(SystemExit) as stop:
+                    self.h.load("070_evaluate_2026-01-01_0000", kept)
+                self.assertIn("No held-out look is kept for 070_evaluate_2026-01-01_0000", str(stop.exception))
+            self.assertEqual(log.read_bytes(), before)
+            self.assertEqual(len(list(reports.glob("held_out_results_*.md"))), 1)
+            self.assertEqual(sorted(p.name for p in tmp.iterdir()), ["held_out_evaluations", "held_out_looks.csv", "reports"])
+            self.assertIn("py helpers/held_out_results.py is free", llm.FORBIDDEN["why"])
+
+    #: By drafting model, worked out by hand: two repeats of one recipe, two held-out records. h02 has 6
+    #: occurrences and 4 ground truth triples (3 drafted by claude-opus-5-5, spelled "claude-opus-5.5"; 1 with no
+    #: drafting model); h05 has 3 occurrences and 2 (1 claude-opus-5-5, 1 gemini-4-argon). Each group's counts per
+    #: repeat: (exact pairs, exact strict pairs, partial pairs, partial strict pairs).
+    DRAFTED = {"h02": {"gt": {"claude-opus-5-5": 3, "": 1}, "extracted": 6,
+                       "pairs": [{"claude-opus-5-5": (2, 2, 3, 2), "": (0, 0, 1, 1)},
+                                 {"claude-opus-5-5": (1, 1, 2, 2), "": (0, 0, 0, 0)}]},
+               "h05": {"gt": {"claude-opus-5-5": 1, "gemini-4-argon": 1}, "extracted": 3,
+                       "pairs": [{"claude-opus-5-5": (1, 1, 1, 1), "gemini-4-argon": (0, 0, 1, 0)},
+                                 {"claude-opus-5-5": (1, 1, 1, 1), "gemini-4-argon": (1, 1, 1, 1)}]}}
+
+    def drafted_looks(self, with_groups=True):
+        """Two kept looks (repeats 1 and 2 of claude-opus-5-5) of the records of DRAFTED, as 070 keeps them."""
+        runs = []
+        for k in (0, 1):
+            run = self.look("claude-opus-5-5", k + 1, [0, 0, 0, 0])
+            run["records"] = run["records"][:2]
+            for r in run["records"]:
+                d = self.DRAFTED[r["id"]]
+                groups = {g: {"gt": d["gt"][g], "exact_pairs": e, "exact_strict_pairs": es, "partial_pairs": p,
+                              "partial_strict_pairs": ps} for g, (e, es, p, ps) in d["pairs"][k].items()}
+                counts = {"extracted": d["extracted"], "untranslatable": 0, "gt": sum(d["gt"].values()),
+                          **{f"{level}_pairs": sum(g[f"{level}_pairs"] for g in groups.values())
+                             for level in ("exact", "partial")},
+                          **{f"{level}_strict_pairs": sum(g[f"{level}_strict_pairs"] for g in groups.values())
+                             for level in ("exact", "partial")}}
+                r["counts"] = counts
+                if with_groups:
+                    r["groups"] = {"drafted_by": groups}
+                    r["drafted_by_spellings"] = {g: ["claude-opus-5.5"] if g == "claude-opus-5-5" else [g] if g else [""]
+                                                 for g in groups}
+            runs.append(run)
+        return runs
+
+    def test_by_drafting_model_pooled_over_the_repeats(self):
+        """Each record's parts are averaged over the 2 repeats, then summed over the records. claude-opus-5-5:
+        exact recall (1.5 + 1) / (3 + 1) = 5/8; partial recall (2.5 + 1) / 4 = 7/8; exact share of pairs (1.5 + 1)
+        / (2.5 + 1) = 5/7; entity-class accuracy (2 + 1) / 3.5 = 6/7; attributed precision, partial: each record's
+        denominator is its counted occurrences less the other groups' pairs, h02 (6 − 4 + 3, 6 − 2 + 2) = 5.5 on
+        average and h05 (3 − 2 + 1, 3 − 2 + 1) = 2, so (2.5 + 1) / (5.5 + 2) = 7/15; F1 2 × 3.5 / (7.5 + 4) = 14/23.
+        gemini-4-argon: exact recall 0.5 / 1, partial recall 1 / 1, entity-class accuracy 0.5 / 1. Without h05:
+        claude-opus-5-5's exact recall 1.5 / 3 = 1/2, and gemini-4-argon, which drafted no triple of h02, has no
+        row."""
+        runs = self.drafted_looks()
+        s = self.h.summary(runs, ["h05"])
+        by, without = s["drafted_by"]["groups"], s["drafted_by_without"]["groups"]
+        self.assertEqual(list(by), ["claude-opus-5-5", "gemini-4-argon", ""])          # most triples first, none last
+        claude = {path: r["value"] for path, r in by["claude-opus-5-5"]["numbers"].items()}
+        self.assertEqual((by["claude-opus-5-5"]["gt_triples"], by["claude-opus-5-5"]["records"]), (4, 2))
+        for path, value in {("exact", "recall"): 5 / 8, ("partial", "recall"): 7 / 8, ("exact_share",): 5 / 7,
+                            ("partial", "entity_class_accuracy"): 6 / 7, ("partial", "precision"): 7 / 15,
+                            ("partial", "f1"): 14 / 23}.items():
+            self.assertAlmostEqual(claude[path], value, msg=path)
+        gemini = {path: r["value"] for path, r in by["gemini-4-argon"]["numbers"].items()}
+        self.assertAlmostEqual(gemini[("exact", "recall")], 0.5)
+        self.assertAlmostEqual(gemini[("partial", "recall")], 1.0)
+        self.assertAlmostEqual(gemini[("partial", "entity_class_accuracy")], 0.5)
+        self.assertEqual(list(without), ["claude-opus-5-5", ""])
+        self.assertAlmostEqual(without["claude-opus-5-5"]["numbers"][("exact", "recall")]["value"], 0.5)
+        # one repeat alone gives 070's own by_group numbers: the same grouping code, not a second one
+        one = self.h.by_drafting_model(runs[:1], ["h02", "h05"])["groups"]
+        own = stats.by_group(self.h.compare_runs.as_records(runs[0], ["h02", "h05"]), "drafted_by")
+        for g in own:
+            self.assertAlmostEqual(one[g]["numbers"][("partial", "precision")]["value"], own[g]["partial"]["precision"]["value"])
+            self.assertAlmostEqual(one[g]["numbers"][("partial", "precision")]["low"], own[g]["partial"]["precision"]["low"])
+            self.assertAlmostEqual(one[g]["numbers"][("exact_share",)]["value"], own[g]["exact_share"]["value"])
+        text = self.h.report(runs, [r["look"] for r in runs], ["h05"])
+        self.assertIn("### By who drafted the ground truth, pooled over the 2 repeat(s)", text)
+        self.assertIn("| Ground truth triples | Count | Records | Recall (exact) | Recall (partial) | Exact share of pairs | "
+                      "Entity-class accuracy (partial) | Precision, attributed (partial) | F1, attributed (partial) |", text)
+        self.assertRegex(text, r"\| drafted by `claude-opus-5\.5` \(the extraction model's name\) \| 4 \| 2 \| 62\.5% "
+                               r"\([0-9.]+% to [0-9.]+%\) \| 87\.5% ")
+        self.assertIn("| no drafting model recorded (`drafted_by` empty) | 1 | 1 |", text)
+        self.assertIn("Without the 1 record(s) left out on request (1 records):", text)
+        self.assertRegex(text, r"\| drafted by `claude-opus-5\.5` \(the extraction model's name\) \| 3 \| 1 \| 50\.0% ")
+
+    def test_by_drafting_model_near_misses(self):
+        # a look kept before the split was kept: said, no numbers
+        runs = self.drafted_looks()
+        runs[1] = self.drafted_looks(with_groups=False)[1]
+        by = self.h.by_drafting_model(runs, ["h02", "h05"])
+        self.assertIsNone(by["groups"])
+        self.assertIn("kept without the counts by drafting model", by["why"])
+        self.assertIn("No numbers by drafting model: a look of this group was kept without", self.h.report(runs, []))
+        # a drafted_by cell changed between the looks (the ground truth fingerprint doesn't cover it)
+        runs = self.drafted_looks()
+        g = runs[1]["records"][1]["groups"]["drafted_by"]
+        g["claude-opus-5-5"]["gt"], g["gemini-4-argon"]["gt"] = 2, 0
+        self.assertIn("fall into the drafting models differently in two runs",
+                      self.h.by_drafting_model(runs, ["h02", "h05"])["why"])
+        self.assertEqual(self.h.by_drafting_model(runs, [])["why"], "no record is pooled")
+
+    def test_limits_are_the_guides(self):
+        guide = (ROOT / "helpers" / "held_out_results.md").read_text(encoding="utf-8")
+        plain = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", guide)
+        for line in self.h.LIMITS:
+            self.assertIn(line, plain)
+
 
 class PerComponentClass(unittest.TestCase):
     def setUp(self):

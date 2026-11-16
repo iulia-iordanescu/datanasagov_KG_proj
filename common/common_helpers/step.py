@@ -510,6 +510,93 @@ def _settle_previous(output: Path, folder: Path | None, kept: list) -> None:
         parent.rmdir()
 
 
+def run_manifests(output: Path) -> dict:
+    """{run id: (its folder, its manifest)} of a step's live run and of every run kept in previous_runs/ (`output`:
+    the step's output folder). A manifest that can't be read, or names no run, is passed over."""
+    found = {}
+    for path in [output / MANIFEST_NAME, *sorted((output / PREVIOUS_RUNS).glob(f"*/{MANIFEST_NAME}"))]:
+        try:
+            m = read_json(path)
+        except (OSError, ValueError):
+            continue
+        if isinstance(m, dict) and m.get("run_id"):
+            found.setdefault(m["run_id"], (path.parent, m))
+    return found
+
+
+def output_of_run(output: Path, run_id: str, name: str, found: dict | None = None) -> Path | None:
+    """The output file `name` as the run `run_id` of a step wrote it (`output`: the step's output folder), or None
+    when no copy of it is left (or the run, or its manifest's row for the file, isn't there).
+
+    previous_runs/<run id>/ holds a run's file only when the NEXT run changed or removed it (_settle_previous): a
+    file the next run left as it was has one copy, which is the next run's too, and is kept in that run's folder
+    once a later run changes it, or is still the live file. So the run's own folder lacking the file doesn't mean
+    the live file is the run's version (a still later run may have changed it), and neither does a file of that
+    name in a later run's folder (when the run itself didn't write the file). The run's manifest settles it: it
+    records each output file's sha256, and a file of that name with that sha256, in the run's folder, in another
+    kept run's folder or live, has the very bytes the run wrote. found: run_manifests(output), when already read."""
+    found = run_manifests(output) if found is None else found
+    if run_id not in found:
+        return None
+    folder, manifest = found[run_id]
+    want = next((o.get("sha256") for o in manifest.get("outputs", []) if o.get("file") == name), None)
+    if not want:
+        return None
+    for path in [folder / name, output / name, *sorted((output / PREVIOUS_RUNS).glob(f"*/{name}"))]:
+        if path.is_file() and audit.sha256([path]) == want:
+            return path
+    return None
+
+
+def outputs_of_run(output: Path, run_id: str, names, found: dict | None = None, again: str = "") -> dict:
+    """{name: the file as the run `run_id` wrote it} for each of names (output_of_run). Stop, naming what is missing,
+    when the run isn't kept (no manifest for it, live or in previous_runs/) or a file has no copy left with the sha256
+    its manifest records: another run's version is never given in its place. again: what to do then, after "restore
+    … from a backup, " (e.g. "then run `py 070_evaluate/run.py` again."; by default "then run the command again.")."""
+    found = run_manifests(output) if found is None else found
+    step = output.name
+    if run_id not in found:
+        kept = sorted(found, key=audit.run_order, reverse=True)
+        listed = (f"the runs kept, latest first: {', '.join(kept[:5])}{', …' if len(kept) > 5 else ''}" if kept else
+                  "no run is kept there")
+        raise Stop(f"Run {run_id} of step {step} isn't kept: {repo_path(output)}/ has no manifest for it, live or "
+                   f"under {PREVIOUS_RUNS}/ ({listed}), so its output files can't be read. Nothing was read. Check "
+                   f"the run id against those kept, or restore that folder from a backup, {again or 'then run the command again.'}")
+    paths = {name: output_of_run(output, run_id, name, found) for name in names}
+    missing = [name for name, path in paths.items() if path is None]
+    if missing:
+        raise Stop(f"Run {run_id} of step {step}: no copy is left of {', '.join(missing)} as that run wrote "
+                   f"{'it' if len(missing) == 1 else 'them'} (a file of that name with the sha256 the run's manifest "
+                   f"records, in {repo_path(found[run_id][0])}/, in another kept run's folder under "
+                   f"{repo_path(output / PREVIOUS_RUNS)}/, or live in {repo_path(output)}/), so another run's version "
+                   f"would be read in its place. Nothing was read. Restore the file from a backup, {again or 'then run the command again.'}")
+    return paths
+
+
+def gather_run(output: Path, run_id: str, names, into: Path, found: dict | None = None, again: str = "") -> dict:
+    """{name: a file with the bytes the run `run_id` wrote}, for each of names, beside that run's own manifest, for a
+    reader that takes a run's manifest from the folder of its files (step 070 reads 060's). When every file found
+    (outputs_of_run) is in the run's own folder (live, or previous_runs/<run id>/), those files are given as they are;
+    otherwise the run's manifest and the files are copied into into/<run id>/ (replacing an earlier copy, which has
+    the same bytes) and the copies are given. Stop as outputs_of_run."""
+    found = run_manifests(output) if found is None else found
+    paths = outputs_of_run(output, run_id, names, found, again)
+    own = found[run_id][0]
+    if all(path.parent == own for path in paths.values()):
+        return paths
+    folder = into / run_id
+    folder.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(own / MANIFEST_NAME, folder / MANIFEST_NAME)
+    copies = {}
+    for name, path in paths.items():
+        copies[name] = folder / name
+        copies[name].parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(path, copies[name])
+    log.debug(f"run {run_id} of step {output.name}: its files {', '.join(names)} gathered beside its manifest in "
+              f"{repo_path(folder)}/")
+    return copies
+
+
 def _stamp(t: dt.datetime) -> str:
     return t.isoformat(timespec="seconds")
 
@@ -560,12 +647,16 @@ NOT_FINISHED = (FAILED, STOPPED, INTERRUPTED)
 
 
 def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None, may_be_empty=(), specs=None,
-             command: str | None = None, guide: str | None = None, retired: dict | None = None) -> None:
+             command: str | None = None, guide: str | None = None, retired: dict | None = None,
+             prepare_inputs=None) -> None:
     """Run a step: parse the command line, check the settings (specs: the step's own Spec table; the shared settings'
     rules come with it), describe the inputs, run main, write the manifest and the report. command and guide: how the
     messages name the command and its guide, for a helper that runs in this frame but isn't <step>/run.py
     (py helpers/second_opinion.py); a step leaves them out. retired: {setting: message} for settings the step no
-    longer has, each refused with its message (exit code 2) instead of being taken for a typing mistake."""
+    longer has, each refused with its message (exit code 2) instead of being taken for a typing mistake.
+    prepare_inputs(inputs, settings, given): the inputs as the step's settings place them (070's extraction_run:
+    the files of a kept run of 060), called once the settings are checked and before any input is checked or
+    described; given: the inputs given on the command line. It may raise Stop."""
     from common.report import write_step_report
 
     argv = sys.argv[1:] if argv is None else argv
@@ -598,6 +689,10 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None, may_
     previous = (None, [])                # the previous run's files given a second name (_keep_previous)
     try:
         check_settings(chosen_settings, specs or {})          # before any input is read: one check for every step
+        if prepare_inputs is not None:
+            given = {k for k in inputs if any(a.split("=", 1)[0] in (f"--{k}", f"--{k.replace('_', '-')}")
+                                              for a in argv)}
+            chosen_inputs = prepare_inputs(chosen_inputs, chosen_settings, given)
         _check_inputs(chosen_inputs, inputs, may_be_empty)
         input_rows, input_warnings, harvest_dates, harvest_partial = _describe_inputs(chosen_inputs, inputs)
         run["harvest_partial"] = harvest_partial              # what the inputs say (010 replaces it below)

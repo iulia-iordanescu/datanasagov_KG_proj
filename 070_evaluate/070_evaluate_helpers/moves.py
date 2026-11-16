@@ -7,7 +7,9 @@ moves.py -- the main moves of 070_evaluate, as called by 070_evaluate/run.py.
     stage 3  pairing.py            compare                      code: record by record, exact and partial pairs, strict, within reach
     stage 4  stats.py              compute_metrics              code: the numbers, each with its margin of error, per part and stratum
     -        (here)                results                      writes metrics.json, per_record.md, and compared_triples.csv, and with --evaluate_held_out true a line of annotations/held_out_looks.csv; the report
-                                                                 keeps this run's tuning records' counts in evaluations/<run id>.json, for py helpers/compare_runs.py
+                                                                 keeps this run's tuning records' counts in evaluations/<run id>.json, for py helpers/compare_runs.py,
+                                                                 and, when the run looked at held-out records, theirs in held_out_evaluations/<run id>.json,
+                                                                 for py helpers/held_out_results.py
 
 Every model answer is cached in cache/ inside the step's output folder
 (common/common_helpers/cache.py), so a rerun pays only for what isn't there yet.
@@ -41,6 +43,11 @@ COMPARED_NAME = "compared_triples.csv"
 #: Each run's tuning records' counts and recipe, one file per run, never overwritten: what py helpers/compare_runs.py
 #: compares (helpers/compare_runs.md).
 EVALUATIONS_DIR = "evaluations"
+#: Each held-out look's held-out records' counts, the run's recipe and the look's line of the log, one file per run
+#: that looked (--evaluate_held_out true, with a held-out record evaluated), never overwritten and apart from the
+#: tuning file, so nothing that compares tuning runs can read a held-out count: what py helpers/held_out_results.py
+#: summarizes (helpers/held_out_results.md).
+HELD_OUT_EVALUATIONS_DIR = "held_out_evaluations"
 #: The recipe's field for the untranslatable extracted triples (that they were left out of precision, and the (none)
 #: predicate rows by fingerprint), and the name a run before 2026-11-06 wrote it under. Written under the current
 #: name only; py helpers/compare_runs.py reads either name as this field (compare_runs.recipe_of), so a past run
@@ -64,6 +71,12 @@ WAITING_SECTION = "Extracted triples matching facts that wait on an expert"
 
 
 # --------------------------------------------------------------------------
+
+def extraction_inputs(inputs, settings, given):
+    """The setting extraction_run's inputs from 060 (records.extraction_inputs), which the control panel passes to
+    run_step as prepare_inputs."""
+    return records_stage.extraction_inputs(inputs, settings, given)
+
 
 def pick_records(inputs, settings):
     return records_stage.pick_records(inputs, settings)
@@ -587,25 +600,34 @@ def _recipe(evaluated, translation, inputs_manifest: dict) -> dict:
                                  **{k: v for k, v in llm.describe().items() if k in ("service", "model")}}}
 
 
-def _keep_evaluation(evaluated, translation, output, tuning: list, inputs_manifest: dict):
-    """Write this run's tuning records' counts and recipe to evaluations/<run id>.json (never overwritten, one file
-    per run), for py helpers/compare_runs.py. Held-out records are never kept: comparing runs is tuning."""
+def _keep_evaluation(evaluated, translation, output, records: list, inputs_manifest: dict, look: dict | None = None):
+    """Write this run's records' counts and recipe to a file named by the run id, never overwritten, one per run.
+    records are the run's tuning records, kept in evaluations/ for py helpers/compare_runs.py (no held-out record
+    is ever kept there: comparing runs is tuning); or, with look (_log_look's answer: the run looked at the held-out
+    part), its held-out records, kept in held_out_evaluations/ with the look's line of the log and its number, for
+    py helpers/held_out_results.py."""
     run_id = audit.current_run_id() or dt.datetime.now().strftime("070_evaluate_%Y-%m-%d_%H%M%S_%f")
-    path = output / EVALUATIONS_DIR / f"{run_id}.json"
+    path = output / (EVALUATIONS_DIR if look is None else HELD_OUT_EVALUATIONS_DIR) / f"{run_id}.json"
+    more = {} if look is None else {"part": HELD_OUT, "look": {**look["row"], "number": look["count"]}}
     pending = {}
     for row in evaluated.pending:
         pending.setdefault(row["id"], []).append({k: row[k] for k in PENDING_COLUMNS})
     # Each record's own fingerprints, so py helpers/compare_runs.py can tell a record whose ground truth, pending
     # rows or translation changed between runs (and leave it out) from one whose extraction did (the thing compared).
     write_json(path, {
-        "run_id": run_id, "recipe": _recipe(evaluated, translation, inputs_manifest),
+        "run_id": run_id, **more, "recipe": _recipe(evaluated, translation, inputs_manifest),
         "records": [{"id": r["id"], "position": r["position"], "stratum": r["stratum"], "twin": r.get("twin"),
                      "ground_truth_sha256": _fingerprint(_ground_truth_rows(r)),
                      "pending_sha256": _fingerprint(pending.get(r["id"], [])),
                      "translation": _translation_of(r, translation),
                      "counts": dict(r["compared"]["counts"]),
+                     # each provenance grouping's counts per group, and drafted_by's spellings: stats.by_group's input,
+                     # for py helpers/held_out_results.py's numbers by drafting model
+                     "groups": {name: {k: dict(c) for k, c in g.items()}
+                                for name, g in (r["compared"].get("groups") or {}).items()},
+                     "drafted_by_spellings": dict(r["compared"].get("drafted_by_spellings") or {}),
                      "describes": {k: r["compared"]["describes"][k] for k in ("truth", "said", "right")}}
-                    for r in tuning]}, new=True)
+                    for r in records]}, new=True)
     return path
 
 
@@ -629,7 +651,7 @@ def _log_look(evaluated, translation, schema_file: str) -> dict | None:
     """Add one line to annotations/held_out_looks.csv (never changing a line already there): what the look saw (the
     current schema, 060's run, fingerprints of the translation used and of the held-out records' ground truth).
     Returns {"count": looks so far, "changed": [what differs from the previous look, as readings.LOOK_INPUTS names
-    it] or None for a first look, "previous": that look's row or None}; None, and no line, when no held-out record
+    it] or None for a first look, "previous": that look's row or None, "row": this look's line}; None, and no line, when no held-out record
     was evaluated (nothing was seen, so nothing is counted as a look). The count is read and the line added under
     one lock (common.files.locked), so two runs at once get two different counts."""
     held = sorted((r for r in evaluated.records if r["part"] == HELD_OUT), key=lambda r: r["id"])
@@ -653,7 +675,7 @@ def _log_look(evaluated, translation, schema_file: str) -> dict | None:
     previous = before[-1] if before else None
     changed = None if previous is None else [why for k, why in readings.LOOK_INPUTS.items()
                                              if (previous.get(k) or "") != look[k]]
-    return {"count": len(before) + 1, "changed": changed, "previous": previous}
+    return {"count": len(before) + 1, "changed": changed, "previous": previous, "row": look}
 
 
 def _per_record(records: list, hidden: int) -> str:
@@ -917,6 +939,11 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
     log.info(f"  wrote {METRICS_NAME}, {PER_RECORD_NAME}, {COMPARED_NAME}")
     kept_path = _keep_evaluation(evaluated, translation, output, tuning, evaluated.extraction_manifest)
     log.info(f"  kept this run's tuning counts in {EVALUATIONS_DIR}/{kept_path.name}")
+    held_out_path = None
+    if looks is not None:                              # only a run that looked: the held-out records it evaluated
+        held_out_path = _keep_evaluation(evaluated, translation, output, [r for r in shown if r["part"] == HELD_OUT],
+                                         evaluated.extraction_manifest, look=looks)
+        log.info(f"  kept this look's held-out counts in {HELD_OUT_EVALUATIONS_DIR}/{held_out_path.name}")
 
     warnings = list(evaluated.notes) + list(getattr(translation, "notes", []))
     for part, v in metrics.items():
@@ -1007,7 +1034,9 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
         warnings.append(f"The held-out part was looked at: {looks['count']} time(s) so far, each logged in "
                         f"annotations/held_out_looks.csv. {readings.since_previous(looks)} A change made after a look "
                         f"lets the held-out records influence the pipeline, and then their numbers flatter it. Commit "
-                        f"annotations/held_out_looks.csv, so every look stays counted.")
+                        f"annotations/held_out_looks.csv, so every look stays counted. This look's held-out counts "
+                        f"are kept in {repo_path(held_out_path)}: `py helpers/held_out_results.py` summarizes the "
+                        f"looks kept, with no new look.")
     missing = check_origins(compared_rows, "compared triples")
     if missing:
         warnings.append(missing)
@@ -1165,5 +1194,6 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
         headline["twins (tuning)"] = ("not known" if twins is None else
                                       f"{len(twins['records'])} of {tuning['records']} evaluated")
     headline.update(dropped.reasks_headline(llm.REASKS))
-    return Results(files=[metrics_path, per_record_path, compared_path, kept_path], headline=headline,
+    return Results(files=[metrics_path, per_record_path, compared_path, kept_path]
+                   + ([held_out_path] if held_out_path else []), headline=headline,
                    details="\n".join(lines), warnings=warnings)

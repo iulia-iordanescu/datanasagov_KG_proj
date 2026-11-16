@@ -526,8 +526,18 @@ class Pipeline(unittest.TestCase):
 
     def test_t10_held_out_look_logged(self):
         args = [*NO_CONFIRM, "--component_class_mapping", str(self.repo / "own_table.csv"), "--evaluate_held_out", "true"]
-        self.run_step("070_evaluate", *args)
+        held_out_kept = self.results / "070_evaluate" / "held_out_evaluations"
+        self.assertFalse(held_out_kept.exists())                               # no run so far looked: nothing kept
+        out, _ = self.run_step("070_evaluate", *args)
         metrics = json.loads(self.output("070_evaluate", "metrics.json").read_text(encoding="utf-8"))
+        # the look's held-out counts are kept in a file of their own, with the look's line of the log
+        first_look = held_out_kept / f"{metrics['made']['run_id']}.json"
+        kept_look = json.loads(first_look.read_text(encoding="utf-8"))
+        self.assertEqual([r["id"] for r in kept_look["records"]], metrics["evaluated"]["held-out"])
+        self.assertEqual(kept_look["look"], {**read_csv(self.annotations / "held_out_looks.csv")[0], "number": 1})
+        self.assertIn(f"held_out_evaluations/{first_look.name}", out.replace("\\", "/"))
+        self.assertIn("held_out_evaluations/" + first_look.name,
+                      [o["file"].replace("\\", "/") for o in self.manifest("070_evaluate")["outputs"]])
         self.assertEqual(metrics["parts"]["held-out"]["numbers"]["records"], 1)
         looks = read_csv(self.annotations / "held_out_looks.csv")
         self.assertEqual([int(x["held_out_records"]) for x in looks], [1])
@@ -540,6 +550,29 @@ class Pipeline(unittest.TestCase):
         for k in ("schema", "extraction_run_id", "translation_sha256", "held_out_ground_truth_sha256"):
             self.assertEqual(looks[0][k], looks[1][k], k)
         self.assertIn("nothing that sets the held-out numbers changed", out)
+        # py helpers/held_out_results.py summarizes the looks kept, adding no look: one look of this extraction is
+        # summarized (the log holds two for it, which the report says); the two together are refused
+        looks_kept = sorted(held_out_kept.glob("*.json"))
+        self.assertEqual(len(looks_kept), 2)
+        summarize = [sys.executable, str(self.repo / "helpers" / "held_out_results.py")]
+        log_before = (self.annotations / "held_out_looks.csv").read_bytes()
+        r = subprocess.run(summarize + [first_look.stem, "--leave_out", kept_look["records"][0]["id"]],
+                           capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=self.repo)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("Summarized 1 held-out look(s) in 1 group(s), with and without 1 record(s)", r.stdout)
+        summary = (self.repo / r.stdout.strip().rsplit(": ", 1)[1]).read_text(encoding="utf-8")
+        self.assertIn("**Looked at more than once:**", summary)
+        self.assertIn("between them, the two fingerprints are the same.", summary)
+        self.assertIn("holds 2 look(s) in all; 1 of them are not summarized here", summary)
+        self.assertIn("**The records pooled:** 1 held-out record(s)", summary)
+        r = subprocess.run(summarize + [p.stem for p in looks_kept], capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", cwd=self.repo)
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("looks at the same extraction", r.stderr)
+        r = subprocess.run(summarize, capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=self.repo)
+        self.assertEqual((r.returncode, r.stdout.count("held-out records   060:")), (0, 2), r.stdout + r.stderr)
+        self.assertEqual((self.annotations / "held_out_looks.csv").read_bytes(), log_before)   # no look was added
+        self.assertEqual(len(sorted(held_out_kept.glob("*.json"))), 2)
         # every run keeps its tuning records' counts; two runs of the same version compare as the same
         # in the order the runs started (common.audit.run_order: names alone sort "…_1641-6" before "…_1641")
         from common.audit import run_order
@@ -645,9 +678,71 @@ class Pipeline(unittest.TestCase):
         finally:
             path.write_bytes(before)
 
+    def test_t10c_score_a_kept_extraction(self):
+        """--extraction_run <060 run id>: 070 scores that kept run of 060, its four files found by the sha256 its
+        manifest records and read beside its own manifest, and a look logs that run; the live run named explicitly is
+        read where it is. Near-misses: a run id never kept, a file of the run given on the command line too, and a
+        kept run whose file has no copy left: each stops before anything is evaluated, naming what to do."""
+        from common.step import output_of_run, run_manifests
+        FROM_060 = {"extracted_triples": "extracted_triples.csv", "extracted_triples_removed": "extracted_triples_removed.csv",
+                    "extracted_triples_details": "extracted_triples_details.json", "schema_used": "schema_used.json"}
+        out060 = self.results / "060_extract"
+        live = self.manifest("060_extract")["run_id"]
+        found = run_manifests(out060)
+
+        def schema_of(run_id):
+            return json.loads(output_of_run(out060, run_id, "schema_used.json", found).read_text(encoding="utf-8"))["made"]["schema"]
+        from common.audit import run_order
+        kept = sorted((r for r in found if r != live and "ground_truth_schema" in schema_of(r)), key=run_order)
+        self.assertTrue(kept, "no earlier run of 060 with the ground truth schema is kept")
+        old = kept[0]
+        args = [*NO_CONFIRM, "--component_class_mapping", str(self.repo / "own_table.csv")]
+        looks = self.annotations / "held_out_looks.csv"
+        before = len(read_csv(looks))
+        out, _ = self.run_step("070_evaluate", *args, "--extraction_run", old, "--evaluate_held_out", "true")
+        manifest = self.manifest("070_evaluate")
+        inputs = {i["name"]: i for i in manifest["inputs"]}
+        metrics = json.loads(self.output("070_evaluate", "metrics.json").read_text(encoding="utf-8"))
+        self.assertEqual(metrics["made"]["settings"]["extraction_run"], old)
+        kept_look = json.loads((self.results / "070_evaluate" / "held_out_evaluations"
+                                / f"{metrics['made']['run_id']}.json").read_text(encoding="utf-8"))
+        self.assertEqual(kept_look["recipe"]["extraction (060)"]["run_id"], old)
+        rows = read_csv(looks)
+        self.assertEqual(len(rows), before + 1)
+        self.assertEqual(rows[-1]["extraction_run_id"], old)                    # the look names the run scored
+        self.assertEqual(kept_look["look"]["extraction_run_id"], old)
+        wrote = {o["file"]: o["sha256"] for o in found[old][1]["outputs"]}
+        for name, file in FROM_060.items():                                    # that run's bytes, beside its manifest
+            self.assertEqual((inputs[name]["sha256"], inputs[name]["run_id"]), (wrote[file], old), name)
+        # the live run, named: its own files, live, beside its manifest
+        self.run_step("070_evaluate", *args, "--extraction_run", live)
+        inputs = {i["name"]: i for i in self.manifest("070_evaluate")["inputs"]}
+        for name, file in FROM_060.items():
+            self.assertEqual((inputs[name]["path"].replace("\\", "/"), inputs[name]["run_id"]),
+                             (f"outputs/intermediate_results/060_extract/{file}", live), name)
+        self.assertFalse((self.results / "070_evaluate" / "extractions" / live).exists())
+        # near-misses
+        out, _ = self.run_step("070_evaluate", *args, "--extraction_run", "060_extract_2000-01-01_0000", expect=2)
+        self.assertIn("Run 060_extract_2000-01-01_0000 of step 060_extract isn't kept", out)
+        self.assertIn(f"the runs kept, latest first: {live}", out)
+        out, _ = self.run_step("070_evaluate", *args, "--extraction_run", old, "--schema_used",
+                               str(out060 / "schema_used.json"), expect=2)
+        self.assertIn(f"--extraction_run {old} names the run of 060 to score, and --schema_used also gives one of its "
+                      f"files", out)
+        copy = output_of_run(out060, old, "extracted_triples_details.json", found)
+        self.assertNotEqual(copy.parent, out060)                # every run writes its own run id in it: a kept copy
+        aside = copy.with_suffix(".aside")
+        copy.rename(aside)
+        try:
+            out, _ = self.run_step("070_evaluate", *args, "--extraction_run", old, expect=2)
+            self.assertIn(f"Run {old} of step 060_extract: no copy is left of extracted_triples_details.json", out)
+        finally:
+            aside.rename(copy)
+        self.assertEqual(len(read_csv(looks)), before + 1)                     # no look made by a run that stopped
+
     def test_t11_every_run_reported(self):
         reports = sorted(p for p in (self.repo / "outputs" / "reports").glob("*.md")
-                         if not p.name.startswith("compare_runs_"))     # a comparison isn't a run: no log
+                         if not p.name.startswith(("compare_runs_", "held_out_results_")))   # a comparison or a summary isn't a run: no log
         logs = sorted((self.repo / "outputs" / "logs").glob("*.log"))
         self.assertEqual(len(reports), len(logs))
         self.assertGreaterEqual(len(reports), 15)

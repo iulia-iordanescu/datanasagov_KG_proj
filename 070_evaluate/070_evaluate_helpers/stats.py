@@ -97,14 +97,17 @@ def numbers(records: list) -> dict:
     return out
 
 
-def by_group(records: list, grouping: str) -> dict | None:
-    """The numbers of each group of ground truth triples by one provenance grouping (pairing.GROUPINGS:
-    "second_opinion" or "drafted_by"; 070_evaluate/070_evaluate.md, *Shared-model bias*), each with its margin of
-    error by clustered_wilson over the records, from the records' group counts (record["compared"]["groups"]).
-    {group: {"gt_triples", "records" (records with a ground truth triple in it), "spellings" (drafted_by only: the
-    names as the ground truth writes them), "exact_share", level: {"pairs", "strict_pairs", "recall", "precision",
-    "f1", "entity_class_accuracy"}}}, each number a {"value", "low", "high", "n_eff", "deff", "few_records"}.
-    For a group g, at a level, with each record's sums:
+#: The numbers of each group of ground truth triples (by_group, group_parts), as paths into a group's entry.
+GROUP_NUMBERS = (("exact_share",), *((level, key) for level in LEVELS
+                                      for key in ("recall", "precision", "f1", "entity_class_accuracy")))
+
+
+def group_parts(records: list, grouping: str) -> dict | None:
+    """Each group's parts by one provenance grouping (pairing.GROUPINGS), from the records' group counts
+    (record["compared"]["groups"]) and counts: {group: {"gt_triples", "records" (records with a ground truth triple
+    in it), "spellings" (drafted_by only: the names as the ground truth writes them), "pairs" {level: (pairs, strict
+    pairs)}, "parts" {path of GROUP_NUMBERS: [(a_r, b_r) for each record, in the order of records]}}}, groups in
+    by_group's order. For a group g, at a level, with each record's sums:
       recall                  = g's pairs ÷ g's ground truth triples
       precision (attributed)  = g's pairs ÷ (counted occurrences − the pairs of the other groups): an occurrence
                                 paired with another group's triple is left out, as an untranslatable one and one
@@ -114,10 +117,10 @@ def by_group(records: list, grouping: str) -> dict | None:
       F1                      = 2 × g's pairs ÷ (that denominator + g's ground truth triples)
       entity-class accuracy   = g's strict pairs ÷ g's pairs
       exact share             = g's exact pairs ÷ g's partial pairs (every pair, both levels)
-    The groups split the same records, so their ranges aren't independent of each other. None when the records have
-    no group counts (a run kept from before 2026-11-01), no ground truth triple, or, for "second_opinion", no ground
-    truth triple was checked. Groups in order: the most ground truth triples first; for "drafted_by", the rows
-    with no drafting model recorded (pairing.NO_DRAFTING_MODEL) last."""
+    None when the records have no group counts (a run kept from before 2026-11-01), no ground truth triple, or, for
+    "second_opinion", no ground truth triple was checked. Groups in order: the most ground truth triples first; for
+    "drafted_by", the rows with no drafting model recorded (pairing.NO_DRAFTING_MODEL) last. py
+    helpers/held_out_results.py pools these parts over repeats; by_group gives each its margin of error."""
     per = [((r["compared"].get("groups") or {}).get(grouping), r) for r in records]
     if not per or any(g is None for g, _ in per):
         return None
@@ -132,27 +135,54 @@ def by_group(records: list, grouping: str) -> dict | None:
     else:
         order = sorted(keys, key=lambda k: (k == NO_DRAFTING_MODEL, -keys[k], k))
     empty = collections.Counter()
+    out = {}
+    for k in order:
+        rows = [(collections.Counter(g.get(k, empty)), _with_zeros(r["compared"]["counts"])) for g, r in per]
+        entry = {"gt_triples": keys[k], "records": sum(1 for c, _ in rows if c["gt"])}
+        if grouping == "drafted_by":
+            entry["spellings"] = sorted({s for _, r in per for s in r["compared"].get("drafted_by_spellings", {}).get(k, [])})
+        parts = {("exact_share",): [(c["exact_pairs"], c["partial_pairs"]) for c, _ in rows]}
+        entry["pairs"] = {}
+        for level in LEVELS:
+            denom = [_counted(t, level) - t[f"{level}_pairs"] + c[f"{level}_pairs"] for c, t in rows]
+            entry["pairs"][level] = (sum(c[f"{level}_pairs"] for c, _ in rows),
+                                     sum(c[f"{level}_strict_pairs"] for c, _ in rows))
+            parts[(level, "recall")] = [(c[f"{level}_pairs"], c["gt"]) for c, _ in rows]
+            parts[(level, "precision")] = [(c[f"{level}_pairs"], d) for (c, _), d in zip(rows, denom)]
+            parts[(level, "f1")] = [(2 * c[f"{level}_pairs"], d + c["gt"]) for (c, _), d in zip(rows, denom)]
+            parts[(level, "entity_class_accuracy")] = [(c[f"{level}_strict_pairs"], c[f"{level}_pairs"]) for c, _ in rows]
+        entry["parts"] = parts
+        out[k] = entry
+    return out
+
+
+def by_group(records: list, grouping: str) -> dict | None:
+    """The numbers of each group of ground truth triples by one provenance grouping (pairing.GROUPINGS:
+    "second_opinion" or "drafted_by"; 070_evaluate/070_evaluate.md, *Shared-model bias*), each with its margin of
+    error by clustered_wilson over the records, from group_parts (its formulas, its order, and when it is None).
+    {group: {"gt_triples", "records" (records with a ground truth triple in it), "spellings" (drafted_by only: the
+    names as the ground truth writes them), "exact_share", level: {"pairs", "strict_pairs", "recall", "precision",
+    "f1", "entity_class_accuracy"}}}, each number a {"value", "low", "high", "n_eff", "deff", "few_records"}.
+    The groups split the same records, so their ranges aren't independent of each other."""
+    groups = group_parts(records, grouping)
+    if groups is None:
+        return None
 
     def margin(parts):
         ci = clustered_wilson(parts)
         return {"value": ci["value"], "low": ci["low"], "high": ci["high"], "n_eff": ci["n_eff"], "deff": ci["deff"],
                 "few_records": ci["n_records"] < FEW_RECORDS}
     out = {}
-    for k in order:
-        rows = [(g.get(k, empty), r["compared"]["counts"]) for g, r in per]
-        entry = {"gt_triples": keys[k], "records": sum(1 for c, _ in rows if c["gt"])}
-        if grouping == "drafted_by":
-            entry["spellings"] = sorted({s for _, r in per for s in r["compared"].get("drafted_by_spellings", {}).get(k, [])})
-        entry["exact_share"] = margin([(c["exact_pairs"], c["partial_pairs"]) for c, _ in rows])
+    for k, g in groups.items():
+        entry = {"gt_triples": g["gt_triples"], "records": g["records"]}
+        if "spellings" in g:
+            entry["spellings"] = g["spellings"]
+        entry["exact_share"] = margin(g["parts"][("exact_share",)])
         for level in LEVELS:
-            denom = [_counted(t, level) - t[f"{level}_pairs"] + c[f"{level}_pairs"] for c, t in rows]
-            entry[level] = {
-                "pairs": sum(c[f"{level}_pairs"] for c, _ in rows),
-                "strict_pairs": sum(c[f"{level}_strict_pairs"] for c, _ in rows),
-                "recall": margin([(c[f"{level}_pairs"], c["gt"]) for c, _ in rows]),
-                "precision": margin([(c[f"{level}_pairs"], d) for (c, _), d in zip(rows, denom)]),
-                "f1": margin([(2 * c[f"{level}_pairs"], d + c["gt"]) for (c, _), d in zip(rows, denom)]),
-                "entity_class_accuracy": margin([(c[f"{level}_strict_pairs"], c[f"{level}_pairs"]) for c, _ in rows])}
+            pairs, strict = g["pairs"][level]
+            entry[level] = {"pairs": pairs, "strict_pairs": strict,
+                            **{key: margin(g["parts"][(level, key)])
+                               for key in ("recall", "precision", "f1", "entity_class_accuracy")}}
         out[k] = entry
     return out
 

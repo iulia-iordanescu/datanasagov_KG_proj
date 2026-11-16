@@ -7,8 +7,8 @@ every one against the record's text and the schema, keeps it, or removes it with
 a reason. The current schema is the induced schema by default (or any schema given
 with --schema), plus the schema additions: the entity classes, predicates, and
 patterns a person wrote in annotations/schema_additions.txt. By default only the finished records of
-the ground truth are extracted from, which is what 070 evaluates; every record
-once the schema is final. Terms: docs/terminology.md.
+the ground truth are extracted from, which is what 070 evaluates (only its
+tuning records with --extract_from tuning); every record once the schema is final. Terms: docs/terminology.md.
 
 Reads:   records.jsonl (020), splits.json (030), the_schema.json (040),
          annotations/schema_additions.txt, annotations/ground_truth/
@@ -33,7 +33,7 @@ INPUTS = {
 }
 
 SETTINGS = {
-    "extract_from":       "ground_truth",  # ground_truth (the finished records 070 evaluates) or all
+    "extract_from":       "ground_truth",  # ground_truth (the finished records 070 evaluates), tuning (of those, the tuning records only), or all
     "ids":                "",              # or exactly these records: ids separated by commas, or a file with one per line
     "max_chars":          8000,            # a longer text is split into text pieces, one call each
     "workers":            4,               # model calls made at the same time

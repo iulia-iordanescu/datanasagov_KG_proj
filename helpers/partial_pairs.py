@@ -40,13 +40,13 @@ sys.path.insert(0, str(ROOT / "070_evaluate" / "070_evaluate_helpers"))       # 
 import pairing                                                                 # noqa: E402
 from moves import COMPARED_NAME, _triple                                       # noqa: E402
 from common import audit, console, llm                                              # noqa: E402
-from common.files import locked, read_csv, read_csv_table, read_json, write_csv  # noqa: E402
+from common.files import locked, read_csv, read_csv_table, write_csv  # noqa: E402
 from common.ground_truth import TUNING                                         # noqa: E402
 from common.latest import latest_by_key                                        # noqa: E402
 from common.partial_reviews import (COLUMNS as REVIEW_COLUMNS, GROUND_TRUTH_ONLY, NOT_SAME, PARTIAL_PAIR,  # noqa: E402
                                     REVIEWS_PATH, SAME, SLOTS, read_reviews, row_key, verdict_of)
 from common.records_io import load_records                                     # noqa: E402
-from common.step import ANNOTATIONS_DIR, MANIFEST_NAME, PREVIOUS_RUNS, RESULTS_DIR, repo_path  # noqa: E402
+from common.step import ANNOTATIONS_DIR, PREVIOUS_RUNS, RESULTS_DIR, output_of_run, repo_path, run_manifests  # noqa: E402
 
 COMMAND = "py helpers/partial_pairs.py"
 OUTPUT = RESULTS_DIR / "070_evaluate"
@@ -68,16 +68,9 @@ class Problem(Exception):
 # ------------------------------ finding a run's pairs ------------------------------
 
 def _manifests(output: Path) -> dict:
-    """{run id: (its folder, its manifest)} of the live run and of every run kept in previous_runs/."""
-    found = {}
-    for path in [output / MANIFEST_NAME, *sorted((output / PREVIOUS_RUNS).glob(f"*/{MANIFEST_NAME}"))]:
-        try:
-            m = read_json(path)
-        except (OSError, ValueError):
-            continue
-        if m.get("run_id"):
-            found.setdefault(m["run_id"], (path.parent, m))
-    return found
+    """{run id: (its folder, its manifest)} of the live run and of every run kept in previous_runs/
+    (common.step.run_manifests)."""
+    return run_manifests(output)
 
 
 def kept_runs(output: Path = OUTPUT) -> list:
@@ -88,15 +81,9 @@ def kept_runs(output: Path = OUTPUT) -> list:
 
 def _compared_file(run_id: str, found: dict, output: Path) -> Path | None:
     """The run's own compared_triples.csv: a file of that name, live or in previous_runs/, with the sha256 the run's
-    manifest records for it (a later run that left the file unchanged keeps one copy only)."""
-    folder, manifest = found[run_id]
-    want = next((o.get("sha256") for o in manifest.get("outputs", []) if o.get("file") == COMPARED_NAME), None)
-    if not want:
-        return None
-    for path in [folder / COMPARED_NAME, output / COMPARED_NAME, *(output / PREVIOUS_RUNS).glob(f"*/{COMPARED_NAME}")]:
-        if path.is_file() and audit.sha256([path]) == want:
-            return path
-    return None
+    manifest records for it (a later run that left the file unchanged keeps one copy only):
+    common.step.output_of_run, the one way a kept run's file is found."""
+    return output_of_run(output, run_id, COMPARED_NAME, found)
 
 
 def compared_rows(run_ids: list, output: Path = OUTPUT) -> dict:

@@ -36,7 +36,8 @@ if "ckan_client" in sys.modules:
 
 from common.step import run_step                  # noqa: E402
 
-# The step's moves (load_moves), whose SPECS and RETIRED the panel passes to run_step, as each run.py does
+# The step's moves (load_moves), whose SPECS, RETIRED and extraction_inputs the panel passes to run_step, as each
+# run.py does
 moves = next((v for v in vars(panel).values() if hasattr(v, "SPECS") and not isinstance(v, type)), None)
 
 try:
@@ -44,7 +45,8 @@ try:
              may_be_empty=getattr(panel, "MAY_BE_EMPTY", ()),
              specs=getattr(panel, "SPECS", None) or getattr(moves, "SPECS", None),
              command=getattr(panel, "COMMAND", None), guide=getattr(panel, "GUIDE", None),
-             retired=getattr(moves, "RETIRED", None))
+             retired=getattr(moves, "RETIRED", None),
+             prepare_inputs=getattr(moves, "extraction_inputs", None))   # 070's setting extraction_run, as its run.py
 finally:
     print(f"[stand-in model answered {len(stand_ins.CALLS)} prompt(s)]")
     sent = sorted({str(p.get("reasoning_effort")) for p in stand_ins.PAYLOADS})

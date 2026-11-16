@@ -110,7 +110,7 @@ def _new_component_classes(chosen, rows, settings) -> tuple:
         listed.append({"kind": kind, "component_class": name, "records": len(recs), "source": source})
     listed.sort(key=lambda x: (-x["records"], x["kind"], x["component_class"]))
     where = ("records outside the ground truth" if all_records else
-             "the tuning records of the ground truth" if settings["extract_from"] == "ground_truth"
+             "the tuning records of the ground truth" if settings["extract_from"] in ("ground_truth", "tuning")
              and not settings["ids"].strip() else "the records listed in ids, held-out ones left out")
     return listed, where
 

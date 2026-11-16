@@ -11,7 +11,8 @@ docs/terminology.md, section "Evaluating extraction".
 
 Reads:   records.jsonl (020), splits.json (030), extracted_triples.csv,
          extracted_triples_removed.csv, extracted_triples_details.json and
-         schema_used.json (060),
+         schema_used.json (060: its latest run, or with --extraction_run <run id>
+         a kept run's, gathered in extractions/<run id>/ when they aren't all in its own folder),
          annotations/ground_truth_candidates.csv,
          annotations/ground_truth_schema.txt, annotations/guidelines.md
          (not parsed: fingerprinted, so the report says which version the
@@ -23,7 +24,8 @@ Reads:   records.jsonl (020), splits.json (030), extracted_triples.csv,
          independent draft found: recall is also given by that group)
 Writes:  metrics.json, per_record.md, compared_triples.csv; adds rows to
          annotations/component_class_mapping.csv and, with --evaluate_held_out true, a line
-         to annotations/held_out_looks.csv (never changing an existing one)
+         to annotations/held_out_looks.csv (never changing an existing one) and
+         the held-out records' counts to held_out_evaluations/<run id>.json
 Details: 070_evaluate/070_evaluate.md
 """
 import sys
@@ -54,6 +56,7 @@ INPUTS = {
 
 SETTINGS = {
     "evaluate_held_out":  False,  # also show the held-out part's numbers (for the end; each look is logged)
+    "extraction_run":     "",     # the run id of a kept run of 060 to score; empty: 060's latest run (or the files given)
     "service":            SERVICE, # the service that reaches the model: asksage, litellm, anthropic, openai, google
     "model":              MODEL,  # the AI model to ask (py helpers/models.py lists them)
     "thinking":           THINKING, # how much a model that thinks may think: low, medium, high, or model_default
@@ -76,4 +79,4 @@ def main(inputs, settings, output):
 
 
 if __name__ == "__main__":
-    run_step("070_evaluate", INPUTS, SETTINGS, main, specs=evaluate.SPECS)
+    run_step("070_evaluate", INPUTS, SETTINGS, main, specs=evaluate.SPECS, prepare_inputs=evaluate.extraction_inputs)

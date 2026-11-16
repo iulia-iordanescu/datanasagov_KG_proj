@@ -32,7 +32,7 @@ One run of a recipe isn't a baseline: the model can answer differently on anothe
 3. `py 060_extract/run.py --repeat 3`, then `py 070_evaluate/run.py`; note its run id.
 4. `py helpers/compare_runs.py <id 1> <id 2> <id 3>`.
 
-Evaluate each repeat before the next, since 070 reads 060's latest output, and keep 070's own `repeat` at 1, so the three evaluations use the same translation proposals. The report's *Spread across the runs* then gives each number's width across the repeats, the model's own variation on these records. Whether a later change helped is decided by the rule fixed before the runs, on these repeats and the change's (*Did a change help?*, below), not by that width. A vote across repeats (keeping a triple most repeats extracted) isn't built yet (`docs/improvements.md`).
+Evaluate each repeat before the next, since 070 reads 060's latest output by default (or extract every repeat first and score each with `py 070_evaluate/run.py --extraction_run <060 run id>`: `070_evaluate/070_evaluate.md`, *Scoring a kept run of 060*), and keep 070's own `repeat` at 1, so the three evaluations use the same translation proposals. The report's *Spread across the runs* then gives each number's width across the repeats, the model's own variation on these records. Whether a later change helped is decided by the rule fixed before the runs, on these repeats and the change's (*Did a change help?*, below), not by that width. A vote across repeats (keeping a triple most repeats extracted) isn't built yet (`docs/improvements.md`).
 
 ## Did a change help?
 
@@ -105,7 +105,7 @@ This is a second method in a second place, on purpose: 070's own margins of erro
 
 ## Where the evaluations come from
 
-Each run of step 070 keeps its tuning records' counts and its recipe in `outputs/intermediate_results/070_evaluate/evaluations/<run id>.json`, one file per run, never overwritten (`070_evaluate/070_evaluate.md`, *Outputs*). They are in `outputs/`, so they stay on the laptop that ran 070 and are lost if `outputs/` is deleted; copy the folder to compare runs made on two laptops.
+Each run of step 070 keeps its tuning records' counts and its recipe in `outputs/intermediate_results/070_evaluate/evaluations/<run id>.json`, one file per run, never overwritten (`070_evaluate/070_evaluate.md`, *Outputs*). They are in `outputs/`, so they stay on the laptop that ran 070 and are lost if `outputs/` is deleted; copy the folder to compare runs made on two laptops. A run that looked at the held-out part keeps its held-out records' counts in another folder, `held_out_evaluations/`, which this helper never reads: `py helpers/held_out_results.py` summarizes those (`helpers/held_out_results.md`).
 
 ## What it can't see
 

@@ -134,7 +134,7 @@ Nothing is wasted: the real 040 run reuses the tiny run's saved answers; 050's r
 
 ### Repeats: how much the numbers vary on their own
 
-One run isn't a baseline: the same recipe can give somewhat different numbers on another run, because the model doesn't answer the same way every time, and a rerun normally reuses the saved answers, so it can't show that. The setting `repeat` asks again: each repeat of a recipe gets answers of its own. To measure the noise floor of extraction (060) on the finished [tuning records](terminology.md#7-evaluating-extraction-step-070), run, in this order (070 reads 060's latest output, so evaluate each repeat before the next):
+One run isn't a baseline: the same recipe can give somewhat different numbers on another run, because the model doesn't answer the same way every time, and a rerun normally reuses the saved answers, so it can't show that. The setting `repeat` asks again: each repeat of a recipe gets answers of its own. To measure the noise floor of extraction (060) on the finished [tuning records](terminology.md#7-evaluating-extraction-step-070), run, in this order (070 reads 060's latest output by default, so evaluate each repeat before the next; or extract every repeat first and score each with `py 070_evaluate/run.py --extraction_run <060 run id>`: `070_evaluate/070_evaluate.md`, *Scoring a kept run of 060*):
 
 ```
 py 060_extract/run.py --repeat 1

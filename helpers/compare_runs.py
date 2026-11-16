@@ -258,9 +258,12 @@ ACROSS_SCHEMAS = ("**A comparison across schemas.** Some of these runs extracted
 
 
 def as_records(run: dict, ids: list) -> list:
-    """The run's records, in the order of ids, in the shape stats.numbers reads."""
+    """The run's records, in the order of ids, in the shape stats.numbers reads (and stats.group_parts: each
+    provenance grouping's counts per group, and drafted_by's spellings, which a run kept before 2026-11-16 lacks)."""
     by_id = {r["id"]: r for r in run["records"]}
-    return [{"compared": {"counts": collections.Counter(by_id[i]["counts"]), "describes": by_id[i]["describes"]}}
+    return [{"compared": {"counts": collections.Counter(by_id[i]["counts"]), "describes": by_id[i]["describes"],
+                          **({"groups": by_id[i]["groups"]} if by_id[i].get("groups") else {}),
+                          "drafted_by_spellings": by_id[i].get("drafted_by_spellings") or {}}}
             for i in ids]
 
 
@@ -373,19 +376,23 @@ def pooled(runs: list, ids: list) -> list:
     every run). A between much larger than within means more records narrow the range more than more repeats would
     (reasonable practice, no source gives a threshold)."""
     per_run = [as_records(run, ids) for run in runs]
-    k = len(runs)
-    rows = []
-    for path, label in stats.WITH_MARGIN:
-        parts = [stats.record_parts(recs, path) for recs in per_run]
-        means = [(sum(p[i][0] for p in parts) / k, sum(p[i][1] for p in parts) / k) for i in range(len(ids))]
-        ci = stats.clustered_wilson(means)
-        props = [a / b for a, b in means if b > 0]
-        between = _variance(props) if len(props) > 1 else None
-        within = [_variance([p[i][0] / p[i][1] for p in parts]) for i in range(len(ids))
-                  if all(p[i][1] > 0 for p in parts)] if k > 1 else []
-        rows.append({"label": label, "value": ci["value"], "low": ci["low"], "high": ci["high"],
-                     "between": between, "within": sum(within) / len(within) if within else None})
-    return rows
+    return [{"label": label, **pooled_parts([stats.record_parts(recs, path) for recs in per_run])}
+            for path, label in stats.WITH_MARGIN]
+
+
+def pooled_parts(parts: list) -> dict:
+    """One number pooled over K repeats (pooled): parts is [[(a_r, b_r) for each record] for each run], the records in
+    the same order in every run. {"value", "low", "high", "between", "within"}: each record's parts are its means over
+    the runs, and the range is stats.clustered_wilson over them; between and within as pooled says."""
+    k, n = len(parts), len(parts[0]) if parts else 0
+    means = [(sum(p[i][0] for p in parts) / k, sum(p[i][1] for p in parts) / k) for i in range(n)]
+    ci = stats.clustered_wilson(means)
+    props = [a / b for a, b in means if b > 0]
+    between = _variance(props) if len(props) > 1 else None
+    within = [_variance([p[i][0] / p[i][1] for p in parts]) for i in range(n)
+              if all(p[i][1] > 0 for p in parts)] if k > 1 else []
+    return {"value": ci["value"], "low": ci["low"], "high": ci["high"],
+            "between": between, "within": sum(within) / len(within) if within else None}
 
 
 def _variance(xs: list) -> float:

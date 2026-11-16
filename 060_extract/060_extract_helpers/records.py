@@ -6,6 +6,10 @@ The setting `extract_from` says which:
     ground_truth   (default) the records of the ground truth a person has
                    finished (all facts extracted on every row), the only ones
                    070 can evaluate; a record still in progress is skipped
+    tuning         of those, the tuning records only (030's splits.json gives
+                   each pool record its part): a run whose results may be
+                   looked at while the pipeline is still being changed, with
+                   no model call spent on a held-out record
     all            every record with text: once the schema is final
 
 or `ids` names exactly the records, as in 050 (common/common_helpers/records_io.read_ids).
@@ -21,15 +25,18 @@ from pathlib import Path
 
 from common import dropped
 from common.chunking import full_text, pieces
-from common.ground_truth import (ANNOTATED, DRAFTED_BY, EVALUABLE, SCHEMA_EVIDENCE, TO_FIX, read_ground_truth, read_pool,
-                                 record_skipped)
+from common.ground_truth import (ANNOTATED, DRAFTED_BY, EVALUABLE, SCHEMA_EVIDENCE, TO_FIX, TUNING, read_ground_truth,
+                                 read_pool, record_skipped)
 from common.llm import maker, same_model_name
 from common.records_io import NOT_IN_CATALOG, WITHOUT_TEXT, WITHOUT_TEXT_TO_DO, has_text, load_records, read_ids
 from common.report import named
 from common.step import Spec, check_settings, input_files, repo_path
 from common.stop import Stop
 
-MODES = ("ground_truth", "all")
+MODES = ("ground_truth", "tuning", "all")
+#: The values that take the finished records of the ground truth, each with the parts of the pool it takes (None:
+#: every finished record, whatever its part, and those outside the pool).
+FROM_GROUND_TRUTH = {"ground_truth": None, "tuning": (TUNING,)}
 
 
 #: 060's own reason for skipping a record (the shared ones: common/common_helpers/records_io.py).
@@ -64,9 +71,9 @@ def pick_records(inputs: dict, settings: dict) -> Chosen:
     gt_files = input_files(Path(inputs["ground_truth"]))
     since = dropped.mark()
     ids = read_ids(settings["ids"], STAGE)
-    if not gt_files and not ids and settings["extract_from"] == "ground_truth":
+    if not gt_files and not ids and settings["extract_from"] in FROM_GROUND_TRUTH:
         raise Stop(f"No ground truth files at {repo_path(inputs['ground_truth'])}, so 060 has no finished records to "
-                   f"extract from (extract_from is ground_truth). Annotate records first (`py 050_annotate/run.py`, "
+                   f"extract from (extract_from is {settings['extract_from']}). Annotate records first (`py 050_annotate/run.py`, "
                    f"then `py helpers/annotate.py`), or set --extract_from all, or name the records with --ids, "
                    f"then run `py 060_extract/run.py` again.")
     # No ground truth files is fine for extract_from all and for ids: no record is then in the ground truth.
@@ -84,10 +91,20 @@ def pick_records(inputs: dict, settings: dict) -> Chosen:
                                 f"names the records: this run extracts from the records listed in ids. To extract "
                                 f"from {settings['extract_from']} records instead, leave ids empty.")
         wanted = ids
-    elif settings["extract_from"] == "ground_truth":
-        finished = list(gt.select(EVALUABLE).ids)
-        skipped[NOT_FINISHED] = list(gt.select(TO_FIX).ids)
-        chosen.how = f"the {len(finished)} finished record(s) of the ground truth"
+    elif settings["extract_from"] in FROM_GROUND_TRUTH:
+        parts = FROM_GROUND_TRUTH[settings["extract_from"]]         # None: every part; tuning: that part only
+        finished = list(gt.select(EVALUABLE, parts).ids)
+        skipped[NOT_FINISHED] = list(gt.select(TO_FIX, parts).ids)
+        chosen.how = (f"the {len(finished)} finished record(s) of the ground truth" if parts is None else
+                      f"the {len(finished)} finished tuning record(s) of the ground truth")
+        if parts is not None:
+            others = [rid for rid in gt.select(EVALUABLE).ids if rid not in set(finished)]
+            if others:
+                chosen.notes.append(
+                    f"extract_from is tuning, so {len(others)} finished record(s) of the ground truth that aren't "
+                    f"tuning records (held-out, or outside the pool) aren't extracted from: step 070 can't evaluate "
+                    f"them from this run's output. Nothing to do if you meant it; to extract from every finished "
+                    f"record, run `py 060_extract/run.py` with --extract_from ground_truth.")
         wanted = finished
     else:
         chosen.how = "every record with text"
@@ -120,7 +137,8 @@ def pick_records(inputs: dict, settings: dict) -> Chosen:
         if reason == WITHOUT_TEXT and not ids and settings["extract_from"] == "all":
             continue                                             # expected: most catalogs have a few
         if reason == NOT_FINISHED:
-            chosen.notes.append(f"{len(rids)} record(s) of the ground truth aren't finished yet (all facts "
+            of = "tuning record(s)" if settings["extract_from"] == "tuning" and not ids else "record(s)"
+            chosen.notes.append(f"{len(rids)} {of} of the ground truth aren't finished yet (all facts "
                                 f"extracted not ticked, or a problem of the ground truth listed with these notes), "
                                 f"so skipped: {named(rids)}. Step 070 evaluates only "
                                 f"finished records. To include them, finish them in `py helpers/annotate.py` "
