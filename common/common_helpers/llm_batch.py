@@ -34,6 +34,10 @@ What a batch run does that a run of single requests doesn't:
                    "tokens consumed from any completed requests" of an expired job; Google's batch page says nothing
                    on it. A malformed answer is asked once more as a single request, as llm.call_llm_json does with
                    any answer
+    single requests  a run with the setting batch false stops before any model call when an uncollected job of
+                   this run's model and settings holds a prompt it would ask (jobs_holding, called by
+                   common/common_helpers/extraction.py, ask_model): asking it again as a single request would pay
+                   for it twice, so the message says to run with --batch true, which collects the job
     early stop     when the share of failed requests in the stage's jobs is at least llm.EARLY_STOP_FAILURES of
                    llm.EARLY_STOP_WINDOW (and at least EARLY_STOP_FAILURES of them failed), every answer received is
                    stored, nothing is asked again, and the step stops with a message saying what failed
@@ -100,8 +104,11 @@ OPENAI_OUTPUT_SECONDS = 7 * 24 * 3600
 BATCH_API_TIMEOUT = 600
 
 
-#: A batch job's creation is tried this many times when the service answers with a rate limit or a server error
-#: (e.g. Google's 503 "high demand"), BATCH_CREATE_WAIT seconds apart.
+#: A batch job's creation is tried this many times when the service refuses it with a rate limit or a server error
+#: (RetryLater: e.g. Google's 503 "high demand"), BATCH_CREATE_WAIT seconds apart. Never after a timeout or a lost
+#: connection (NoAnswerInTime, RuntimeError): the service may have made the job before the answer was lost, and a
+#: second job would pay for the same prompts twice, so the step stops instead, as call_llm stops asking a single
+#: request after a timeout (common/common_helpers/llm_calls.py).
 BATCH_CREATE_ATTEMPTS = 4
 
 
@@ -264,9 +271,27 @@ def _job_error(service: str, job_id: str, said: str) -> ApiError:
                     f"asked again on the next run")
 
 
-def _results(service: str, job_id: str, state: str) -> dict:
+def _google_keys(responses: list, sent_keys: list, job_id: str) -> list:
+    """The cache key of each of a Google job's inlined responses: the metadata key the request carried, which the
+    response carries back (google-genai's InlinedResponse.metadata). When no response carries a key but the job
+    returned as many responses as it was sent requests, the responses are matched to the requests by order: Google's
+    API reference says of InlinedResponses, "The responses will be in the same order as the input requests"
+    (https://aistudio.google.com/api-reference/batch-api, read 2026-11-17). When some carry a key and some don't, or
+    the numbers differ, a response without a key can't be placed: "None", so its request counts as unanswered (asked
+    again by the next run)."""
+    keys = [(getattr(item, "metadata", None) or {}).get("key") for item in responses]
+    if any(keys) or len(responses) != len(sent_keys) or not responses:
+        return [str(k) for k in keys]
+    log.info(f"  Google's batch job {job_id} returned its {len(responses):,} answers without the key each request "
+             f"carried, so they are matched to the requests by order, the order Google's API reference states for "
+             f"inlined responses")
+    return list(sent_keys)
+
+
+def _results(service: str, job_id: str, state: str, sent_keys: list = ()) -> dict:
     """{custom_id: ("answer", the maker's reply) | ("error", ApiError)}: what the ended job holds, by request. Results
-    may come in any order (Anthropic, OpenAI: matched by custom_id; Google: by the metadata key each request carried)."""
+    may come in any order (Anthropic, OpenAI: matched by custom_id; Google: by the metadata key each request carried,
+    or by order when none carries it: _google_keys). sent_keys: the job's requests' keys, in the order sent."""
     client = _sdk_client(service, BATCH_API_TIMEOUT)
     out = {}
     if service == "anthropic":
@@ -309,8 +334,8 @@ def _results(service: str, job_id: str, state: str) -> dict:
     job = _sdk_send(service, lambda: client.batches.get(name=job_id))
     dest = getattr(job, "dest", None)
     responses = getattr(dest, "inlined_responses", None) or []
-    for item in responses:
-        key = str((getattr(item, "metadata", None) or {}).get("key"))
+    keys = _google_keys(responses, sent_keys, job_id)
+    for item, key in zip(responses, keys):
         error = getattr(item, "error", None)
         if getattr(item, "response", None) is not None and error is None:
             out[key] = ("answer", item.response)
@@ -339,6 +364,19 @@ def _identity() -> dict:
     """What a job's answers depend on besides the prompt: a job is collected only by a run whose identity is the same."""
     return {"service": llm.SERVICE, "model": llm.MODEL, "cache_identity": cache_identity(),
             "max_answer_tokens": max_tokens_sent()}
+
+
+def jobs_holding(cache_dir: Path, stage: str, keys) -> list:
+    """The uncollected batch jobs, sent by an earlier run with this run's model and settings (_identity), that hold a
+    request for one of these cache keys: [{"id", "created", "held": how many of the keys}]. A run with the setting
+    batch false that asked these keys as single requests would pay for them twice."""
+    path = batch_state_file(cache_dir, stage)
+    if not path.exists():
+        return []
+    wanted, identity = set(keys), _identity()
+    return [{"id": j.get("id"), "created": j.get("created"), "held": len(wanted & set(j.get("keys", [])))}
+            for j in _load(path)["jobs"]
+            if not j.get("collected") and j.get("identity") == identity and wanted & set(j.get("keys", []))]
 
 
 def ask_batch(todo: dict, cache, check, cache_until, start, handle, paid, stage: str) -> int:
@@ -407,7 +445,7 @@ def ask_batch(todo: dict, cache, check, cache_until, start, handle, paid, stage:
         _wait(service, jobs, path)
         results = {}
         for job in jobs:
-            got = _results(service, job["id"], job.get("state", ""))
+            got = _results(service, job["id"], job.get("state", ""), job.get("keys", []))
             everyone = got.pop("*", None)
             for k in job.get("keys", []):
                 results[k] = got.pop(k, None) or everyone or ("error", _job_error(
@@ -427,18 +465,29 @@ def ask_batch(todo: dict, cache, check, cache_until, start, handle, paid, stage:
 
 
 def _create_with_retries(service: str, model: str, chunk: list, label: str, sent: list, path: Path) -> str:
-    """_create, tried again on a rate limit or a server error; any other refusal stops the step, saying so."""
+    """_create, tried again on a rate limit or a server error (RetryLater: the service refused, so no job was made);
+    a timeout or a lost connection stops the step without trying again, since the job may exist (BATCH_CREATE_ATTEMPTS);
+    any other refusal stops the step, saying so."""
     for attempt in range(BATCH_CREATE_ATTEMPTS):
         try:
             return _create(service, model, chunk, label)
-        except (RetryLater, RuntimeError, NoAnswerInTime) as e:
+        except RetryLater as e:                         # before RuntimeError, its parent: a refusal, so no job
             if attempt == BATCH_CREATE_ATTEMPTS - 1:
                 error = e
                 break
-            log.warning(f"Sending a batch job to {SERVICES[service]} failed ({e}); trying again in "
+            log.warning(f"Sending a batch job to {SERVICES[service]} was refused for now ({e}); trying again in "
                         f"{BATCH_CREATE_WAIT} s (attempt {attempt + 2} of {BATCH_CREATE_ATTEMPTS}). Nothing to do: "
                         f"rate limits and server errors usually pass.")
             llm.time.sleep(BATCH_CREATE_WAIT)
+        except (NoAnswerInTime, RuntimeError) as e:     # no answer: the job may exist
+            already = (f" The batch job(s) sent before it ({', '.join(j['id'] for j in sent)}) keep running; their ids "
+                       f"are kept in {_repo(path)}, and the next run collects them." if sent else "")
+            sys.exit(f"Sending a batch job of {len(chunk):,} request(s) to {BATCH_API[service]} got no answer ({e}), "
+                     f"so whether the job was made isn't known: {SERVICES[service]} may have made it before the answer "
+                     f"was lost. It isn't sent again, which could pay for the same prompts twice.{already} What to do: "
+                     f"look at the account's batch jobs ({BATCH_DOCS[service]} says where); if a job named {label} "
+                     f"exists, wait for it to end and cancel or ignore its results, since its id isn't kept and no run "
+                     f"collects it; then run the step again, which sends the prompts no kept job holds.")
         except ApiError as e:
             error = e
             break
@@ -461,10 +510,12 @@ def _repo(path: Path) -> str:
 
 def _wait(service: str, jobs: list, path: Path) -> None:
     """Ask each job's state every BATCH_POLL_SECONDS until every job has ended; a line when a job's state or counts
-    change, and at least every BATCH_PROGRESS_SECONDS. A failed check is tried again at the next one; a job the
-    service no longer knows stops the step (its requests are then sent again by the next run)."""
+    change, and at least every BATCH_PROGRESS_SECONDS. A failed check is tried again at the next one. Any other error
+    stops the step and leaves the job uncollected, so the next run asks about it again; only a job the service says it
+    doesn't know (HTTP 404) at two checks BATCH_POLL_SECONDS apart is marked as given up, and its requests are then
+    sent again by the next run."""
     clock, began = llm.time.monotonic, llm.time.monotonic()
-    pending, said, shown = list(jobs), {}, None
+    pending, said, shown, not_found = list(jobs), {}, None, {}
     log.info(f"  waiting for {len(jobs)} batch job(s) at {SERVICES[service]}: most end within an hour, every one "
              f"within 24 hours. The run may be left running; Ctrl+C stops the waiting, not the job(s), and the next "
              f"run collects them.")
@@ -477,11 +528,24 @@ def _wait(service: str, jobs: list, path: Path) -> None:
                             f"{llm.BATCH_POLL_SECONDS} s. Nothing to do.")
                 continue
             except ApiError as e:
-                job.update(collected=_now(), state=f"not found: {e}")
-                _save_job(path, job)
-                sys.exit(f"{SERVICES[service]} answered about batch job {job['id']} with an error ({e}), so its answers "
-                         f"can't be collected. The job is marked as given up in {_repo(path)}: run the step again, and "
-                         f"its prompts are sent in a new job (paid again, unless the old job never ran).")
+                if _not_found(e) and not_found.get(job["id"]):
+                    job.update(collected=_now(), state=f"not found: {e}")
+                    _save_job(path, job)
+                    sys.exit(f"{SERVICES[service]} doesn't know batch job {job['id']} (HTTP 404 at two checks "
+                             f"{llm.BATCH_POLL_SECONDS} s apart: {e}), so its answers can't be collected. The job is "
+                             f"marked as given up in {_repo(path)}: run the step again, and its prompts are sent in a "
+                             f"new job (paid again, unless the old job never ran).")
+                if _not_found(e):
+                    not_found[job["id"]] = True
+                    log.warning(f"{SERVICES[service]} doesn't know batch job {job['id']} ({e}); asking again in "
+                                f"{llm.BATCH_POLL_SECONDS} s before giving it up.")
+                    continue
+                sys.exit(f"{SERVICES[service]} answered about batch job {job['id']} with an error ({e}), so this run "
+                         f"can't collect its answers now. The job stays uncollected in {_repo(path)}, so nothing is "
+                         f"paid twice: run the same command again (same model and settings, --batch true) to collect "
+                         f"it. If the error names the account or the key (HTTP 401 or 403), fix that first; if it "
+                         f"keeps coming, see {BATCH_DOCS[service]}.")
+            not_found.pop(job["id"], None)
             job["state"] = status["state"]
             words = f"{status['state']}" + (f", {status['counts']}" if status["counts"] else "")
             if said.get(job["id"]) != words:
@@ -497,6 +561,12 @@ def _wait(service: str, jobs: list, path: Path) -> None:
                                                                          for j in jobs))
         if pending:
             llm.time.sleep(llm.BATCH_POLL_SECONDS)
+
+
+def _not_found(error: ApiError) -> bool:
+    """Whether the service answered HTTP 404 (it doesn't know the job): the status the error carries, or its words."""
+    status = getattr(error, "status", None) or getattr(error, "status_code", None)
+    return status == 404 or "HTTP 404" in str(error)
 
 
 def _hand_over(service, results, by_key, prompt_of, cache, check, cache_until, handle, paid, jobs, path) -> int:

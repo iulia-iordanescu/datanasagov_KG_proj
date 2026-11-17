@@ -396,6 +396,16 @@ def ask_model(items: list, prompt_for, calls, workers: int, stage: str, plan: st
                      + (f", {len(answers)} text piece(s) answered from the cache" if answers else ""))
         batch = llm.BATCH
         if not batch:
+            held = llm.jobs_holding(calls.cache_dir, stage, {k for k, _ in todo.values()})
+            if held:
+                jobs = "; ".join(f"{j['id']} (sent {j['created']}, {j['held']:,} of these prompts)" for j in held)
+                raise SystemExit(
+                    f"{len(held)} batch job(s) sent by an earlier run with this model and these settings haven't been "
+                    f"collected, and they hold prompts this run would ask: {jobs}. Asking them again as single "
+                    f"requests (the setting batch is false) would pay for them twice, so the step stops before any "
+                    f"model call. Run the same command with --batch true: it collects the job(s), and asks only the "
+                    f"prompts no job holds. The jobs are listed in "
+                    f"{llm.batch_state_file(calls.cache_dir, stage).as_posix()}.")
             calls.paid.start(plan_line, to_pay=len(todo))
         before = calls.paid.made
         calls.paid.expect(len(todo))

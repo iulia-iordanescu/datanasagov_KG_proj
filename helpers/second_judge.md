@@ -35,7 +35,7 @@ What it is sent, through LiteLLM, each verified in OpenAI's own docs on 2026-11-
 
 - **No temperature:** "When reasoning effort is not `none`, remove `temperature`, `top_p`, and `top_logprobs`", and "GPT-6 Astra and GPT-6.1 Sol do not support the `none` reasoning effort" ([OpenAI, latest model guide](https://developers.openai.com/api/docs/guides/latest-model)).
 - **`reasoning_effort`, the setting `thinking`** (`medium` by default): Chat Completions take `reasoning_effort` (same guide); GPT-6 Astra supports "`low`, `medium`, `high`, `xhigh`, and `max`" ([OpenAI, GPT-6 Astra](https://developers.openai.com/api/docs/models/gpt-6-astra)), and LiteLLM passes it on ([LiteLLM, GPT-6 Astra](https://docs.litellm.ai/blog/gpt_6_astra)). `--thinking model_default` sends none.
-- **`max_completion_tokens`, not `max_tokens`:** 32,000 tokens, as for every model. OpenAI's reference calls `max_tokens` "deprecated in favor of `max_completion_tokens`" ([Chat Completions reference](https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create)), and LiteLLM's note says a LiteLLM version before its fix sends `max_tokens` on unchanged, which OpenAI rejects; GPT-6 Astra's answers may be up to 128,000 tokens.
+- **`max_completion_tokens`, not `max_tokens`:** 64,000 tokens, as for every model. OpenAI's reference calls `max_tokens` "deprecated in favor of `max_completion_tokens`" ([Chat Completions reference](https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create)), and LiteLLM's note says a LiteLLM version before its fix sends `max_tokens` on unchanged, which OpenAI rejects; GPT-6 Astra's answers may be up to 128,000 tokens.
 
 ## Agreement
 

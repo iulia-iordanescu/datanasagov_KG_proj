@@ -205,13 +205,23 @@ BATCH_JOBS = []
 #: stay valid; an answer stored as cut off at a lower limit is asked again (common/common_helpers/cache.py).
 #: Sent as `max_tokens`, except to OpenAI's GPT-6 models, which get `max_completion_tokens` (answer_limit_name).
 #: GPT-6 Astra's max output is 128,000 tokens (https://developers.openai.com/api/docs/models/gpt-6-astra).
-MAX_ANSWER_TOKENS = 32000
+#: 64,000 since 2026-11-17 (the code review of that day): thinking counts against the limit, and one record cut off
+#: leaves the record unextracted, so 070 stops evaluating at it. 64,000 is the largest round value every model
+#: planned for the runs accepts as a synchronous request (all read 2026-11-17): Claude Opus 5.5, Sonnet 5.5 and
+#: Haiku 5.5, 128K tokens each (https://platform.claude.com/docs/en/about-claude/models/overview, "Max output");
+#: GPT-6.1 Sol, GPT-6.1 Terra and GPT-6 Luna, "128,000 max output tokens" each
+#: (https://developers.openai.com/api/docs/models/gpt-6.1-sol, .../gpt-6.1-terra, .../gpt-6-luna); Gemini 4 Argon
+#: 65,536 ("default synchronous"), Gemini 3.8 Flash and Gemini 3.5 Flash-Lite 65,536 each
+#: (https://aistudio.google.com/docs/models/gemini-4-argon, .../gemini-3.8-flash, .../gemini-3.5-flash-lite).
+#: Part of a batch job's identity (llm_batch._identity): a job sent with another limit is not collected by a run
+#: with this one.
+MAX_ANSWER_TOKENS = 64000
 
 
 #: How long a call waits for its answer, in seconds, every call alike: long enough for an answer of
-#: MAX_ANSWER_TOKENS, so a long answer isn't abandoned and asked again (each attempt may be billed). 1,200 s covers
-#: 32,000 tokens at about 27 tokens a second, thinking included.
-READ_TIMEOUT = 1200
+#: MAX_ANSWER_TOKENS, so a long answer isn't abandoned and asked again (each attempt may be billed). 2,400 s covers
+#: 64,000 tokens at about 27 tokens a second, thinking included (1,200 s for 32,000 tokens before 2026-11-17).
+READ_TIMEOUT = 2400
 
 
 #: The effort level a model runs at when none is sent, where its maker documents one: on Claude Opus 5.5 adaptive
@@ -608,4 +618,4 @@ from common.llm_paid import (
     show_warnings, Interrupted as Interrupted, confirm as confirm)
 from common.llm_batch import (
     BATCH_API as BATCH_API, BATCH_DOCS as BATCH_DOCS, batch_refusal as batch_refusal, batch_note as batch_note, ask_batch as ask_batch, batch_state_file as
-    batch_state_file)
+    batch_state_file, jobs_holding as jobs_holding)

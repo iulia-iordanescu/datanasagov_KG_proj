@@ -564,6 +564,20 @@ def _translation_fingerprint(translation) -> str:
 #: which repeat of 060's recipe (the setting repeat) this run evaluated, and whether LiteLLM's answer cache was bypassed.
 MODEL_CALL_FIELDS = ("service", "model", "served_as", "temperature", "max_answer_tokens", "thinking", "thinking_sent",
                      "effort", "repeat", "answer_cache")
+#: The parts of the recipe (paths as helpers/compare_runs.py's flatten writes them) that change neither what the model
+#: is asked nor how its answers are scored, so two runs that differ only in them, and in the repeat, are repeats of one
+#: recipe and are pooled (helpers/compare_runs.py, repeat_only). The code versions: a code change that alters a prompt
+#: shows in the prompts' fingerprints, and "(plus uncommitted changes)" says nothing about what changed. 060's settings
+#: workers, batch and confirm_paid_calls: how the calls are sent and paid for, not what they ask. served_as: the
+#: model that answered, empty when every answer came from the cache. 070's own service and model: the model that
+#: proposes and suggests rows of the translation table; the translation used for scoring is recorded by its own
+#: fingerprint (translation_sha256), which stays in the recipe.
+NOT_THE_RECIPE = ("extraction (060) / run_id", "extraction (060) / git_commit",
+                  "extraction (060) / settings / workers", "extraction (060) / settings / batch",
+                  "extraction (060) / settings / confirm_paid_calls", "extraction (060) / model_calls / served_as",
+                  "evaluation (070) / git_commit", "evaluation (070) / service", "evaluation (070) / model")
+#: Where the repeat itself is recorded: 060's setting, and its copy in the model calls' record.
+REPEAT_PATHS = ("extraction (060) / settings / repeat", "extraction (060) / model_calls / repeat")
 
 
 def _recipe(evaluated, translation, inputs_manifest: dict) -> dict:

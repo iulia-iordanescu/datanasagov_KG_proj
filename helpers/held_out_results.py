@@ -95,16 +95,10 @@ def extraction_of(run: dict) -> dict:
             "repeat": settings.get("repeat", "?"), "schema": ex.get("schema") or "?"}
 
 
-def _only_the_repeat(path: str) -> bool:
-    """Whether a part of the recipe is one that differs between repeats of one recipe: the repeat itself, or a run
-    id (compare_runs.only_repeats reads the same two)."""
-    return path.rsplit(" / ", 1)[-1] == "repeat" or path.endswith(" / run_id")
-
-
 def recipe_key(run: dict) -> tuple:
     """A run's recipe without what differs between repeats of one recipe: runs with the same key are repeats."""
     flat = compare_runs.flatten(compare_runs.recipe_of(run))
-    return tuple(sorted((k, v) for k, v in flat.items() if not _only_the_repeat(k)))
+    return tuple(sorted((k, v) for k, v in flat.items() if not compare_runs.repeat_only(k)))
 
 
 def groups_of(runs: list) -> list:
@@ -333,10 +327,11 @@ def report(runs: list, log: list, leave_out: list = (), positions: dict | None =
                     + (", …" if len(others) > 10 else "") + ")." if others else "all are summarized here."))
     if len(groups) > 1:
         firsts = [group[0] for group in groups]
-        diffs = [(k, v) for k, v in compare_runs.differences(firsts) if not _only_the_repeat(k)]
+        diffs = [(k, v) for k, v in compare_runs.differences(firsts) if not compare_runs.repeat_only(k)]
         lines += ["", "## What differs between the groups", "",
                   "Every part of the recipes that isn't the same in every group (the first run of each), apart from "
-                  "the repeat and the run ids. Groups meant to differ only in the extraction model differ only in "
+                  "the repeat and the parts that change neither what the model is asked nor how its answers are "
+                  "scored (run ids, code versions, how the calls were sent and paid for). Groups meant to differ only in the extraction model differ only in "
                   "the rows that name it.", "",
                   "| Part of the recipe | " + " | ".join(f"Group {g + 1}" for g in range(len(groups))) + " |",
                   "|---|" + "---|" * len(groups)]
@@ -393,15 +388,20 @@ def report(runs: list, log: list, leave_out: list = (), positions: dict | None =
                   f"Each record's counts are averaged over the {k} run(s), and the 95% range is 070's clustered "
                   f"Wilson interval over the records (`070_evaluate/metrics/approximately.md`, *Sampling error*, "
                   f"*Repeats*): the record stays the cluster, so repeats narrow the range only as much as the "
-                  f"model's own variation they average away.", ""]
+                  f"model's own variation they average away. For precision, recall and F1, a second range, a "
+                  f"record-level bootstrap: the records drawn at random with repeats, each record with all its "
+                  f"repeats (`helpers/compare_runs.md`, *Pooled over the repeats*).", ""]
         if without is not None:
-            lines += [f"| Number | {head} | 95% range | Without the {len(s['left_out_here'])} left out "
-                      f"({len(s['without_ids'])} records) | 95% range |", "|---|---:|---|---:|---|"]
-            lines += [f"| {r['label']} | {compare_runs.pct(r['value'])} | {_range(r)} | "
-                      f"{compare_runs.pct(w['value'])} | {_range(w)} |" for r, w in zip(s["pooled"], without)]
+            lines += [f"| Number | {head} | 95% range | Bootstrap 95% range | Without the "
+                      f"{len(s['left_out_here'])} left out ({len(s['without_ids'])} records) | 95% range | "
+                      f"Bootstrap 95% range |", "|---|---:|---|---|---:|---|---|"]
+            lines += [f"| {r['label']} | {compare_runs.pct(r['value'])} | {_range(r)} | {compare_runs.boot_range(r)} | "
+                      f"{compare_runs.pct(w['value'])} | {_range(w)} | {compare_runs.boot_range(w)} |"
+                      for r, w in zip(s["pooled"], without)]
         else:
-            lines += [f"| Number | {head} | 95% range |", "|---|---:|---|"]
-            lines += [f"| {r['label']} | {compare_runs.pct(r['value'])} | {_range(r)} |" for r in s["pooled"]]
+            lines += [f"| Number | {head} | 95% range | Bootstrap 95% range |", "|---|---:|---|---|"]
+            lines += [f"| {r['label']} | {compare_runs.pct(r['value'])} | {_range(r)} | {compare_runs.boot_range(r)} |"
+                      for r in s["pooled"]]
         lines += _drafted_by_lines(s["drafted_by"], ex["model"], k, s["drafted_by_without"],
                                    len(s["left_out_here"]), len(s["without_ids"]))
         if k > 1:

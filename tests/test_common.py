@@ -2647,6 +2647,102 @@ class ReadThenWrite(unittest.TestCase):
             shutil.rmtree(tmp, ignore_errors=True)
 
 
+class RunLock(unittest.TestCase):
+    """Two runs of one step at once are refused: run_step makes common.step.RUN_LOCK in the step's output folder
+    before touching it, and removes it at the end, also after an error or Ctrl+C; a second run stops (exit code 2)
+    saying which run holds the lock and how to send many batch jobs safely. A lock left by a process that no longer
+    runs on this computer is stale and removed; one from another computer is never taken as stale."""
+
+    def setUp(self):
+        import tempfile
+        from unittest import mock
+        from common import step
+        self.step, self.tmp = step, Path(tempfile.mkdtemp())
+        self.patches = [mock.patch.object(step, "RESULTS_DIR", self.tmp / "results"),
+                        mock.patch.object(step, "REPORTS_DIR", self.tmp / "reports"),
+                        mock.patch.object(step, "LOGS_DIR", self.tmp / "logs")]
+        for patch in self.patches:
+            patch.start()
+        self.folder = self.tmp / "results" / "999_stand_in"
+
+    def tearDown(self):
+        import logging
+        for patch in self.patches:
+            patch.stop()
+        logging.shutdown()
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def run_it(self, main):
+        return self.step.run_step("999_stand_in", {}, {}, main, argv=[])
+
+    def plant(self, pid, host=None):
+        import platform
+        self.folder.mkdir(parents=True, exist_ok=True)
+        (self.folder / self.step.RUN_LOCK).write_text(json.dumps(
+            {"run_id": "999_stand_in_2026-11-17_0900", "pid": pid, "host": host or platform.node(),
+             "started": "2026-11-17 09:00", "command": "py 999_stand_in/run.py --batch true"}), encoding="utf-8")
+
+    def test_held_while_running_and_removed_after(self):
+        import os
+        seen = []
+
+        def main(inputs, settings, output):
+            seen.append(json.loads((output / self.step.RUN_LOCK).read_text(encoding="utf-8")))
+            return self.step.Results(headline={})
+        self.run_it(main)
+        self.assertEqual(seen[0]["pid"], os.getpid())
+        self.assertFalse((self.folder / self.step.RUN_LOCK).exists())
+
+    def test_removed_after_an_error_and_after_ctrl_c(self):
+        for raised in (ValueError("broken"), KeyboardInterrupt()):
+            def main(inputs, settings, output, raised=raised):
+                raise raised
+            with self.subTest(raised=type(raised).__name__), self.assertRaises(SystemExit):
+                self.run_it(main)
+            self.assertFalse((self.folder / self.step.RUN_LOCK).exists())
+
+    def test_a_second_run_is_refused(self):
+        import os
+        self.plant(os.getpid())                                     # a live process holds it (this one)
+        ran = []
+        with self.assertRaises(SystemExit) as caught:
+            self.run_it(lambda i, s, o: ran.append(1))
+        self.assertEqual((caught.exception.code, ran), (2, []))
+        self.assertTrue((self.folder / self.step.RUN_LOCK).exists())   # the other run's lock is left alone
+        report = max((self.tmp / "reports").glob("999_stand_in_*.md")).read_text(encoding="utf-8")
+        for words in ("Another run of 999_stand_in is running: run 999_stand_in_2026-11-17_0900",
+                      "py 999_stand_in/run.py --batch true", "press Ctrl+C", "one at a time"):
+            self.assertIn(words, report)
+
+    def test_a_stale_lock_is_removed_but_not_another_computers(self):
+        import subprocess
+        import sys
+        gone = subprocess.run([sys.executable, "-c", "import os; print(os.getpid())"], capture_output=True,
+                              text=True, check=True)
+        pid = int(gone.stdout)                                      # a process that has ended
+        self.assertFalse(self.step._process_alive(pid))
+        self.plant(pid)
+        self.run_it(lambda i, s, o: self.step.Results(headline={}))
+        self.assertFalse((self.folder / self.step.RUN_LOCK).exists())
+        self.plant(pid, host="another-computer")                    # near miss: can't be checked here, so kept
+        with self.assertRaises(SystemExit) as caught:
+            self.run_it(lambda i, s, o: self.step.Results(headline={}))
+        self.assertEqual(caught.exception.code, 2)
+
+    def test_an_unreadable_lock_is_never_stale(self):
+        self.folder.mkdir(parents=True)
+        (self.folder / self.step.RUN_LOCK).write_text("", encoding="utf-8")   # being written by another run
+        with self.assertRaises(SystemExit) as caught:
+            self.run_it(lambda i, s, o: self.step.Results(headline={}))
+        self.assertEqual(caught.exception.code, 2)
+
+    def test_no_folder_left_by_a_run_that_stops_early(self):
+        with self.assertRaises(SystemExit):
+            self.step.run_step("999_stand_in", {"records": str(self.tmp / "missing.jsonl")}, {},
+                               lambda *a: None, argv=[])
+        self.assertFalse(self.folder.exists())
+
+
 class HasText(unittest.TestCase):
     """One definition of "has text" (common.records_io.has_text): the same fields as the text a model reads
     (full_text: title, notes and the extra text fields 020 kept), blank once evened out."""

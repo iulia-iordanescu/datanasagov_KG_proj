@@ -144,7 +144,9 @@ class Cache:
 
     def put(self, k: str, answer) -> None:
         """Store one answer, and write the file: under the file's lock (common.files.locked), merging what another
-        process (a second repeat run in another terminal) wrote since this one read it, so no paid answer is lost."""
+        process wrote since this one read it, so no paid answer is lost. A safeguard: no two runs of one step share a
+        cache file at once, since a second run of a step is refused while the first runs (the run lock,
+        common/common_helpers/step.py, _take_run_lock)."""
         with self._lock:                          # extraction stores from several threads
             self.answers[k] = answer
             with locked(self.path):

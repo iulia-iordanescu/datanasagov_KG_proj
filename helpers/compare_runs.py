@@ -47,7 +47,8 @@ sys.path.insert(0, str(ROOT / "070_evaluate" / "070_evaluate_helpers"))       # 
 import pairing                                                                 # noqa: E402
 from component_classes import IDENTITY as IDENTITY, TABLE_TRANSLATION       # noqa: E402  (IDENTITY: the tests name both translations through this module)
 import stats                                                                   # noqa: E402
-from moves import EVALUATIONS_DIR, UNTRANSLATABLE_FIELD, UNTRANSLATABLE_FIELD_OLD   # noqa: E402
+from moves import (EVALUATIONS_DIR, NOT_THE_RECIPE, REPEAT_PATHS, UNTRANSLATABLE_FIELD,  # noqa: E402
+                   UNTRANSLATABLE_FIELD_OLD)
 from common import console, llm  # noqa: E402
 from common import audit                                                      # noqa: E402
 from common.files import read_json, write_text                                            # noqa: E402
@@ -89,6 +90,9 @@ VERDICTS = ("not comparable (a number is missing)", "the same", "no range (one r
 #: (stats.clustered_wilson) doesn't apply to it (helpers/compare_runs.md).
 REDRAWS = 10000
 SEED = 70
+#: The numbers that get, besides the clustered Wilson range, a record-level bootstrap range when pooled over the
+#: repeats of one recipe (pooled_bootstrap): precision, recall and F1 at both pair levels, the headline numbers.
+BOOTSTRAP_NUMBERS = tuple((level, key) for level in stats.LEVELS for key in ("precision", "recall", "f1"))
 
 
 # ------------------------------ reading -------------------------------------
@@ -344,11 +348,19 @@ def points(v) -> str:
     return "–" if v is None else f"{100 * v:+.1f} points"
 
 
+def repeat_only(path: str) -> bool:
+    """Whether a part of the recipe (a path of flatten) may differ between repeats of one recipe: the repeat itself
+    (moves.REPEAT_PATHS), or a part that changes neither what the model is asked nor how its answers are scored
+    (moves.NOT_THE_RECIPE: run ids, code versions, how the calls were sent and paid for). The one list both this
+    helper and helpers/held_out_results.py read."""
+    return path in REPEAT_PATHS or path in NOT_THE_RECIPE
+
+
 def only_repeats(diffs: list) -> bool:
-    """True when the runs' recipes differ only in the repeat (060's setting repeat, and the same number in its model
-    calls' record): repeats of one recipe, whose spread is the model's own variation."""
-    return bool(diffs) and all(path.rsplit(" / ", 1)[-1] == "repeat" or path.endswith(" / run_id")
-                               for path, _ in diffs) and any(path.endswith(" / repeat") for path, _ in diffs)
+    """True when the runs' recipes differ in the repeat (060's setting repeat) and otherwise only in parts that
+    repeat_only allows: repeats of one recipe, whose spread is the model's own variation."""
+    return (bool(diffs) and all(repeat_only(path) for path, _ in diffs)
+            and any(path in REPEAT_PATHS for path, _ in diffs))
 
 
 def spread(runs: list, ids: list) -> list:
@@ -369,15 +381,46 @@ def spread(runs: list, ids: list) -> list:
 def pooled(runs: list, ids: list) -> list:
     """For repeats of one recipe (only_repeats), each number of stats.WITH_MARGIN pooled over the repeats, the record
     staying the cluster (Miller 2024, sections 2.2 and 3.1: record × repeat is never taken as more clusters): {"label",
-    "value", "low", "high", "between", "within"}. Each record's parts are its means over the K runs, ā_r and b̄_r, and
+    "value", "low", "high", "between", "within", "boot_low", "boot_high", "boot_redraws"}; the boot_ fields are
+    pooled_bootstrap's range for the numbers of BOOTSTRAP_NUMBERS, None (and 0) for the others. Each record's parts are its means over the K runs, ā_r and b̄_r, and
     the range is stats.clustered_wilson over them, so repeats narrow it as much as the answer-sampling variance they
     average away, and no more. between: the variance, across the records, of each record's proportion ā_r / b̄_r;
     within: the mean, over the records, of the variance across the runs of a_rk / b_rk (each record with a value in
     every run). A between much larger than within means more records narrow the range more than more repeats would
     (reasonable practice, no source gives a threshold)."""
     per_run = [as_records(run, ids) for run in runs]
-    return [{"label": label, **pooled_parts([stats.record_parts(recs, path) for recs in per_run])}
+    parts = {path: [stats.record_parts(recs, path) for recs in per_run] for path, _ in stats.WITH_MARGIN}
+    boot = pooled_bootstrap({path: parts[path] for path in BOOTSTRAP_NUMBERS})
+    none = {"low": None, "high": None, "used": 0}
+    return [{"label": label, **pooled_parts(parts[path]), "boot_low": boot.get(path, none)["low"],
+             "boot_high": boot.get(path, none)["high"], "boot_redraws": boot.get(path, none)["used"]}
             for path, label in stats.WITH_MARGIN]
+
+
+def pooled_bootstrap(parts_of: dict) -> dict:
+    """A record-level bootstrap range of numbers pooled over K repeats: parts_of is {path: [[(a_r, b_r) for each
+    record] for each run]} (as pooled_parts takes them, the records in the same order everywhere). Each record's parts
+    are its means over the runs, so a record is resampled with all its repeats (the record stays the cluster, as in
+    pooled). The n records are drawn at random with repeats, n at a time, REDRAWS times from the seed SEED (one draw
+    for every number, so all the numbers' ranges come from the same redraws), and each number is Σ a ÷ Σ b over the
+    draw; a draw whose Σ b is 0 gives that number no value and is skipped. The range is interval's: the expanded
+    percentile range (Hesterberg 2015), as for paired's differences. {path: {"low", "high", "used", "skipped"}}; no
+    range below 2 records."""
+    means = {}
+    for path, parts in parts_of.items():
+        k, n = len(parts), len(parts[0]) if parts else 0
+        means[path] = [(sum(p[i][0] for p in parts) / k, sum(p[i][1] for p in parts) / k) for i in range(n)]
+    n = len(next(iter(means.values()))) if means else 0
+    samples = {path: [] for path in means}
+    if n >= 2:
+        rng = random.Random(SEED)
+        for _ in range(REDRAWS):
+            draw = [rng.randrange(n) for _ in range(n)]
+            for path, m in means.items():
+                b = sum(m[i][1] for i in draw)
+                if b > 0:
+                    samples[path].append(sum(m[i][0] for i in draw) / b)
+    return {path: interval(samples[path], n, REDRAWS) for path in means}
 
 
 def pooled_parts(parts: list) -> dict:
@@ -402,6 +445,16 @@ def _variance(xs: list) -> float:
 
 
 # ------------------------------ the report ----------------------------------
+
+def boot_range(r: dict) -> str:
+    """A pooled row's bootstrap range (pooled_bootstrap), with how many redraws it comes from when fewer than all of
+    them gave a value; "–" for a number without one."""
+    if r.get("boot_low") is None:
+        return "–"
+    used = r.get("boot_redraws", REDRAWS)
+    return (f"{pct(r['boot_low'])} to {pct(r['boot_high'])}"
+            + (f" (from {used:,} of {REDRAWS:,} redraws)" if 0 < used < REDRAWS else ""))
+
 
 def _range(r: dict) -> str:
     """A row's 95% range, with how many redraws it comes from when fewer than all of them gave a value."""
@@ -458,8 +511,9 @@ def report(runs: list, ids: list, left: dict, notes: list = (), across_schemas: 
                       f"bound.**"]
     rows = spread(runs, ids)
     lines += ["", "## Spread across the runs", "",
-              ("These runs are repeats of one recipe: only the repeat differs (060's setting `repeat`), so each was "
-               "answered by the model anew, and this spread is the model's own variation on these records, the noise "
+              ("These runs are repeats of one recipe: besides the repeat (060's setting `repeat`), only parts that "
+               "change neither what the model is asked nor how its answers are scored differ (run ids, code versions, "
+               "how the calls were sent and paid for), so each was answered by the model anew, and this spread is the model's own variation on these records, the noise "
                "floor. Whether a later change helped is decided by the rule fixed before the runs, on these repeats "
                "and the change's (`--baseline … --changed …`, helpers/compare_runs.md, *Did a change help?*), not by "
                "this width."
@@ -478,14 +532,17 @@ def report(runs: list, ids: list, left: dict, notes: list = (), across_schemas: 
                   f"range by 070's clustered Wilson interval over these {len(ids)} records "
                   f"(`070_evaluate/metrics/approximately.md`, *Sampling error*, *Repeats*): the record stays the "
                   f"cluster, so the repeats narrow the range only as much as the model's own variation they average "
-                  f"away. *Between records*: the variance, across the records, of each record's own proportion; "
-                  f"*Within a record*: the mean variance of a record's proportion across the repeats. A between much "
-                  f"larger than within means more records would narrow the range more than more repeats.", "",
-                  "| Number | Pooled | 95% range | Between records | Within a record (repeats) |",
-                  "|---|---:|---|---:|---:|"]
+                  f"away. *Bootstrap 95% range*, for precision, recall and F1: the records drawn at random with "
+                  f"repeats, {REDRAWS:,} times, each record with all its repeats, and the expanded percentile range of "
+                  f"the pooled number (helpers/compare_runs.md, *Pooled over the repeats*). *Between records*: the "
+                  f"variance, across the records, of each record's own proportion; *Within a record*: the mean "
+                  f"variance of a record's proportion across the repeats. A between much larger than within means "
+                  f"more records would narrow the range more than more repeats.", "",
+                  "| Number | Pooled | 95% range | Bootstrap 95% range | Between records | Within a record (repeats) |",
+                  "|---|---:|---|---|---:|---:|"]
         lines += [f"| {r['label']} | {pct(r['value'])} | "
                   + ("–" if r["low"] is None else f"{pct(r['low'])} to {pct(r['high'])}")
-                  + f" | {_var(r['between'])} | {_var(r['within'])} |" for r in pooled(runs, ids)]
+                  + f" | {boot_range(r)} | {_var(r['between'])} | {_var(r['within'])} |" for r in pooled(runs, ids)]
     first = None
     base = as_records(runs[0], ids)
     for n, run in zip(names[1:], runs[1:]):

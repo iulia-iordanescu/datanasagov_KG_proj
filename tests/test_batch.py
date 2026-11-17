@@ -13,6 +13,10 @@ ask) through tests/test_model_calls.py's FakeSDK. For each maker (anthropic, ope
     early stop          most requests failed: the answers received are stored, nothing asked again, the step stops
     second ask          an answer that isn't JSON is asked once more as a single request
     refusals            Ask Sage and LiteLLM take no batch; a batch job the maker refuses stops the step, saying so
+    paying twice        a run with batch false stops while an uncollected job of its recipe holds a prompt it asks;
+                        a job's creation that timed out isn't sent again; an error while polling (but a 404 seen
+                        twice) leaves the job uncollected
+    Google's order      inlined responses without their keys are matched to the requests by order
 """
 import json
 import sys
@@ -162,6 +166,13 @@ def google_client(fake: FakeBatch):
         if fake.outcome.get("*") == "expired":
             return NS(state=NS(value="JOB_STATE_EXPIRED"), completion_stats=None, dest=None, error=None)
         responses = []
+        if getattr(fake, "no_keys", False):                     # in request order, no metadata (Google's documented order)
+            for r in fake.jobs[name]:
+                responses.append(NS(metadata=None, response=GoogleReply(
+                    {**tmc.GOOGLE_REPLY[0], "candidates": [{"finish_reason": "STOP"}]},
+                    ANSWER.replace("Instrument", r["contents"].rsplit("#", 2)[1])), error=None))
+            return NS(state=NS(value="JOB_STATE_SUCCEEDED"), completion_stats=None,
+                      dest=NS(inlined_responses=responses), error=None)
         for cid, what in fake.results(name):
             if what in ("errored", "expired"):
                 responses.append(NS(metadata={"key": cid}, response=None,
@@ -452,6 +463,101 @@ class Batch(unittest.TestCase):
         _, replies = self.run_batch("anthropic", ["r00"])
         self.assertEqual(list(replies.of), ["r00"])
         self.assertIn(llm_batch.BATCH_CREATE_WAIT, self.sleeps)
+
+    # ---------------------------------------------------------------- never paying twice
+
+    def stop_while_waiting(self, service, ids):
+        with mock.patch.object(llm.time, "sleep", mock.Mock(side_effect=KeyboardInterrupt)):
+            with self.assertRaises(llm.Interrupted):
+                self.run_batch(service, ids)
+        llm.BATCH_JOBS.clear()
+
+    def single_run(self, service, ids):
+        llm.BATCH = False
+        calls = self.calls(service=service, model=tmc.BASELINE[service], thinking="high")
+        items = [{"id": i, "pieces": ["text"]} for i in ids]
+        return extraction.ask_model(items, lambda item, piece: f"RULES\n----- BEGIN RECORD -----\n#{item['id']}#",
+                                    calls, 4, "extract", "060", "extracting")
+
+    def test_single_requests_stop_while_a_job_holds_their_prompts(self):
+        self.stop_while_waiting("anthropic", ["r00", "r01"])
+        (job_id,) = self.fakes["anthropic"].jobs
+        self.sdk.requests.clear()
+        with self.assertRaises(SystemExit) as caught:
+            self.single_run("anthropic", ["r01", "r02"])
+        message = str(caught.exception)
+        for words in (job_id, "1 of these prompts", "--batch true", "pay for them twice"):
+            self.assertIn(words, message)
+        self.assertEqual(self.sdk.requests, [])                                 # nothing sent, not even the test call
+        # near-misses: prompts no job holds are asked; a job of another recipe doesn't stop the run
+        self.sdk.replies += [SYNC_TEST_REPLY["anthropic"],
+                             {**tmc.ANTHROPIC_REPLY, "content": [{"type": "text", "text": ANSWER}]}]
+        replies = self.single_run("anthropic", ["r02"])
+        self.assertEqual((list(replies.of), len(self.sdk.requests)), (["r02"], 2))   # the test call and r02
+        path = self.tmp / "050_annotate" / "cache" / "extract.batch_jobs.json"
+        state = self.state()
+        state["jobs"][0]["identity"] = {**state["jobs"][0]["identity"], "cache_identity": "x"}
+        path.write_text(json.dumps(state), encoding="utf-8")
+        self.assertEqual(llm_batch.jobs_holding(path.parent, "extract", {state["jobs"][0]["keys"][0]}), [])
+
+    def test_a_create_that_timed_out_is_not_sent_again(self):
+        from common.llm_errors import NoAnswerInTime
+        for raised in (NoAnswerInTime("APITimeoutError: timed out"), RuntimeError("no connection")):
+            with self.subTest(raised=type(raised).__name__):
+                self.setUp_again()
+                fake = self.fakes.setdefault("anthropic", FakeBatch("anthropic"))
+                tries = []
+
+                def create(requests, raised=raised):
+                    tries.append(1)
+                    raise raised
+                fake.create = create
+                with self.assertRaises(SystemExit) as caught:
+                    self.run_batch("anthropic", ["r00"])
+                self.assertEqual(tries, [1])                                    # one try only
+                self.assertNotIn(llm_batch.BATCH_CREATE_WAIT, self.sleeps)
+                self.assertIn("whether the job was made isn't known", str(caught.exception))
+
+    def test_an_error_while_polling_leaves_the_job_uncollected(self):
+        from common.llm_errors import ApiError
+        real = llm_batch._poll
+        for errors, given_up in (([ApiError("HTTP 401: invalid x-api-key")], False),
+                                 ([ApiError("HTTP 404: not found"), ApiError("HTTP 404: not found")], True)):
+            with self.subTest(errors=[str(e) for e in errors]):
+                self.setUp_again()
+                queue = list(errors)
+
+                def poll(service, job_id):
+                    if queue:
+                        raise queue.pop(0)
+                    return real(service, job_id)
+                with mock.patch.object(llm_batch, "_poll", poll), self.assertRaises(SystemExit) as caught:
+                    self.run_batch("anthropic", ["r00"])
+                (job,) = self.state()["jobs"]
+                self.assertEqual(bool(job["collected"]), given_up)
+                self.assertIn("given up" if given_up else "stays uncollected", str(caught.exception))
+        # near-miss: one 404 and then the job is found again: it is collected as usual
+        self.setUp_again()
+        queue = [ApiError("HTTP 404: not found")]
+
+        def poll_once(service, job_id):
+            if queue:
+                raise queue.pop(0)
+            return real(service, job_id)
+        with mock.patch.object(llm_batch, "_poll", poll_once):
+            _, replies = self.run_batch("anthropic", ["r00"])
+        self.assertEqual(list(replies.of), ["r00"])
+
+    def test_google_answers_without_keys_matched_by_order(self):
+        fake = self.fakes.setdefault("google", FakeBatch("google"))
+        fake.no_keys = True
+        _, replies = self.run_batch("google", ["r00", "r01", "r02"])
+        self.assertEqual({r: replies.of[r][0]["describes_class"] for r in replies.of},
+                         {"r00": "r00", "r01": "r01", "r02": "r02"})       # each answer under its own request
+        # near-misses: a count that differs, or some keys present, is never matched by order
+        item = NS(metadata=None)
+        self.assertEqual(llm_batch._google_keys([item, item], ["a", "b", "c"], "j"), ["None", "None"])
+        self.assertEqual(llm_batch._google_keys([NS(metadata={"key": "b"}), item], ["a", "b"], "j"), ["b", "None"])
 
     def state_or_empty(self):
         path = self.tmp / "050_annotate" / "cache" / "extract.batch_jobs.json"

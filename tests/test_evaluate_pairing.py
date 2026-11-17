@@ -967,6 +967,89 @@ class CompareRuns(unittest.TestCase):
         same = self.kept("S", lambda i: 2, "claude-opus-5.5")                       # nothing differs: not "repeats"
         self.assertFalse(cr.only_repeats(cr.differences([same, same])))
 
+    def test_repeats_ignore_what_changes_no_question(self):
+        """Repeats pool although they differ in parts that change neither what the model is asked nor how its answers
+        are scored (moves.NOT_THE_RECIPE: run ids, code versions, workers, batch, confirm_paid_calls, served_as, 070's
+        own service and model). Near-misses: one more difference in a part that does matter (a prompt's fingerprint,
+        the thinking setting, the answer limit, 060's service) and they are not repeats; the ignored parts alone,
+        with the same repeat, are not repeats either."""
+        import moves
+        cr = self.cr
+
+        def run(n, **change):
+            r = self.kept(f"R{n}", lambda i: 2, "claude-opus-5.5")
+            ex = r["recipe"]["extraction (060)"]
+            ex.update(run_id=f"060-{n}", git_commit=f"c{n}" + (" (plus uncommitted changes)" if n % 2 else ""),
+                      prompts={"extract.txt": "aaa"},
+                      model_calls={"repeat": n, "served_as": [] if n % 2 else ["claude-opus-5.5"],
+                                   "thinking": "high", "max_answer_tokens": 64000})
+            ex["settings"].update(service="anthropic", thinking="high", repeat=n, workers=n, batch=bool(n % 2),
+                                  confirm_paid_calls=not n % 2)
+            r["recipe"]["evaluation (070)"].update(git_commit=f"e{n}", service=f"s{n}", model=f"m{n}")
+            for path, value in change.items():
+                *where, leaf = path.split(" / ")
+                d = r["recipe"]
+                for k in where:
+                    d = d[k]
+                d[leaf] = value
+            return r
+
+        runs = [run(1), run(2), run(3)]
+        diffs = cr.differences(runs)
+        self.assertEqual({p for p, _ in diffs} - set(moves.REPEAT_PATHS), set(moves.NOT_THE_RECIPE))
+        self.assertTrue(cr.only_repeats(diffs))
+        for path, value in (("extraction (060) / prompts / extract.txt", "bbb"),
+                            ("extraction (060) / settings / thinking", "low"),
+                            ("extraction (060) / model_calls / max_answer_tokens", 32000),
+                            ("extraction (060) / settings / service", "litellm")):
+            with self.subTest(path=path):
+                self.assertFalse(cr.only_repeats(cr.differences(runs[:2] + [run(3, **{path: value})])))
+        same_repeat = run(1)
+        same_repeat["recipe"]["extraction (060)"]["git_commit"] = "other"
+        self.assertFalse(cr.only_repeats(cr.differences([runs[0], same_repeat])))
+
+    def test_bootstrap_of_numbers_pooled_over_repeats(self):
+        """pooled_bootstrap: records resampled with replacement, each with all its repeats, REDRAWS times from SEED,
+        the range by interval (compare_runs' own bootstrap code). Checked: the same range on every call; a record
+        whose repeats disagree, but whose mean is every record's, gives no width (the record is the unit, not record
+        x repeat); records that differ give a range around the pooled value; a draw with nothing to divide by is
+        skipped and counted; one record gives no range. pooled carries it for precision, recall and F1 only."""
+        cr = self.cr
+        path = ("exact", "f1")
+        alike = {path: [[(1, 4)] * 30, [(3, 4)] * 30]}           # repeats differ, every record's mean is 2/4
+        r = cr.pooled_bootstrap(alike)[path]
+        self.assertEqual((r["low"], r["high"], r["used"]), (0.5, 0.5, cr.REDRAWS))
+        varied = {path: [[(i % 5, 4) for i in range(30)], [((i + 1) % 5, 4) for i in range(30)]]}
+        first, again = cr.pooled_bootstrap(varied)[path], cr.pooled_bootstrap(varied)[path]
+        self.assertEqual(first, again)                           # the seed: the same range every time
+        value = cr.pooled_parts(varied[path])["value"]
+        self.assertLess(first["low"], value)
+        self.assertGreater(first["high"], value)
+        sparse = {path: [[(0, 0)] * 3 + [(1, 1)]]}               # a draw of only empty records has no value
+        r = cr.pooled_bootstrap(sparse)[path]
+        self.assertGreater(r["skipped"], 0)
+        self.assertEqual(r["used"] + r["skipped"], cr.REDRAWS)
+        self.assertIsNone(cr.pooled_bootstrap({path: [[(1, 2)]]})[path]["low"])
+        runs = [self.kept(f"R{n}", lambda i, n=n: (i + n) % 4, "m") for n in (1, 2)]
+        ids = [r["id"] for r in runs[0]["records"]]
+        rows = {r["label"]: r for r in cr.pooled(runs, ids)}
+        self.assertIsNotNone(rows["partial: f1"]["boot_low"])
+        self.assertIsNone(rows["exact: strict_f1"]["boot_low"])
+        self.assertEqual(set(cr.BOOTSTRAP_NUMBERS), {(lv, k) for lv in ("exact", "partial")
+                                                       for k in ("precision", "recall", "f1")})
+
+    def test_ignored_parts_are_parts_of_the_recipe(self):
+        """Every path of moves.NOT_THE_RECIPE and moves.REPEAT_PATHS is a path moves._recipe writes, so a renamed
+        field can't silently stop being ignored."""
+        from types import SimpleNamespace
+        import moves
+        made = {k: "x" for k in moves.MODEL_CALL_FIELDS}
+        recipe = moves._recipe(SimpleNamespace(extraction_made=made, schema_used={}, pending=[]), translation(),
+                               {"run_id": "r", "git_commit": "c",
+                                "settings": {k: "x" for k in ("repeat", "workers", "batch", "confirm_paid_calls")}})
+        flat = self.cr.flatten(recipe)
+        self.assertEqual([p for p in moves.NOT_THE_RECIPE + moves.REPEAT_PATHS if p not in flat], [])
+
     def test_one_text_for_the_report_and_the_guide(self):
         """What the recipe doesn't record, and what the comparison can't see: the report's lists are
         helpers/compare_runs.md's, word for word; the verdicts are tried in the guide's order."""

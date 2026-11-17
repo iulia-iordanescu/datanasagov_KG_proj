@@ -187,8 +187,18 @@ class HeldOutResults(unittest.TestCase):
         self.assertEqual([[self.h.extraction_of(r)["model"] for r in g] for g in groups],
                          [["model-a"] * 3, ["model-b"] * 2])
         self.assertEqual([[self.h.extraction_of(r)["repeat"] for r in g] for g in groups], [[1, 2, 3], [1, 2]])
-        # near-miss: the same model with another code version of 070 isn't a repeat of that recipe, so it isn't pooled
-        other = self.look("model-a", 4, self.PAIRS["model-a"][0], commit="other")
+        # parts that change neither the question nor the scoring (code versions, workers, batch, served_as, 070's
+        # own model) don't split a recipe: such a run pools with model-a's repeats
+        alike = self.look("model-a", 4, self.PAIRS["model-a"][0], commit="other")
+        ex = alike["recipe"]["extraction (060)"]
+        ex["git_commit"] = "abc (plus uncommitted changes)"
+        ex["settings"].update(workers=8, batch=True, confirm_paid_calls=False)
+        ex["model_calls"]["served_as"] = []
+        alike["recipe"]["evaluation (070)"].update(service="google", model="gemini")
+        self.assertEqual([len(g) for g in self.h.groups_of(runs + [alike])], [4, 2])
+        # near-miss: the same model with another thinking setting isn't a repeat of that recipe, so it isn't pooled
+        other = self.look("model-a", 4, self.PAIRS["model-a"][0])
+        other["recipe"]["extraction (060)"]["settings"]["thinking"] = "low"
         self.assertEqual([len(g) for g in self.h.groups_of(runs + [other])], [3, 2, 1])
         self.assertIn("**More than one group extracts with model-a:**", self.h.report(runs + [other], []))
 
@@ -218,14 +228,16 @@ class HeldOutResults(unittest.TestCase):
         text = self.h.report(runs, [r["look"] for r in runs], leave)
         self.assertIn("## Group 1: anthropic model-a, 3 repeat(s)", text)
         self.assertIn("## Group 2: anthropic model-b, 2 repeat(s)", text)
-        self.assertIn("| Number | Pooled over the 3 repeat(s), all 4 records | 95% range | Without the 1 left out "
-                      "(3 records) | 95% range |", text)
-        self.assertRegex(text, r"\| exact: recall \| 60\.5% \| [0-9.]+% to [0-9.]+% \| 71\.2% \|")
-        self.assertRegex(text, r"\| exact: recall \| 44\.4% \| [0-9.]+% to [0-9.]+% \| 31\.8% \|")
+        self.assertIn("| Number | Pooled over the 3 repeat(s), all 4 records | 95% range | Bootstrap 95% range | "
+                      "Without the 1 left out (3 records) | 95% range | Bootstrap 95% range |", text)
+        rng = r"[0-9.]+% to [0-9.]+%"
+        self.assertRegex(text, rf"\| exact: recall \| 60\.5% \| {rng} \| {rng} \| 71\.2% \| {rng} \| {rng} \|")
+        self.assertRegex(text, rf"\| exact: recall \| 44\.4% \| {rng} \| {rng} \| 31\.8% \| {rng} \| {rng} \|")
+        self.assertRegex(text, rf"\| exact: strict_recall \| 60\.5% \| {rng} \| – \|")      # bootstrap: headline only
         self.assertIn("1 record(s), named with `--leave_out`: #8 (`h08`)", text)
         # nothing left out: one column, and no section on records left out
         text = self.h.report(runs, [r["look"] for r in runs])
-        self.assertIn("| Number | Pooled over the 3 repeat(s), all 4 records | 95% range |\n", text)
+        self.assertIn("| Number | Pooled over the 3 repeat(s), all 4 records | 95% range | Bootstrap 95% range |\n", text)
         self.assertNotIn("left out on request", text)
 
     def test_leave_out_names_records_by_position_or_id(self):

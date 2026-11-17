@@ -18,7 +18,10 @@ only has to show the step's main moves:
                       the inputs a panel names in may_be_empty, which may
                       have no files yet, e.g. 050's ground truth on a
                       first run)
-    5. output folder  outputs/intermediate_results/<step>/
+    5. output folder  outputs/intermediate_results/<step>/, held by this run alone: a
+                      lock file (_run.lock) is made there before the folder is
+                      touched and removed at the end, so a second run of the same
+                      step started meanwhile stops at once, saying which run holds it
     6. main           calls main(inputs, settings, output); every move is
                       timed and logged. The helpers give each output item
                       its origin (see common/common_helpers/audit.py)
@@ -634,6 +637,111 @@ def _record_discards(output: Path, results: Results) -> None:
     results.details = (results.details.rstrip() + "\n\n" + section) if results.details.strip() else section
 
 
+#: The lock file a run of a step holds in its output folder while it runs (_take_run_lock).
+RUN_LOCK = "_run.lock"
+
+
+def _process_alive(pid: int) -> bool:
+    """Whether a process with this id runs on this computer. Windows: OpenProcess, then GetExitCodeProcess, which
+    gives STILL_ACTIVE (259) while it runs (os.kill(pid, 0) would end the process there: on Windows, Python's os.kill
+    calls TerminateProcess for any signal but the two console ones). Elsewhere: os.kill(pid, 0), which sends nothing
+    and raises ProcessLookupError when no such process exists."""
+    if pid <= 0:
+        return False
+    if os.name == "nt":
+        import ctypes
+        kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel.OpenProcess.restype = ctypes.c_void_p                     # a handle is pointer-sized
+        kernel.GetExitCodeProcess.argtypes = (ctypes.c_void_p, ctypes.POINTER(ctypes.c_ulong))
+        kernel.CloseHandle.argtypes = (ctypes.c_void_p,)
+        handle = kernel.OpenProcess(0x1000, False, pid)                  # PROCESS_QUERY_LIMITED_INFORMATION
+        if not handle:
+            return ctypes.get_last_error() == 5                          # ERROR_ACCESS_DENIED: it exists
+        try:
+            code = ctypes.c_ulong()
+            return bool(kernel.GetExitCodeProcess(handle, ctypes.byref(code))) and code.value == 259
+        finally:
+            kernel.CloseHandle(handle)
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+class StepRunning(Stop):
+    """Another run of the same step holds its output folder (_take_run_lock)."""
+
+
+def _take_run_lock(output: Path, step_name: str, run_id: str, command: str) -> tuple:
+    """Make the step's lock file, RUN_LOCK in its output folder, holding who made it ({"run_id", "pid", "host",
+    "started", "command"}), or raise StepRunning when another run of the step holds it. It is made only if absent
+    (os.open with O_CREAT | O_EXCL: the operating system makes it in one step, so two runs can't both make it). A lock
+    is stale, and is removed with a warning, when it was made on this computer by a process that no longer runs (a run
+    killed before it could remove it); a lock made on another computer, or one that can't be read, is never taken as
+    stale. Returns (the lock file's path, whether the output folder was made for it: _release_run_lock then removes
+    the folder again if the run left it empty, as a run stopped by a missing input does)."""
+    made = not output.exists()
+    output.mkdir(parents=True, exist_ok=True)
+    lock = output / RUN_LOCK
+    mine = {"run_id": run_id, "pid": os.getpid(), "host": platform.node(), "started": _stamp(dt.datetime.now()),
+            "command": command}
+    held = {}
+    for _ in range(2):
+        try:
+            fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        except FileExistsError:
+            try:
+                held = json.loads(read_text(lock))
+            except (OSError, ValueError, Stop):
+                held = {}
+            held = held if isinstance(held, dict) else {}
+            if held.get("host") == platform.node() and isinstance(held.get("pid"), int) \
+                    and not _process_alive(held["pid"]):
+                log.warning(f"{repo_path(lock)} was left by run {held.get('run_id')} (process {held['pid']}), which no "
+                            f"longer runs on this computer: it ended without removing the lock (it was killed, or the "
+                            f"computer restarted). The lock is removed, and this run goes on.")
+                lock.unlink(missing_ok=True)
+                continue
+            break
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(mine, f, ensure_ascii=False)
+        return lock, made
+    raise StepRunning(_running_message(step_name, lock, held))
+
+
+def _running_message(step_name: str, lock: Path, held: dict) -> str:
+    """The message of StepRunning: which run holds the lock, what to do, and how to send many batch jobs."""
+    who = (f"run {held.get('run_id')} (process {held.get('pid')} on {held.get('host')}, started {held.get('started')}, "
+           f"command `{held.get('command')}`)" if held.get("run_id") else "another run (its lock file can't be read)")
+    return (f"Another run of {step_name} is running: {who} holds {repo_path(lock)}. Two runs of one step at once would "
+            f"write the same output folder and answer caches, so this run stops before writing anything. Wait for that "
+            f"run to end (its log is in outputs/logs/), then run this command again. If no run of {step_name} is "
+            f"running (for example, the lock was copied from another computer), delete {repo_path(lock)} and run the "
+            f"command again. To send many batch jobs (--batch true) without waiting for each one: start one run, and "
+            f"once its log says the job's id is kept (\"sent N request(s) as batch job ...\"), press Ctrl+C. The job "
+            f"keeps running at the maker, and the lock is removed. Then start the next run. Later, run each command "
+            f"again, one at a time: each run collects its own job's answers instead of paying for them again.")
+
+
+def _release_run_lock(taken: tuple | None) -> None:
+    """Remove this run's lock file (_take_run_lock's (path, folder made)), if it is still this run's, and the output
+    folder too if the lock made it and the run left it empty."""
+    if taken is None:
+        return
+    lock, made = taken
+    try:
+        held = json.loads(read_text(lock))
+        if held.get("pid") == os.getpid() and held.get("host") == platform.node():
+            lock.unlink()
+        if made and not any(lock.parent.iterdir()):
+            lock.parent.rmdir()
+    except (OSError, ValueError, AttributeError, Stop):
+        pass
+
+
 @dataclass
 class RunError:
     summary: str                    # the one line people need
@@ -691,10 +799,13 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None, may_
         log.debug(f"setting {key} = {value!r}" + (" (command line)" if key in changed else ""))
 
     input_rows, output_rows, results, error = [], [], None, None
+    run_lock = None                      # this run's lock file in the output folder, once made (_take_run_lock)
     old_manifest = None                  # nothing to restore if the run stops before taking it
     previous = (None, [])                # the previous run's files given a second name (_keep_previous)
     try:
         check_settings(chosen_settings, specs or {})          # before any input is read: one check for every step
+        # before anything in the output folder is touched: a second run of the step stops here (StepRunning)
+        run_lock = _take_run_lock(output, step_name, run_id, " ".join([command or f"py {step_name}/run.py"] + argv))
         if prepare_inputs is not None:
             given = {k for k in inputs if any(a.split("=", 1)[0] in (f"--{k}", f"--{k.replace('_', '-')}")
                                               for a in argv)}
@@ -702,7 +813,6 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None, may_
         _check_inputs(chosen_inputs, inputs, may_be_empty)
         input_rows, input_warnings, harvest_dates, harvest_partial = _describe_inputs(chosen_inputs, inputs)
         run["harvest_partial"] = harvest_partial              # what the inputs say (010 replaces it below)
-        output.mkdir(parents=True, exist_ok=True)
         # The old manifest may no longer describe this folder once the run
         # starts writing, so it is removed; if the run fails, it is put back
         # only if every output file it lists is still unchanged (see _restore_manifest).
@@ -772,6 +882,7 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None, may_
     except OSError as e:                 # tidying the kept versions must never fail a run that finished
         log.warning(f"Tidying {PREVIOUS_RUNS}/ after the run failed ({e}): some earlier versions may be kept twice "
                     f"(as a second name of the same file, which takes no extra space). Nothing to do.")
+    _release_run_lock(run_lock)          # the output folder is no longer written: another run may start
     write_step_report(report, run, chosen_settings, input_rows, output_rows,
                       audit.timeline(), results, error)
 
