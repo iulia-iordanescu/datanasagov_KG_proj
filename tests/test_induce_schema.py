@@ -1203,7 +1203,7 @@ class SplittingShowsEveryName(unittest.TestCase):
         with model as calls:
             split.split_predicates(s.triples, s.labels, {"max_new_predicates": 1, "min_split_texts": 2}, calls)
         prompt = model.prompts[0]
-        found = json.loads(prompt.split("must not take):\n", 1)[1].split("\n\nPREDICATES (", 1)[0])
+        found = json.loads(prompt.split("must differ from all of these):\n", 1)[1].split("\n\nPREDICATES (", 1)[0])
         self.assertEqual(found, ["ABOARD", "MEASURES", "SOURCED_FROM"])       # ABOARD isn't sent (one pattern)
         sent = json.loads(prompt[prompt.rindex("object instances):") + len("object instances):"):])
         self.assertEqual([e["predicate"] for e in sent], ["MEASURES", "SOURCED_FROM"])

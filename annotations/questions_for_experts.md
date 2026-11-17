@@ -531,7 +531,7 @@ Our schema separates two things a dataset can hold: a PhysicalQuantity, a bare p
 
 ### Ground truth schema
 
-- entity class PhysicalQuantity: a bare property that can be measured, whatever method measures it, e.g. temperature; gravity; sea surface temperature; snow cover; not a form the data take, such as images, image cubes, spectra or maps (a SpatialRepresentation)
+- entity class PhysicalQuantity: a bare property that can be measured, whatever method measures it, e.g. temperature; gravity; sea surface temperature; snow cover. It is not a form the data take, such as images, image cubes, spectra or maps (a SpatialRepresentation)
 - entity class Variable: a property narrowed by a method, a band, a threshold, another object or another constraint, e.g. SST4; NDSI; band 31 emissivity; dust fluences at each of twelve mass thresholds
 - predicate HAS_MEASUREMENTS_OF: holds measurements of this PhysicalQuantity
 - predicate HAS_VARIABLE: holds this Variable in its files
@@ -1775,7 +1775,7 @@ The records name groups of people, offices, programs and sites, and some name pl
 
 ### Ground truth schema
 
-- entity class Organization: a named institution or one of its named parts, not a Mission, e.g. NASA; OBPG
+- entity class Organization: a named institution or one of its named parts, other than a Mission, e.g. NASA; OBPG
 
 ### Options
 
@@ -1830,7 +1830,7 @@ Checked on 2026-10-31, the old (a), in NASA's metadata: CMR lists "NASA/JPL/PODA
 
 - entity class Role: a position only one Person or Organization holds (rule 4), e.g. official archive for SST; Argentina's space agency
 - predicate SERVES_AS: holds this Role
-- entity class Country: a nation, as where a Person or Organization is based, e.g. U.S.; Argentina
+- entity class Country: a nation, only as the place where a Person or Organization is based, e.g. U.S.; Argentina. A nation that the data cover is a SpatialExtent
 - predicate AFFILIATED_WITH: works at or belongs to this Organization
 - predicate SPONSORED_BY_PARTY: is sponsored by this Person or Organization
 - predicate BASED_IN: is based in this Country
@@ -2331,7 +2331,7 @@ Checked on 2026-10-31, for the expert's (b) (the research of 2026-10-31 on NASA'
 
 ### Quoted for us
 
-- entity class PhysicalQuantity: a bare property that can be measured, whatever method measures it, e.g. temperature; gravity; sea surface temperature; snow cover; not a form the data take, such as images, image cubes, spectra or maps (a SpatialRepresentation)
+- entity class PhysicalQuantity: a bare property that can be measured, whatever method measures it, e.g. temperature; gravity; sea surface temperature; snow cover. It is not a form the data take, such as images, image cubes, spectra or maps (a SpatialRepresentation)
 - entity class CelestialBody: a natural object in space, or a type of such objects, e.g. Vesta; active galactic nuclei
 - predicate HAS_MEASUREMENTS_OF: holds measurements of this PhysicalQuantity
 - predicate HAS_TARGET: is about, or studies, this CelestialBody
@@ -2493,7 +2493,7 @@ Checked on 2026-10-31, for the expert's (b): DCAT's notion of a dataset "is broa
 
 - entity class Variable: a property narrowed by a method, a band, a threshold, another object or another constraint, e.g. SST4; NDSI; band 31 emissivity; dust fluences at each of twelve mass thresholds
 - entity class Identifier: a code that names one entity, or one product line, permanently, e.g. a DOI; MOD11A1
-- predicate HAS_DOI: has this Identifier, a Digital Object Identifier
+- predicate HAS_DOI: has this Identifier, a Digital Object Identifier (DOI)
 - entity class Dataset -> Dataset: A named collection of data compiled from observations, measurements, experiments, or statistics and distributed as a unit, such as an index, data collection, or instrument time series.
 - entity class DataProduct -> Dataset: A specific processed output of data, such as calibrated images, retrieval products, files, or data segments, generated from instrument or model data.
 - entity class Catalog -> Dataset: A published, organized list of astronomical sources or objects with their properties, typically derived from a survey or mission.
@@ -3036,7 +3036,7 @@ We write only what a record states (rule 1 of *What counts as a fact*, quoted be
 
 - predicate RELATED_TO: is related to
 - predicate ESTIMATES: gives approximate values for
-- entity class PhysicalQuantity: a bare property that can be measured, whatever method measures it, e.g. temperature; gravity; sea surface temperature; snow cover; not a form the data take, such as images, image cubes, spectra or maps (a SpatialRepresentation)
+- entity class PhysicalQuantity: a bare property that can be measured, whatever method measures it, e.g. temperature; gravity; sea surface temperature; snow cover. It is not a form the data take, such as images, image cubes, spectra or maps (a SpatialRepresentation)
 
 ### Annotation guidelines
 
@@ -3112,7 +3112,7 @@ The example below, a MODIS sea surface temperature (SST) product, says "Two SST 
 ### Ground truth schema
 
 - entity class Variable: a property narrowed by a method, a band, a threshold, another object or another constraint, e.g. SST4; NDSI; band 31 emissivity; dust fluences at each of twelve mass thresholds
-- entity class PhysicalQuantity: a bare property that can be measured, whatever method measures it, e.g. temperature; gravity; sea surface temperature; snow cover; not a form the data take, such as images, image cubes, spectra or maps (a SpatialRepresentation)
+- entity class PhysicalQuantity: a bare property that can be measured, whatever method measures it, e.g. temperature; gravity; sea surface temperature; snow cover. It is not a form the data take, such as images, image cubes, spectra or maps (a SpatialRepresentation)
 - predicate ESTIMATES: gives approximate values for
 - predicate HAS_LOWER_UNCERTAINTY_THAN: its values are more certain than those of
 
@@ -3224,7 +3224,7 @@ Is a MODIS "Collection" a version of this one dataset, or a reprocessing of all 
 ### Ground truth schema
 
 - entity class Version: a label that marks one release of something
-- predicate HAS_VERSION: carries this Version
+- predicate HAS_VERSION: has this Version
 - predicate ALSO_KNOWN_AS: is the same entity under another name
 
 ### Options
@@ -3291,7 +3291,7 @@ Changed on 2026-11-12 (found by both audits of the ground truth of that day): th
 - Writing a classed triple, rule 20: Parentheses that hold the code of another entity are taken out of the instance.
 - Writing a classed triple, rule 20: Suppose: a record says "This data set contains Level 2/3 (EDR/RDR) data" and "The RDR data convert the EDR (raw) sensor data". Then: the record uses "EDR" and "RDR" as names of the data, not of the levels, so the levels are "Level 2" and "Level 3": "EDR (raw) sensor data" HAS_PROCESSING_LEVEL "Level 2", and "RDR data" HAS_PROCESSING_LEVEL "Level 3".
 - Writing a classed triple, rule 20: Write that one name is also known as another (ALSO_KNOWN_AS) only when the record gives the other name in words of its own
-- Writing a classed triple, rule 23: One entity, one wording, within a record. When a record names the same entity more than once, in different words, use the wording the first of the four tests below picks, in every ground truth triple; the other wordings appear only in a ground truth triple that says one wording is also known as another (ALSO_KNOWN_AS), and only if the record states one (rule 20, parentheses). 1. The wording that says more: it contains the other's words, each as a whole word, is more precise, or spells out the other's abbreviation. When test 1 ties (one wording is more precise and the other spells out an abbreviation), the wording that says more is used. 2. Otherwise, the wording from a sentence that states a fact about the entity with words for its predicate, rather than one that names it only by a title's or a name's words (rule 17, A title's facts, A name's facts). 3. Otherwise, the wording the record uses most often. 4. Otherwise, the wording the record gives first.
+- Writing a classed triple, rule 23: One entity, one wording, within a record. When a record names the same entity more than once, in different words, use the wording the first of the four tests below picks, in every ground truth triple; the other wordings appear only in a ground truth triple that says one wording is also known as another (ALSO_KNOWN_AS), and only if the record states one (rule 20, parentheses). 1. The wording that says more: it contains the other's words, each as a whole word, is more precise, or spells out the other's abbreviation. When test 1 ties (one wording is more precise and the other spells out an abbreviation), use the wording that tells more about the entity, such as whose it is. 2. Otherwise, the wording from a sentence that states a fact about the entity with words for its predicate, rather than one that names it only by a title's or a name's words (rule 17, A title's facts, A name's facts). 3. Otherwise, the wording the record uses most often. 4. Otherwise, the wording the record gives first.
 
 ### Consequences
 
@@ -3429,8 +3429,8 @@ Changed on 2026-11-01: the record "OPERA Dynamic Surface Water Extent from Senti
 
 ### Quoted for us
 
-- predicate HAS_DOI: has this Identifier, a Digital Object Identifier
-- entity class Document: a written publication, or a web page or site, or a set of them, named in words or by a reference key (a web address written as itself is a WebPage), e.g. NASA developed standards; LAWRENCEETAL2013; BARREL at Dartmouth
+- predicate HAS_DOI: has this Identifier, a Digital Object Identifier (DOI)
+- entity class Document: a written publication, or a web page or site, or a set of them, named in words or by a reference key (a web address written as the address itself is a WebPage), e.g. NASA developed standards; LAWRENCEETAL2013; BARREL at Dartmouth
 - predicate DOCUMENTED_AT: more details about it are written at this WebPage or in this Document
 - entity class Version: a label that marks one release of something
 - predicate ALSO_KNOWN_AS: is the same entity under another name
@@ -4215,7 +4215,7 @@ Our schema is a flat list of kinds of things: none is a kind of another. So a li
 
 ### Ground truth schema
 
-- entity class Organization: a named institution or one of its named parts, not a Mission, e.g. NASA; OBPG
+- entity class Organization: a named institution or one of its named parts, other than a Mission, e.g. NASA; OBPG
 
 - entity class Person: one named human being, e.g. Peter Minnett
 - predicate PART_OF: is one part of
@@ -4615,7 +4615,7 @@ Withdrawn on 2026-10-31: settled by me, so it is no longer asked of the experts;
 
 ### Quoted for us
 
-- entity class Organization: a named institution or one of its named parts, not a Mission, e.g. NASA; OBPG
+- entity class Organization: a named institution or one of its named parts, other than a Mission, e.g. NASA; OBPG
 - predicate DEVELOPED_BY_PARTY: was built or created by this Person or Organization
 - entity class WebPage: a web address, written as the address itself, other than a DOI written as an address (an Identifier), e.g. https://oceancolor.gsfc.nasa.gov/docs/format/
 - predicate DOCUMENTED_AT: more details about it are written at this WebPage or in this Document

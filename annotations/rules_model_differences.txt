@@ -51,9 +51,9 @@ annotations/left_out.md is where they are recorded.
 =>
 
 @@ replace | words: source text | The model's reply names the source text source_text (common/common_prompts/extraction_reply.txt).
-Rule 17 (source text) gives its cases.
+Rule 17 (source text) lists its cases.
 =>
-Rule 17 (source text) gives its cases. In your answer, the source text is source_text.
+Rule 17 (source text) lists its cases. In your answer, the source text is source_text.
 
 @@ replace | rule 1 | Adding a convention or test is a decision about the guidelines, recorded in docs/improvements.md; the model only applies the list.
 A new test or convention is added only by a decision recorded in docs/improvements.md.
@@ -149,10 +149,11 @@ Capitals and punctuation. A wording that differs only in capitals, spaces, hyphe
 "are asked to", and
 
 @@ examples | rule 1 / A name the record does not explain
-- A title "KX12/Halden Lake Ice L3", whose notes never state what KX12 is, where you know KX12 as an
-  instrument, gives the record's dataset collected by "KX12" (an instrument).
-- "taken by the QX7 Wide Field Camera", in a record that never states what QX7 is, where you don't know
-  QX7 either, gives no triple in which "QX7" is an instance, and "QX7 Wide Field Camera" stays whole.
+- A title "KX12/Halden Lake Ice L3", whose notes never state what KX12 is, when you are certain that
+  KX12 is an instrument, gives the record's dataset collected by "KX12" (an instrument).
+- "taken by the QX7 Wide Field Camera", in a record that never states what QX7 is, when you don't know
+  what QX7 is either, gives no triple in which "QX7" is an instance, and "QX7 Wide Field Camera" stays
+  whole.
 
 @@ examples | rule 1 / Replacement
 - "Version 3 was decommissioned in 2019. Please use Version 4." gives "Version 4" superseding
@@ -277,7 +278,8 @@ Capitals and punctuation. A wording that differs only in capitals, spaces, hyphe
   resolution the source text "sampled every 800 m" (case 1).
 
 @@ examples | rule 17 / A name's facts
-- "Kestrel low gain sensor" is the source text of the low gain sensor as a part of Kestrel.
+- "the Kestrel low gain sensor" gives "Kestrel low gain sensor" part of "Kestrel", with the source text
+  "Kestrel low gain sensor".
 - "bands 4 and 7 reflectances" gives "band 4 reflectance" for the channel "band 4", and "band 7
   reflectance" for "band 7", each with the source text "bands 4 and 7 reflectances".
 
@@ -300,7 +302,8 @@ Capitals and punctuation. A wording that differs only in capitals, spaces, hyphe
 
 @@ examples | rule 18
 - "Kestrel has a swath width of 350 m" gives Kestrel's swath width "350 m".
-- "Kestrel records 12 bands" gives the number "12 bands".
+- "Kestrel records 12 bands" gives "Kestrel" having "12 bands" (a count with the noun for what is
+  counted).
 
 @@ examples | rule 19
 - "This global dataset provides daily lake ice extent" gives "lake ice extent", and the record's

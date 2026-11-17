@@ -1,2 +1,2 @@
-Now state every fact the record above gives$scope, following the rules and
+Now state every fact the record above states$scope, following the rules and
 the reply format above.

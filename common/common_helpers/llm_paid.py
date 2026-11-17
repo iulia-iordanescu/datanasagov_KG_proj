@@ -189,11 +189,15 @@ class PaidCalls:
                 + f" ({plan.strip().rstrip('.')})"))
         log.info(plan)
         log.info(f"model: {llm.MODEL}, through {SERVICES.get(llm.SERVICE, llm.SERVICE)}"
-                 + (f", thinking {thinking_sent()}" if thinking_sent() else ""))
+                 + (f", thinking {thinking_sent()}" if thinking_sent() else "")
+                 + (", as batch jobs (setting batch)" if llm.BATCH else ""))
         if self.notes:
             show_warnings(self.step, self.notes)
         count = (f"{to_pay:,} model call(s) to pay for, and 1 test call first" if to_pay is not None
                  else "1 test call first")
+        if llm.BATCH and to_pay is not None:
+            count = (f"{to_pay:,} model call(s) to pay for, sent as batch job(s) to {llm.BATCH_API[llm.SERVICE]} at "
+                     f"half the price of single requests, and 1 single test call first")
         if self.confirm:
             llm.confirm(f"Press Enter to start ({count}), or anything else to cancel."
                     if not self.notes else
@@ -355,7 +359,9 @@ class PaidCalls:
                           "settings_sent": call.get("settings_sent"), "request_bytes": call.get("request_bytes"),
                           "served_as": call.get("served_as"), "attempts": call.get("attempts"),
                           "asks": call.get("asks"), "seconds": call.get("seconds"),
-                          "answer": getattr(error, "answer", None), "what_to_do": advice(error)})
+                          "answer": getattr(error, "answer", None), "what_to_do": advice(error),
+                          **({"batch_job": call["batch_job"], "custom_id": call.get("custom_id")}
+                             if call.get("batch_job") else {})})
         append_text(path, json.dumps(entry, ensure_ascii=False) + "\n")
         OUTCOMES["file"] = path.relative_to(path.parents[2]).as_posix()
 
@@ -379,7 +385,7 @@ def paid_calls(settings: dict, output, notes: list = (), session_id: str | None 
     from common.step import check_settings                  # the one check of every setting (common.step.shared_specs)
     given = {"service": settings.get("service") if settings.get("service") is not None else llm.SERVICE,
              "model": settings.get("model"), "thinking": settings.get("thinking") if settings.get("thinking") is not None else llm.THINKING,
-             "repeat": settings.get("repeat", 1)}
+             "repeat": settings.get("repeat", 1), "batch": settings.get("batch", False)}
     check_settings({k: v for k, v in given.items() if k != "model" or v is not None}, {})
     service, thinking = str(given["service"]).strip().lower(), str(given["thinking"]).strip().lower()
     name = str(given["model"] or "").strip()
@@ -393,6 +399,10 @@ def paid_calls(settings: dict, output, notes: list = (), session_id: str | None 
                    f"{own} (`py helpers/models.py --service {service}` lists them), or a service that reaches {name} "
                    f"(e.g. --service litellm), then run the step again.")
     repeat = given["repeat"]
+    if given["batch"] and llm.batch_refusal(service):
+        raise Stop(llm.batch_refusal(service))
+    llm.BATCH = bool(given["batch"])
+    llm.BATCH_JOBS.clear()
     llm.MODEL, llm.SERVICE, llm.THINKING, llm.REPEAT, llm.SESSION_ID = name, service, thinking, repeat, session_id
     SERVED.clear()
     for k in REQUESTS:

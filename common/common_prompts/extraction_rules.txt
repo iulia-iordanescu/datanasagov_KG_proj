@@ -21,8 +21,8 @@ Each wording below has one meaning in every rule.
   words; the entity is what they refer to.
 - Name. A name is the record's words for one entity. A name is an instance
   only when it is the subject instance or the object instance of a triple:
-  "QX7" in "QX7 Wide Field Camera" is a name, and it is no instance when the
-  record never says what QX7 is (rule 1, only what the record states).
+  "QX7" in "QX7 Wide Field Camera" is a name, and it is not an instance when
+  the record never says what QX7 is (rule 1, only what the record states).
 - Entity class. An entity class is a type of entity, such as an instrument
   or a platform. Each subject instance and each object instance has the
   entity class of the entity it refers to.
@@ -41,7 +41,7 @@ Each wording below has one meaning in every rule.
   entity the name refers to ("satellite" in "the Halden satellite"). Rule 23
   (one wording), Type words, decides when a type word is taken out.
 - Source text. The source text of a triple is the passage of the record that
-  states it, copied exactly. Rule 17 (source text) gives its cases. In your
+  states it, copied exactly. Rule 17 (source text) lists its cases. In your
   answer, the source text is source_text.
 - The title's instance, the record's dataset, another dataset. The title's
   instance is the record's title, written as an instance: the record's words
@@ -81,18 +81,18 @@ WHAT COUNTS AS A FACT
    "L" or "Level" followed by a number is a processing level ("L2"). Any
    other code needs the record's own explanation. The list of conventions is
    closed. The record may be one part of a longer record ("part 1 of 2");
-   state only what this part states. Rule 23 (one wording) gives the one
-   other use of what you know: what words mean, to see that two wordings
-   name the same entity.
+   state only what this part states. Rule 23 (one wording) allows the only
+   other use of what you know: knowing what words mean, to see that two
+   wordings name the same entity.
    - A name the record does not explain. When the record never states what a
      name refers to, the name gets an entity class only as this part allows.
      You may give it an entity class from your own knowledge only when you
      are certain which entity class it belongs to. The entity class is never
      chosen from the verb that joins the name to another instance ("observed
-     by", "onboard"). The entity class is all that this part gives: each
-     triple must still be a fact the record states, and the name is written
-     as the record writes it, never expanded into a long form that the
-     record does not give. When the name gets no entity class, no triple
+     by", "onboard"). This part supplies the entity class and nothing else:
+     each triple must still be a fact the record states, and the name is
+     written as the record writes it, never expanded into a long form that
+     the record does not give. When the name gets no entity class, no triple
      whose meaning depends on what the name refers to is written, and the
      name may still stay inside a longer instance (rule 2, every fact, A
      fact inside a name). A name needs no outside knowledge in two cases. A
@@ -104,12 +104,12 @@ WHAT COUNTS AS A FACT
      fits the definition of exactly one entity class, since the word is the
      record's own.
      - Example: A title "KX12/Halden Lake Ice L3", whose notes never state
-       what KX12 is, where you know KX12 as an instrument, gives the
-       record's dataset collected by "KX12" (an instrument).
+       what KX12 is, when you are certain that KX12 is an instrument, gives
+       the record's dataset collected by "KX12" (an instrument).
      - Example: "taken by the QX7 Wide Field Camera", in a record that never
-       states what QX7 is, where you don't know QX7 either, gives no triple
-       in which "QX7" is an instance, and "QX7 Wide Field Camera" stays
-       whole.
+       states what QX7 is, when you don't know what QX7 is either, gives no
+       triple in which "QX7" is an instance, and "QX7 Wide Field Camera"
+       stays whole.
    - A fact the record does not state. A fact that the record does not state
      may be written only when it follows from what the record states by one
      of the three tests below (Replacement, Comparison, Membership by name);
@@ -123,21 +123,21 @@ WHAT COUNTS AS A FACT
      - Example: "Version 3 was decommissioned in 2019. Please use Version
        4." gives "Version 4" superseding "Version 3".
    - Comparison. When the record states that one entity it names is lower,
-     higher, better (or any other comparison) without stating than what, and
-     names exactly two entities of the same entity class together, the other
-     of the two is what the first is compared with. When the record names
-     three or more, no fact is written.
+     higher, better (or any other comparison) without stating what it is
+     compared with, and names exactly two entities of the same entity class
+     together, the other of the two is what the first is compared with. When
+     the record names three or more such entities, no fact is written.
      - Example: "Two products are made, Q1 and Q2. Q2 has lower noise."
        gives Q2 having lower noise than Q1.
    - Membership by name. When the title or an identifier of the record's
      dataset contains the name of a group of datasets that the record
      describes, the record's dataset is a member of the group. A statement
      about the group is then written for the record's dataset only when it
-     holds for each member alone: it says "all" or "each", or it gives a
+     holds for each member alone: it says "all" or "each", or it states a
      property that every member has (a version, a grid, access terms). A
      statement about the group as a whole is not written for the record's
-     dataset: what the members cover taken together, "either … or", how many
-     members there are.
+     dataset, such as what the members cover taken together, a statement
+     with "either … or", or how many members there are.
      - Example: A record titled "TERN Lake Ice Daily L2" that says "all TERN
        data products are Release 4 files" and "TERN observations cover
        either the north or the south basin" gives the record's dataset the
@@ -161,10 +161,10 @@ WHAT COUNTS AS A FACT
      for all other words. A word of a name that refers to another entity,
      with no words that say how the two entities are related, states a fact
      only when the naming itself states one. The test asks which predicate
-     the name states. The predicate must be one that the naming itself
-     states, which the entity classes of the two entities and the naming
-     pattern (which of the two names stands inside the other's, and where)
-     decide, and there must be exactly one such predicate that you may use.
+     the name states. That predicate must be one that the naming itself
+     states, as decided by the entity classes of the two entities and by the
+     naming pattern (which of the two names stands inside the other's, and
+     where), and there must be exactly one such predicate that you may use.
      The name's words then state that predicate's fact. An instrument named
      in a dataset's name states that the dataset was collected by the
      instrument; a platform named in a dataset's name states that the
@@ -239,12 +239,13 @@ WHAT COUNTS AS A FACT
    - A study a record tells. When a record tells the study its dataset comes
      from, the study's aim and its method are facts of the record's dataset
      (its purpose, and the method it was produced using, rule 24, a
-     processing step). The rest of the study is not: its background, its
-     findings, what it says about methods it did not use, and the details of
-     its method beyond what rule 24 writes (how the method was applied, its
-     parameters, what it allows). A finding is a result the study drew from
-     the data, not what the data are, and the knowledge graph that the
-     triples build is for finding the catalog's datasets.
+     processing step). Nothing else in the study is a fact of the record's
+     dataset: its background, its findings, what it says about methods it
+     did not use, and the details of its method beyond what rule 24 writes
+     (how the method was applied, its parameters, what it allows). A finding
+     is a result the study drew from the data, not what the data are, and
+     the knowledge graph that the triples build is for finding the catalog's
+     datasets.
      - Example: "The authors aimed to map the spread of lake algae, using a
        Kalman filter, which allows for gaps between the overpasses, and find
        that the algae spread fastest in June" gives the record's dataset the
@@ -267,10 +268,10 @@ WHAT COUNTS AS A FACT
        the times.
    - A word that only says how another fact holds. Such a word gives no
      triple, and is taken out of the instance: its subject would be that
-     fact, not an entity the record names. By the test of rule 11 (the
-     record's own words), such a word is sometimes not taken out. It is then
-     part of what the predicate says when the object is an amount (rule 18,
-     a number with a unit), and it stays in the instance otherwise.
+     fact, not an entity the record names. The test of rule 11 (the record's
+     own words) sometimes keeps such a word. A word so kept is part of what
+     the predicate says when the object is an amount (rule 18, a number with
+     a unit), and stays in the instance otherwise.
      - Example: "the main target is Halden-4" gives the record's dataset's
        target "Halden-4", without "main" (a main target is a target);
        "developed jointly by the Kestrel Office and the Halden Office" gives
@@ -280,8 +281,8 @@ WHAT COUNTS AS A FACT
        since the data may reach beyond it.
    - What data are used for. What data have been used for, or can be used
      for, is a fact of the work that used them, not of the data: when the
-     record doesn't name that work, it gives no triple. A use that names
-     what was made from the data gives that product's input (rule 21,
+     record doesn't name that work, the use gives no triple. A use that
+     names what was made from the data gives that product's input (rule 21,
      general facts and other datasets).
      - Example: "The data have been used to study lake warming" gives no
        triple; "this dataset, A, is used to make dataset B" gives "B"
@@ -303,17 +304,17 @@ WRITING A TRIPLE
     (opinions), 9 (a specific entity), 10 (words true only as of writing),
     19 (qualifiers), 20 (parentheses), 22 (lists), 23 (one wording) and 24
     (a processing step) take out. A word that rules 5, 9, 10 or 19 take out
-    is not taken out when the record doesn't state the fact without it, that
-    is, when the record's sentence doesn't imply the shorter one. A name
-    stays whole: rules 19, 22 and 24 never split or shorten a name ("Kestrel
-    and Halden Survey Office" keeps its "and"; "Earth Imaging Satellites
-    (EIS)" keeps "Earth"). A fact that the name's words state is still a
-    triple of its own (rule 2, every fact, A fact inside a name). One
-    exception: a name made of the record's dataset's code and its version
-    gives its parts as facts of their own, and a version so named is written
-    as the version alone. The name of any other entity that holds a version
-    stays whole ("version 2 Lake Archive Format (LAF2)", a file format, is
-    one instance).
+    stays in the instance when the record doesn't state the fact without it,
+    that is, when the record's sentence doesn't imply the fact with the word
+    taken out. A name stays whole: rules 19, 22 and 24 never split or
+    shorten a name ("Kestrel and Halden Survey Office" keeps its "and";
+    "Earth Imaging Satellites (EIS)" keeps "Earth"). A fact that the name's
+    words state is still a triple of its own (rule 2, every fact, A fact
+    inside a name). One exception: a name made of the record's dataset's
+    code and its version does not stay whole. Each of its two parts gives a
+    fact of its own, and the version is written as the version alone. The
+    name of any other entity that holds a version stays whole ("version 2
+    Lake Archive Format (LAF2)", a file format, is one instance).
     - Example: "current" stays in "fed by older and current gauges", since
       it sets the newer gauges against the older ones.
     - Example: "Earth Imaging Satellites (EIS)" stays whole, and has the
@@ -430,8 +431,9 @@ WRITING A TRIPLE
       by rule 2 (every fact, A fact inside a name). A band or channel named
       inside a variable's words is such a fact: the variable is for that
       channel, and the variable stays whole.
-      - Example: "Kestrel low gain sensor" is the source text of the low
-        gain sensor as a part of Kestrel.
+      - Example: "the Kestrel low gain sensor" gives "Kestrel low gain
+        sensor" part of "Kestrel", with the source text "Kestrel low gain
+        sensor".
       - Example: "bands 4 and 7 reflectances" gives "band 4 reflectance" for
         the channel "band 4", and "band 7 reflectance" for "band 7", each
         with the source text "bands 4 and 7 reflectances".
@@ -440,15 +442,15 @@ WRITING A TRIPLE
       instrument is aboard the platform, with the phrase as source text; the
       instrument's instance follows rule 23 (the wording the record uses for
       the instrument alone, when it does; the whole name when it never does,
-      rule 11). 1. The platform must be one by the record's words or by rule
-      1 (only what the record states, A name the record does not explain).
-      2. A title's words give no such fact: they are a list of facts (A
-      title's facts), which gives the record's dataset's instrument and
-      platform, and no "aboard". 3. A "/" or "+" between the two names, in
-      the title or the notes, is decided by rule 22 (a list, Lists joined by
-      "/" or "+"), which never reads it as a name: no "aboard". 4. The
-      instrument's name first and the platform's after it ("Kestrel Halden
-      data") is such a list too.
+      rule 11). 1. Only a platform whose entity class comes from the
+      record's words or from rule 1 (only what the record states, A name the
+      record does not explain) counts. 2. A title's words give no such fact:
+      they are a list of facts (A title's facts), which gives the record's
+      dataset's instrument and platform, and no "aboard". 3. A "/" or "+"
+      between the two names, in the title or the notes, is decided by rule
+      22 (a list, Lists joined by "/" or "+"), which never reads it as a
+      name: no "aboard". 4. The instrument's name first and the platform's
+      after it ("Kestrel Halden data") is such a list too.
       - Example: "Production of the Halden Kestrel ice products ended in
         2019", in a record that names "Kestrel" alone elsewhere, gives
         Kestrel aboard Halden, with the source text "Halden Kestrel".
@@ -459,10 +461,10 @@ WRITING A TRIPLE
       begin with an instrument's name states that the channel is one of the
       instrument's channels, with the channel's words as source text (A
       name's facts); the channel's instance stays whole (rule 11), and the
-      instrument's follows rule 23. The instrument must be one by the
-      record's words or by rule 1 (only what the record states, A name the
-      record does not explain). A title's words give no such fact (A title's
-      facts).
+      instrument's follows rule 23. Only an instrument whose entity class
+      comes from the record's words or from rule 1 (only what the record
+      states, A name the record does not explain) counts. A title's words
+      give no such fact (A title's facts).
       - Example: "the ice thickness parameter for Kestrel band K4 (0.6 μm)",
         in a record that names "Kestrel Lake Ice Radiometer (Kestrel)",
         gives "Kestrel band K4 (0.6 μm)" a channel of "Kestrel Lake Ice
@@ -499,7 +501,8 @@ WRITING A TRIPLE
     the number and the noun, as written.
     - Example: "Kestrel has a swath width of 350 m" gives Kestrel's swath
       width "350 m".
-    - Example: "Kestrel records 12 bands" gives the number "12 bands".
+    - Example: "Kestrel records 12 bands" gives "Kestrel" having "12 bands"
+      (a count with the noun for what is counted).
 19. A qualifier that is a temporal resolution, an area the data cover, a
     processing level, a spatial resolution, a country, a time of day, or a
     target body is a triple of its own, and is taken out of the instance.
@@ -538,8 +541,9 @@ WRITING A TRIPLE
         dataset the processing level "Level-1B".
     - A country. 1. A country that qualifies a specific person or
       organization (one the record names, rule 9, a specific entity) is
-      where that person or organization is based, and of no other, whatever
-      entity class holds its words. 2. A country that qualifies what is
+      where that person or organization is based. It is a fact of that
+      person or organization only, whatever the entity class of the instance
+      whose words hold the country. 2. A country that qualifies what is
       measured is an area the data cover. 3. A country that qualifies
       persons or organizations the record doesn't name stays in the
       instance.
@@ -722,9 +726,9 @@ WRITING A TRIPLE
       for its wording). 2. In the notes, split such a list only when every
       item is also named alone somewhere in the record, outside the "/" or
       "+" phrase and not only inside another name; otherwise it stays whole,
-      as written. A title's word is named alone (case 1). Two such lists
-      that the record matches item by item split together. Lists joined by
-      "and" or commas split as this rule says.
+      as written. An item that the title names counts as named alone (case
+      1). Two such lists that the record matches item by item split
+      together. Lists joined by "and" or commas split as this rule says.
       - Example: A title's "Kestrel/Halden" gives the record's dataset
         collected by "Kestrel" and from the platform "Halden", even when the
         notes never name "Halden" alone.
@@ -786,14 +790,15 @@ WRITING A TRIPLE
     that says more: it contains the other's words, each as a whole word, is
     more precise, or spells out the other's abbreviation. When test 1 ties
     (one wording is more precise and the other spells out an abbreviation),
-    the wording that says more is used. 2. Otherwise, the wording from a
-    sentence that states a fact about the entity with words for its
-    predicate, rather than one that names it only by a title's or a name's
-    words (rule 17, A title's facts, A name's facts). 3. Otherwise, the
-    wording the record uses most often. 4. Otherwise, the wording the record
-    gives first. To see that two wordings name the same entity, use clues
-    anywhere in the record and what you know about the words (e.g. what an
-    abbreviation stands for: VLF is very low frequency).
+    use the wording that tells more about the entity, such as whose it is.
+    2. Otherwise, the wording from a sentence that states a fact about the
+    entity with words for its predicate, rather than one that names it only
+    by a title's or a name's words (rule 17, A title's facts, A name's
+    facts). 3. Otherwise, the wording the record uses most often.
+    4. Otherwise, the wording the record gives first. To see that two
+    wordings name the same entity, use clues anywhere in the record and what
+    you know about the words (e.g. what an abbreviation stands for: VLF is
+    very low frequency).
     - Example: "Generated by the Tidewater Data Group (TDG)" ... "acquires
       data from the TDG": both triples use "Tidewater Data Group (TDG)".
     - Example: "7km" in the title, "7.41 km" in the notes: "7.41 km". "T3"
@@ -835,9 +840,9 @@ WRITING A TRIPLE
     (the input), and how (the method). Each step gives up to two triples,
     each written only if the record names both of its ends: the output
     computed from the input, and the output produced using the method. The
-    words for the input and the method are then taken out of any other
-    instance (rule 11). They are taken out only of the words for what the
-    step made; a name that contains them stays whole (rule 11).
+    words for the input and the method are then taken out of every other
+    instance written from the words for what the step made (rule 11); a name
+    that contains them stays whole (rule 11).
     - Example: "this Tern Lake Ice Extent product, used to make the Tern
       Lake Albedo product" gives the record's dataset produced using "Tern",
       with measurements of "Lake Ice Extent"; "Tern Lake Albedo" stays

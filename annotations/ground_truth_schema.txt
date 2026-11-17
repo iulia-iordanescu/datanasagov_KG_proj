@@ -18,7 +18,7 @@ Software          a computer program, e.g. example C-language program
 FileFormat        a way data are encoded in files, e.g. GeoTIFF; zip
                   rule 19: standalone
                   source: ground truth tuning #22, #24, #25
-Document          a written publication, or a web page or site, or a set of them, named in words or by a reference key (a web address written as itself is a WebPage), e.g. NASA developed standards; LAWRENCEETAL2013; BARREL at Dartmouth
+Document          a written publication, or a web page or site, or a set of them, named in words or by a reference key (a web address written as the address itself is a WebPage), e.g. NASA developed standards; LAWRENCEETAL2013; BARREL at Dartmouth
                   rule 19: standalone
                   source: ground truth tuning #0, #5
 Purpose           an aim something is meant to achieve
@@ -32,7 +32,7 @@ Campaign          a named period of field measurements from balloons, aircraft, 
                   source: ground truth tuning #19
 Discipline        a field of science
                   rule 19: describing
-Organization      a named institution or one of its named parts, not a Mission, e.g. NASA; OBPG
+Organization      a named institution or one of its named parts, other than a Mission, e.g. NASA; OBPG
                   rule 19: standalone
 Instrument        a device that takes measurements
                   rule 19: standalone
@@ -40,7 +40,7 @@ Platform          a craft or station that carries Instruments, in space, in the 
                   rule 19: standalone
 Time              a point or period on the calendar, which happens once, e.g. March 11, 2016 19:08:03; May 4, 2002; first week of February 2003; 2015-10-22 to 2015-12-31
                   rule 19: describing
-PhysicalQuantity  a bare property that can be measured, whatever method measures it, e.g. temperature; gravity; sea surface temperature; snow cover; not a form the data take, such as images, image cubes, spectra or maps (a SpatialRepresentation)
+PhysicalQuantity  a bare property that can be measured, whatever method measures it, e.g. temperature; gravity; sea surface temperature; snow cover. It is not a form the data take, such as images, image cubes, spectra or maps (a SpatialRepresentation)
                   rule 19: describing
 CelestialBody     a natural object in space, or a type of such objects, e.g. Vesta; active galactic nuclei
                   rule 19: standalone
@@ -64,7 +64,7 @@ Identifier        a code that names one entity, or one product line, permanently
 SpatialRepresentation  a form data are laid out in: over the ground, typically along a satellite's path, as observed (swath), or on a fixed map grid (gridded); or as images, image cubes, spectra or maps, e.g. swath; map; raw near-IR spectral image cubes
                        rule 19: describing
                        source: ground truth tuning #2
-Country           a nation, as where a Person or Organization is based, e.g. U.S.; Argentina
+Country           a nation, only as the place where a Person or Organization is based, e.g. U.S.; Argentina. A nation that the data cover is a SpatialExtent
                   rule 19: standalone
                   source: ground truth tuning #3
 TimeOfDay         a point or period in the day, which comes back every day, e.g. 2:39 PM; morning; nighttime
@@ -183,7 +183,7 @@ USES_TECHNIQUE       was collected using this Technique
 HAS_MEASUREMENTS_OF  holds measurements of this PhysicalQuantity
                      Dataset -> PhysicalQuantity
                      only: any -> PhysicalQuantity
-MEASURES             takes measurements of this PhysicalQuantity (an Instrument's; data hold them: HAS_MEASUREMENTS_OF)
+MEASURES             takes measurements of this PhysicalQuantity; its subject is an Instrument, or a Platform that carries Instruments (for data that hold measurements, HAS_MEASUREMENTS_OF)
                      source: ground truth tuning #16, #19
                      only: any -> PhysicalQuantity
 HAS_MISSION_PHASE    was collected during this MissionPhase
@@ -200,7 +200,7 @@ HAS_TIME_SPAN        covers this period
                      Dataset -> Time; MissionPhase -> Time
 HAS_DURATION         covers this much time, from its first value to its last
                      source: ground truth tuning #9
-HAS_VERSION          carries this Version
+HAS_VERSION          has this Version
                      Dataset -> Version
                      only: any -> Version
 HAS_RELEASE          has this Dataset as one of its releases; a release label is a Version (HAS_VERSION)
@@ -242,7 +242,7 @@ PRODUCED_USING_ALGORITHM  was made or detected by applying this Algorithm
                      only: any -> Algorithm
 COMPUTED_FROM        was made by processing this input
                      source: ground truth tuning #2
-HAS_DOI              has this Identifier, a Digital Object Identifier
+HAS_DOI              has this Identifier, a Digital Object Identifier (DOI)
                      source: ground truth tuning #2
                      only: any -> Identifier
 HAS_GRANULE_DURATION  each of its files covers this much time
@@ -290,7 +290,7 @@ HAS_LOWER_UNCERTAINTY_THAN  its values are more certain than those of
                             source: ground truth tuning #4
 LIMITED_BY           its use is restricted by
                      source: ground truth tuning #4
-HAS_ACCESS_RIGHTS    can be used by whom, and on what terms, as this AccessRights says
+HAS_ACCESS_RIGHTS    has this AccessRights: who may use it, and on what terms
                      source: ground truth tuning #19
                      only: any -> AccessRights
 ON_GRID              its values are given on the cells or points of this Grid
@@ -299,7 +299,7 @@ ON_GRID              its values are given on the cells or points of this Grid
 MAPPED_INTO          its values were laid onto a map drawn with this MapProjection
                      source: ground truth tuning #4
                      only: any -> MapProjection
-HAS_COORDINATE_SYSTEM  gives its positions in this CoordinateSystem
+HAS_COORDINATE_SYSTEM  its positions are given in this CoordinateSystem
                        source: ground truth tuning #15
                        only: any -> CoordinateSystem
 DOCUMENTED_AT        more details about it are written at this WebPage or in this Document
@@ -362,7 +362,7 @@ PRODUCTION_DISCONTINUED_ON  stopped being produced on this date (a Time)
                             only: any -> Time
 PRODUCTION_DISCONTINUED_DUE_TO  stopped being produced because of
                                 source: ground truth tuning #7
-HAS_ISSUE            is affected by this Issue, a problem with its values (what restricts its use: LIMITED_BY)
+HAS_ISSUE            is affected by this Issue, a problem with its values (for what restricts its use, LIMITED_BY)
                      source: ground truth tuning #19
                      only: any -> Issue
 CLEANED_OF           had this Issue removed from its values, or corrected in them, e.g. noise lines; geometric distortion
@@ -439,7 +439,7 @@ HAS_DESIGN_FEATURE   was designed to have this DesignFeature
 LED_BY_PARTY         is led by this Person or Organization
                      source: ground truth tuning #40
                      only: any -> Organization; any -> Person
-METADATA_FOR         holds the metadata of this one: information that describes its data, e.g. metadata for a level zero product
+METADATA_FOR         holds the metadata of this one: information that describes this one's data, e.g. metadata for a level zero product
                      source: ground truth tuning #52
 FROM_CAMPAIGN        was collected during this Campaign
                      held-out only

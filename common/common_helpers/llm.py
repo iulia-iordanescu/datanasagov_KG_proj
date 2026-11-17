@@ -38,6 +38,10 @@ does (`from common import llm`, `from common.llm import confirm`):
                       paid_calls (what a step's stages share: PaidCalls and the folder its answers are cached in,
                       common/common_helpers/cache.py); run_parallel (runs jobs a few at a time; Ctrl-C cancels
                       those not yet started); confirm (the stop itself)
+    llm_batch.py      BATCH PROCESSING (the setting batch): a stage's model calls sent as batch jobs to a maker's
+                      batch API (Anthropic's, OpenAI's, Google's), at half the price of single requests; each request
+                      built and each answer judged by the same code as a single request's; the job ids kept in the
+                      step's cache folder, so a stopped run collects its jobs instead of paying again (ask_batch)
 
 The parts are loaded at the end of this file and need it loaded first, so they are imported only through it. A part
 reads the settings set at run time (MODEL, SERVICE, THINKING, REPEAT, SESSION_ID, MAX_ANSWER_TOKENS) and calls the
@@ -152,6 +156,42 @@ THINKING_LEVELS = ("low", "medium", "high", "model_default")
 REPEAT = 1
 
 
+#: Whether a stage that asks many independent prompts at once (common/common_helpers/extraction.py, ask_model) sends
+#: them as batch jobs to the maker's batch API instead of one request each: the setting `batch`, which only 060 has
+#: (common/common_helpers/step.py refuses --batch for every other step), and which paid_calls() puts here for the run. Only through a maker's own API
+#: (DIRECT_SERVICES): Anthropic's Message Batches API (https://platform.claude.com/docs/en/build-with-claude/batch-processing),
+#: OpenAI's Batch API (https://developers.openai.com/api/docs/guides/batch) and Google's Gemini Batch API
+#: (https://aistudio.google.com/docs/batch-api), each at 50% of the price of single requests (all read 2026-11-17).
+#: Each request carries its whole prompt, the same model and the same settings as a single request
+#: (common/common_helpers/llm_batch.py), so it changes neither the words the model gets nor the cache key
+#: (cache_identity): answers saved by single requests are reused by a batch run, and the other way round.
+BATCH = False
+
+
+#: How often a batch job's state is asked for while the run waits for it, in seconds (asking is free), and how often
+#: the waiting run writes a line when nothing changed. Anthropic: "most batches finishing in less than 1 hour"; each
+#: maker ends a job within 24 hours (Google: a job "running or pending for more than 48 hours" expires).
+BATCH_POLL_SECONDS = 60
+
+
+BATCH_PROGRESS_SECONDS = 600
+
+
+#: The most requests, and bytes of requests, one batch job takes, by service; a stage with more is sent as several
+#: jobs. Anthropic: "limited to either 100,000 Message requests or 256 MB in size, whichever is reached first";
+#: OpenAI: "up to 50,000 requests, and a batch input file can be up to 200 MB in size"; Google, for requests sent
+#: inline (as here): "keep the total request size under 20MB" (the makers' batch pages cited at BATCH, read
+#: 2026-11-17). The byte limits here are set a little lower, since a request's size on the wire is not exactly the
+#: size of its JSON text as counted here.
+BATCH_LIMITS = {"anthropic": (100_000, 240_000_000), "openai": (50_000, 190_000_000), "google": (100_000, 18_000_000)}
+
+
+#: The batch jobs this run submitted or collected (common/common_helpers/llm_batch.py), for the run's record
+#: (describe) and the report's Model calls: {"service", "id", "requests", "how": "submitted" | "resumed", "state",
+#: "answered", "failed"}. Reset by paid_calls.
+BATCH_JOBS = []
+
+
 #: The longest answer a call may get, in tokens, asked for explicitly so the service's own default doesn't apply: on
 #: 2026-10-12 LiteLLM's default cut 040's longer extraction answers off at 7,500-11,000 characters, mid-JSON. With
 #: 16,000, one answer was still cut off, at 25,658 characters: fewer than 16,000 tokens usually hold, so tokens the
@@ -257,7 +297,8 @@ def describe() -> dict:
     return {"service": SERVICE, "model": MODEL, "served_as": sorted(SERVED), **call_settings(),
             "service_note": SERVICE_NOTES.get(SERVICE), "repeat": REPEAT,
             **({"answer_cache": answer_cache_note()} if SERVICE == "litellm" else {}),
-            **({"session_id": SESSION_ID} if SESSION_ID and SERVICE == "litellm" else {})}
+            **({"session_id": SESSION_ID} if SESSION_ID and SERVICE == "litellm" else {}),
+            **({"batch": True, "batch_jobs": [dict(j) for j in BATCH_JOBS]} if BATCH else {})}
 
 
 #: What a service may do to a request that the run record can't see (prompt audit F19, 2026-10-30).
@@ -554,7 +595,8 @@ from common.llm_makers import (
     _as_dict, _sdk_status as _sdk_status, _sdk_said as _sdk_said, _sdk_error as _sdk_error, _sdk_send as _sdk_send,
     _anthropic_params as _anthropic_params, _anthropic_usage as _anthropic_usage, _ask_anthropic as _ask_anthropic,
     _ask_openai as _ask_openai, _google_config as _google_config, _google_usage as _google_usage, _ask_google as
-    _ask_google, _direct_models as _direct_models)
+    _ask_google, _direct_models as _direct_models, _read_anthropic_reply as _read_anthropic_reply,
+    _google_typed_config as _google_typed_config, _read_google_reply as _read_google_reply)
 from common.llm_calls import (
     list_models as list_models, _ASK as _ASK, call_llm as call_llm, TEST_PROMPT as TEST_PROMPT, try_model as
     try_model, call_llm_json as call_llm_json, fence_safe as fence_safe)
@@ -564,3 +606,6 @@ from common.llm_paid import (
     _usage_counts, _duration as _duration, PaidCalls as PaidCalls, Calls as Calls, paid_calls as paid_calls,
     run_parallel as run_parallel, warning_list as warning_list, numbered as numbered, show_warnings as
     show_warnings, Interrupted as Interrupted, confirm as confirm)
+from common.llm_batch import (
+    BATCH_API as BATCH_API, BATCH_DOCS as BATCH_DOCS, batch_refusal as batch_refusal, batch_note as batch_note, ask_batch as ask_batch, batch_state_file as
+    batch_state_file)

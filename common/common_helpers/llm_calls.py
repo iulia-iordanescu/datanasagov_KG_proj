@@ -88,7 +88,7 @@ def try_model(name: str, service: str | None = None) -> tuple:
         return False, str(e)
 
 
-def call_llm_json(prompt, retries=1, read_timeout=READ_TIMEOUT, cache_until=None, check=None):
+def call_llm_json(prompt, retries=1, read_timeout=READ_TIMEOUT, cache_until=None, check=None, first=None):
     """Return the JSON OBJECT the prompt asked for, or raise.
 
     Every caller immediately does .get() on the result, so a reply that
@@ -100,11 +100,18 @@ def call_llm_json(prompt, retries=1, read_timeout=READ_TIMEOUT, cache_until=None
     check: the caller's shape check, check(answer) -> what is wrong with the
     answer's shape, or None when it is right (e.g. common/common_helpers/extraction.py,
     shape_error). An object of the wrong shape is treated like one that isn't
-    JSON: asked once more, saying what was wrong, then BadReply."""
+    JSON: asked once more, saying what was wrong, then BadReply.
+
+    first: the first answer's text when it was already received another way (a batch job's result,
+    common/common_helpers/llm_batch.py), already judged by the service client, with its request's record in
+    _last.reply: it is read as the first ask's answer, and a second ask, when one is needed, is a single request."""
     seconds = 0.0
     for attempt in range(retries + 1):
         try:
-            text = llm.call_llm(prompt, read_timeout=read_timeout, cache_until=cache_until)
+            if first is not None and not attempt:
+                text = first                                # a batch job's answer (llm_batch.py)
+            else:
+                text = llm.call_llm(prompt, read_timeout=read_timeout, cache_until=cache_until)
         except Exception as e:                              # noqa: BLE001
             if attempt and isinstance(getattr(e, "call", None), dict):
                 e.call["seconds"] = round(e.call["seconds"] + seconds, 1)       # the first ask's time too

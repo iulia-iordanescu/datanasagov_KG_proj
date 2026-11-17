@@ -313,7 +313,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 The notes are mostly the abstract of the study the table comes from; whether a study's aim, method and findings belong in the ground truth was asked in Q26, settled on 2026-10-31: the study's aim and method are ground truth triples of the record's dataset (HAS_PURPOSE, PRODUCED_USING_ALGORITHM), and its background and findings are left out (rule 8 of *What counts as a fact*, *A study a record tells*). 27 items, 19 that may matter.
 
 - **Left out:** "The X-ray variability of active galactic nuclei (AGN) has been most often investigated with studies of individual, nearby sources, and only a few ensemble analyses have been applied to large samples in wide ranges of luminosity and redshift." (notes)
-  - **Rule:** What counts as a fact, rule 8: "The rest of the study is not: its background, its findings, what it says about methods it did not use" It is the background of the study, about earlier studies. Decided on 2026-10-31; until then this item waited on the experts' answer to Q26 (rule 2 of *What counts as a fact*). (Until 2026-10-31 this item had cited rule 9, as naming no specific thing; third audit, finding L-6.)
+  - **Rule:** What counts as a fact, rule 8: "Nothing else in the study is a fact of the record's dataset: its background, its findings, what it says about methods it did not use" It is the background of the study, about earlier studies. Decided on 2026-10-31; until then this item waited on the experts' answer to Q26 (rule 2 of *What counts as a fact*). (Until 2026-10-31 this item had cited rule 9, as naming no specific thing; third audit, finding L-6.)
   - **May matter because:** it says why the study was made.
   - **Question:** Q26 (settled on 2026-10-31: see Q26's My notes).
 - **Left out:** "and Swift (the latter is not included in this table, notice)" (notes), the study's second sample
@@ -324,11 +324,11 @@ The notes are mostly the abstract of the study the table comes from; whether a s
   - **Rule:** What counts as a fact, rule 1: "Only what the record states." The record states the two ranges for "two serendipitously selected AGN samples extracted from the catalogs of XMM-Newton and Swift (the latter is not included in this table, notice)", that is, for the two samples taken together. This table holds the XMM-Newton sample alone, and no passage gives the ranges of that sample. A range that two samples cover together is not stated for one of them, as rule 1's *Membership by name* says of a group: "A statement about the group as a whole is not written for it: what the members cover taken together". Until 2026-11-12 the ground truth had the record's dataset HAS_REDSHIFT_RANGE "between ~ 0.2 and ~ 4.5" and HAS_LUMINOSITY_RANGE "in the 0.5 - 4.5 keV band, between ~ 10^43 erg/s and ~ 10^46 erg/s" (found by both audits of 2026-11-12).
   - **May matter because:** a search by redshift or by luminosity would use the ranges, and the table's own ranges lie within them.
 - **Left out:** "which operates in the time domain" (notes, about the structure function)
-  - **Rule:** What counts as a fact, rule 8: "When a record tells the study its dataset comes from, the study's aim and its method are facts of the record's dataset (its purpose, HAS_PURPOSE, and the method it was produced using, PRODUCED_USING_ALGORITHM, rule 24, a processing step). The rest of the study is not". The method is a ground truth triple ("structure function (SF)", PRODUCED_USING_ALGORITHM); in which domain it works is a detail the study gives of its method, not the method. Decided on 2026-10-31 (Q28 (d), settled); until then it waited on the experts' answer to Q28 (d) (rule 2 of *What counts as a fact*, its part on waiting for an expert), with no clear would-be triple, since its predicate and the entity class of "time domain" were not settled. (Until 2026-10-31 it waited on Q26, and before that cited rule 4; third audit, finding L-7.) The field's home for it is a subject list, the Unified Astronomy Thesaurus's "Time domain astronomy": docs/improvements.md, *Knowledge enrichment from the model, verified and labelled* (080).
+  - **Rule:** What counts as a fact, rule 8: "When a record tells the study its dataset comes from, the study's aim and its method are facts of the record's dataset (its purpose, HAS_PURPOSE, and the method it was produced using, PRODUCED_USING_ALGORITHM, rule 24, a processing step). Nothing else in the study is a fact of the record's dataset". The method is a ground truth triple ("structure function (SF)", PRODUCED_USING_ALGORITHM); in which domain it works is a detail the study gives of its method, not the method. Decided on 2026-10-31 (Q28 (d), settled); until then it waited on the experts' answer to Q28 (d) (rule 2 of *What counts as a fact*, its part on waiting for an expert), with no clear would-be triple, since its predicate and the entity class of "time domain" were not settled. (Until 2026-10-31 it waited on Q26, and before that cited rule 4; third audit, finding L-7.) The field's home for it is a subject list, the Unified Astronomy Thesaurus's "Time domain astronomy": docs/improvements.md, *Knowledge enrichment from the model, verified and labelled* (080).
   - **May matter because:** it says how the method works: in the time domain.
   - **Question:** Q28 (d) (settled on 2026-10-31: see Q28's My notes).
 - **Left out:** "The SF is also more appropriate than fractional variability and excess variance, because these parameters are biased by the duration of the monitoring time interval in the rest-frame, and therefore by cosmological time dilation." (notes)
-  - **Rule:** What counts as a fact, rule 5: "Take out words such as "great"." ("more appropriate" is the authors' judgement). The second clause, that "these parameters are biased by the duration of the monitoring time interval", is about two measures the study did not use: What counts as a fact, rule 8: "The rest of the study is not: its background, its findings, and what it says about methods it did not use." Decided on 2026-10-31; until then this item waited on the experts' answer to Q26 (rule 2 of *What counts as a fact*). (Until 2026-10-31 this clause had cited no rule; third audit, finding L-8.)
+  - **Rule:** What counts as a fact, rule 5: "Take out words such as "great"." ("more appropriate" is the authors' judgement). The second clause, that "these parameters are biased by the duration of the monitoring time interval", is about two measures the study did not use: What counts as a fact, rule 8: "Nothing else in the study is a fact of the record's dataset: its background, its findings, and what it says about methods it did not use." Decided on 2026-10-31; until then this item waited on the experts' answer to Q26 (rule 2 of *What counts as a fact*). (Until 2026-10-31 this clause had cited no rule; third audit, finding L-8.)
   - **May matter because:** it says why the method was chosen.
   - **Question:** Q26 (settled on 2026-10-31: see Q26's My notes).
 - **Left out:** "They do not find evidence of the break in the SF, at variance with the case of lower luminosity AGNs." (notes)
@@ -358,23 +358,23 @@ The notes are mostly the abstract of the study the table comes from; whether a s
   - **Rule:** Writing a classed triple, rule 24: "A verb or participle that says only what was done to the data ("corrected", "calibrated", "detrended", "binned", "mapped", "edited", "convert", "weighted") names no method". Only a verb; I wrote COMPUTED_FROM "DR7 edition of the SDSS Quasar Catalog" and no PRODUCED_USING_ALGORITHM.
   - **Question:** Q7.
 - **Left out:** "structure function (SF)" HAS_PURPOSE "ensemble analysis even when only a few observations are available for individual sources and the power spectral density (PSD) cannot be derived" (notes, "allows for an ensemble analysis even when only a few observations are available for individual sources and the power spectral density (PSD) cannot be derived")
-  - **Rule:** What counts as a fact, rule 8: "When a record tells the study its dataset comes from, the study's aim and its method are facts of the record's dataset (its purpose, HAS_PURPOSE, and the method it was produced using, PRODUCED_USING_ALGORITHM, rule 24, a processing step). The rest of the study is not". What the structure function "allows for" is a use the study gives for its method, not a purpose: HAS_PURPOSE is "is meant to achieve", Wikidata's "has goal" (P3712), which Wikidata keeps apart from "has use" (P366, "can be used for"); coining a predicate for a use for this one record would tailor the schema to it. Decided on 2026-10-31 (Q9 (b), settled); until then it waited on the experts' answer to Q9 (b) (rule 2 of *What counts as a fact*, its part on waiting for an expert), and its would-be ground truth triple was in `annotations/pending_triples.csv`, now deleted. (Until 2026-10-31 it waited on Q26 too.)
+  - **Rule:** What counts as a fact, rule 8: "When a record tells the study its dataset comes from, the study's aim and its method are facts of the record's dataset (its purpose, HAS_PURPOSE, and the method it was produced using, PRODUCED_USING_ALGORITHM, rule 24, a processing step). Nothing else in the study is a fact of the record's dataset". What the structure function "allows for" is a use the study gives for its method, not a purpose: HAS_PURPOSE is "is meant to achieve", Wikidata's "has goal" (P3712), which Wikidata keeps apart from "has use" (P366, "can be used for"); coining a predicate for a use for this one record would tailor the schema to it. Decided on 2026-10-31 (Q9 (b), settled); until then it waited on the experts' answer to Q9 (b) (rule 2 of *What counts as a fact*, its part on waiting for an expert), and its would-be ground truth triple was in `annotations/pending_triples.csv`, now deleted. (Until 2026-10-31 it waited on Q26 too.)
   - **May matter because:** it says why the method was used.
   - **Question:** Q9 (b) (settled on 2026-10-31: see Q9's My notes).
 - **Left out:** "the authors" REPORTED "statistically consistent results for the two samples" (Finding) (notes, "The authors find statistically consistent results for the two samples")
-  - **Rule:** What counts as a fact, rule 8: "The rest of the study is not: its background, its findings, what it says about methods it did not use" It is a finding of the study. Decided on 2026-10-31; until then this item waited on the experts' answer to Q26 (rule 2 of *What counts as a fact*).
+  - **Rule:** What counts as a fact, rule 8: "Nothing else in the study is a fact of the record's dataset: its background, its findings, what it says about methods it did not use" It is a finding of the study. Decided on 2026-10-31; until then this item waited on the experts' answer to Q26 (rule 2 of *What counts as a fact*).
   - **May matter because:** it is a result of the study the table comes from.
   - **Question:** Q26 (settled on 2026-10-31: see Q26's My notes).
 - **Left out:** "the authors" REPORTED "SF described by a power law of the time lag tau, approximately as SF ~ tau^0.1" (Finding) (notes, "with the SF described by a power law of the time lag tau, approximately as SF ~ tau^0.1")
-  - **Rule:** What counts as a fact, rule 8: "The rest of the study is not: its background, its findings, what it says about methods it did not use" It is a finding of the study. Decided on 2026-10-31; until then this item waited on the experts' answer to Q26 (rule 2 of *What counts as a fact*).
+  - **Rule:** What counts as a fact, rule 8: "Nothing else in the study is a fact of the record's dataset: its background, its findings, what it says about methods it did not use" It is a finding of the study. Decided on 2026-10-31; until then this item waited on the experts' answer to Q26 (rule 2 of *What counts as a fact*).
   - **May matter because:** it is a result of the study the table comes from.
   - **Question:** Q26 (settled on 2026-10-31: see Q26's My notes).
 - **Left out:** "the authors" REPORTED "strong anti-correlation of the variability with X-ray luminosity, accompanied by a change of the slope of the SF" (Finding) (notes, "They confirm a strong anti-correlation of the variability with X-ray luminosity, accompanied by a change of the slope of the SF")
-  - **Rule:** What counts as a fact, rule 8: "The rest of the study is not: its background, its findings, what it says about methods it did not use" It is a finding of the study. Decided on 2026-10-31; until then this item waited on the experts' answer to Q26 (rule 2 of *What counts as a fact*).
+  - **Rule:** What counts as a fact, rule 8: "Nothing else in the study is a fact of the record's dataset: its background, its findings, what it says about methods it did not use" It is a finding of the study. Decided on 2026-10-31; until then this item waited on the experts' answer to Q26 (rule 2 of *What counts as a fact*).
   - **May matter because:** it is a result of the study the table comes from.
   - **Question:** Q26 (settled on 2026-10-31: see Q26's My notes).
 - **Left out:** "the authors" REPORTED "evidence in support of a weak, intrinsic, average increase of X-ray variability with redshift" (Finding) (notes, "They also find evidence in support of a weak, intrinsic, average increase of X-ray variability with redshift")
-  - **Rule:** What counts as a fact, rule 8: "The rest of the study is not: its background, its findings, what it says about methods it did not use" It is a finding of the study. Decided on 2026-10-31; until then this item waited on the experts' answer to Q26 (rule 2 of *What counts as a fact*).
+  - **Rule:** What counts as a fact, rule 8: "Nothing else in the study is a fact of the record's dataset: its background, its findings, what it says about methods it did not use" It is a finding of the study. Decided on 2026-10-31; until then this item waited on the experts' answer to Q26 (rule 2 of *What counts as a fact*).
   - **May matter because:** it is a result of the study the table comes from.
   - **Question:** Q26 (settled on 2026-10-31: see Q26's My notes).
 - **Left out:** "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" DEVELOPED_BY_PARTY "the authors" (notes, "The authors used a maximum distance of 1.5 arcseconds")
@@ -482,7 +482,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 - **Left out:** "where users can find many more objects" (notes)
   - **Rule:** What counts as a fact, rule 9: "A ground truth triple needs a subject and an object the record names" "many more objects" names none.
 - **Left out:** "In the case of orbit data for planets, the orbit data can be used as a proxy for spacecraft ephemeris that are in orbit about the planets." (notes)
-  - **Rule:** Writing a classed triple, rule 21: "Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it." Orbit data for planets are not this dataset, and no "part of" or "made from" link joins them; it is also a use (rule 9: "when the record doesn't name that work, it gives no ground truth triple.").
+  - **Rule:** Writing a classed triple, rule 21: "Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it." Orbit data for planets are not this dataset, and no "part of" or "made from" link joins them; it is also a use (rule 9: "when the record doesn't name that work, the use gives no ground truth triple.").
   - **May matter because:** it says what planet data of this kind are good for.
 - **Left out:** "On a heliospheric scale, differences between the planet orbital tarjectory and that of the spacecraft are very small." (notes)
   - **Rule:** What counts as a fact, rule 9: "A ground truth triple needs a subject and an object the record names" "the planet" and "the spacecraft" name no particular ones; "very small" is a judgement (rule 5).
@@ -670,7 +670,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 - **Left out:** "while comprehensive in situ measurements of both plasma waves and energetic particles were available" (notes)
   - **Rule:** What counts as a fact, rule 9: "A ground truth triple needs a subject and an object the record names" Whose measurements is not said; "comprehensive" is a judgement (rule 5).
 - **Left out:** "Also, the BARREL data has been used to characterize the spatial scale of precipitation at relativistic energies." (notes)
-  - **Rule:** What counts as a fact, rule 9: "when the record doesn't name that work, it gives no ground truth triple." No work that used the data is named; the statement is also about the BARREL data as a whole (rule 1, *Membership by name*).
+  - **Rule:** What counts as a fact, rule 9: "when the record doesn't name that work, the use gives no ground truth triple." No work that used the data is named; the statement is also about the BARREL data as a whole (rule 1, *Membership by name*).
   - **May matter because:** it says what the data are good for.
   - **Question:** Q24.
 - **Left out:** "initially" and "Austral summer months of" (notes)
@@ -1130,22 +1130,22 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
   - **Rule:** What counts as a fact, rule 9: "A ground truth triple needs a subject and an object the record names"
   - The words name no particular channel or pair; the named inputs are written (COMPUTED_FROM "Wilkinson Microwave Anisotropy Probe (WMAP) 7-year data" and "internal templates").
 - **Left out:** "Using the area of the sky outside the Kq85 galactic mask" (notes)
-  - **Rule:** What counts as a fact, rule 8: "The rest of the study is not: its background, its findings, what it says about methods it did not use, and the details of its method beyond what rule 24 writes (how the method was applied, its parameters, what it allows)."
+  - **Rule:** What counts as a fact, rule 8: "Nothing else in the study is a fact of the record's dataset: its background, its findings, what it says about methods it did not use, and the details of its method beyond what rule 24 writes (how the method was applied, its parameters, what it allows)."
   - It is how the method was applied, a setting of the detection step. "Kq85" is also an unexplained code (rule 1).
   - **May matter because:** it says which part of the sky the catalog covers.
 - **Left out:** "at the 5-sigma level", "at 5 sigma" and ">= 3 sigma" (notes)
-  - **Rule:** What counts as a fact, rule 8: "The rest of the study is not: its background, its findings, what it says about methods it did not use, and the details of its method beyond what rule 24 writes (how the method was applied, its parameters, what it allows)."
+  - **Rule:** What counts as a fact, rule 8: "Nothing else in the study is a fact of the record's dataset: its background, its findings, what it says about methods it did not use, and the details of its method beyond what rule 24 writes (how the method was applied, its parameters, what it allows)."
   - They are the detection thresholds, parameters of the method.
 - **Left out:** "they detect a total of 2102 point sources at the 5-sigma level in either the frequency maps or the internal templates. Of these, 1116 are detected either at 5 sigma directly in the frequency channels or at 5 sigma in the internal templates and >= 3 sigma at the corresponding position in the frequency channels." (notes)
-  - **Rule:** What counts as a fact, rule 8: "The rest of the study is not: its background, its findings, what it says about methods it did not use, and the details of its method beyond what rule 24 writes (how the method was applied, its parameters, what it allows)."
+  - **Rule:** What counts as a fact, rule 8: "Nothing else in the study is a fact of the record's dataset: its background, its findings, what it says about methods it did not use, and the details of its method beyond what rule 24 writes (how the method was applied, its parameters, what it allows)."
   - The counts are results the study drew from the data. "The authors have made a catalog of these sources" does not say which of the counts the catalog holds, so no HAS_NUMBER_OF triple is written.
   - **May matter because:** a search by catalog size would need the count.
 - **Left out:** "Of the 1116 sources, 603 are detections that have not been reported so far in WMAP data." (notes)
-  - **Rule:** What counts as a fact, rule 8: "The rest of the study is not: its background, its findings, what it says about methods it did not use, and the details of its method beyond what rule 24 writes (how the method was applied, its parameters, what it allows)."
+  - **Rule:** What counts as a fact, rule 8: "Nothing else in the study is a fact of the record's dataset: its background, its findings, what it says about methods it did not use, and the details of its method beyond what rule 24 writes (how the method was applied, its parameters, what it allows)."
   - It is a finding of the study; it is also negated (rule 6: "A ground truth triple can't say "not".") and "so far" is true only as of writing (rule 10).
   - **May matter because:** it says how many of the sources are new.
 - **Left out:** "In total, they identified 1029 of the 1116 sources with counterparts at 5 GHz and 69 at other frequencies." (notes)
-  - **Rule:** What counts as a fact, rule 8: "The rest of the study is not: its background, its findings, what it says about methods it did not use, and the details of its method beyond what rule 24 writes (how the method was applied, its parameters, what it allows)."
+  - **Rule:** What counts as a fact, rule 8: "Nothing else in the study is a fact of the record's dataset: its background, its findings, what it says about methods it did not use, and the details of its method beyond what rule 24 writes (how the method was applied, its parameters, what it allows)."
   - It is a finding of the study.
   - **May matter because:** it says how many sources have known counterparts.
 - **Left out:** "The authors" as the dataset's developer (notes, "The authors have made a catalog of these sources available")
@@ -1400,7 +1400,7 @@ A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the r
 - **Left out:** "latest" (notes, "The results of the latest field tests")
   - **Rule:** What counts as a fact, rule 10: "Take out "latest", "current", "now", "then available", and words like them."
 - **Left out:** "The results of" (notes, "The results of the latest field tests … are also discussed")
-  - **Rule:** What counts as a fact, rule 8: "The rest of the study is not: its background, its findings, what it says about methods it did not use, and the details of its method beyond what rule 24 writes (how the method was applied, its parameters, what it allows)."
+  - **Rule:** What counts as a fact, rule 8: "Nothing else in the study is a fact of the record's dataset: its background, its findings, what it says about methods it did not use, and the details of its method beyond what rule 24 writes (how the method was applied, its parameters, what it allows)."
   - The results are findings, and the record does not give them; "field tests" DOCUMENTED_AT the paper is written.
 - **Left out:** "a Mars analogue site" (notes, "Haughton Crater on Devon Island (a Mars analogue site in Canadian Arctic)")
   - **Rule:** What counts as a fact, rule 4: "A sentence that says what type of entity an instance refers to ("Kestrel is an imager") gives no ground truth triple: the instance's entity class says it"
@@ -1504,7 +1504,7 @@ A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the r
 - **Left out:** "All" (notes, "All parameters are obtained by fitting")
   - **Rule:** What counts as a fact, rule 9: "A word that only says how another fact holds. Such a word gives no ground truth triple, and is taken out of the instance"
 - **Left out:** "to find the plasma parameters which, when coupled with the full instrument response, best simulate the data" (notes)
-  - **Rule:** What counts as a fact, rule 8: "The rest of the study is not: its background, its findings, what it says about methods it did not use, and the details of its method beyond what rule 24 writes (how the method was applied, its parameters, what it allows)."
+  - **Rule:** What counts as a fact, rule 8: "Nothing else in the study is a fact of the record's dataset: its background, its findings, what it says about methods it did not use, and the details of its method beyond what rule 24 writes (how the method was applied, its parameters, what it allows)."
   - **May matter because:** it says that the fit takes the instrument's response into account.
 - **Left out:** "as a function of energy" as a fact of its own (notes, inside "observed spectra (current as a function of energy)")
   - **Rule:** What counts as a fact, rule 2: "When the naming states more than one predicate, or none, the name's words give no ground truth triple, since choosing one would add what the record does not state." (*A fact inside a name*)
@@ -1662,7 +1662,7 @@ A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the r
   - **Rule:** Writing a classed triple, rule 21: "A statement that only explains a concept (what a term means, how a quantity behaves in general, which methods are in common use) and is about nothing so connected gives no ground truth triple"
   - They explain why the objectives and the month of the spring deployment matter, and are about nothing connected to the record's id. "April was chosen for the deployment phase" is read as the spring deployment's month, written "April 2008".
 - **Left out:** "Prior to ARCTAS, these pathways remained largely uncertain." (notes)
-  - **Rule:** What counts as a fact, rule 8: "The rest of the study is not: its background, its findings, what it says about methods it did not use, and the details of its method beyond what rule 24 writes (how the method was applied, its parameters, what it allows)."
+  - **Rule:** What counts as a fact, rule 8: "Nothing else in the study is a fact of the record's dataset: its background, its findings, what it says about methods it did not use, and the details of its method beyond what rule 24 writes (how the method was applied, its parameters, what it allows)."
   - It is the background of the first objective.
 - **Left out:** "International Global Atmospheric Chemistry (IGAC) Polar Study using Aircraft, Remote Sensing, Surface Measurements, and Models of Climate, Chemistry, Aerosols, and Transport (POLARCAT) Experiment for the International Polar Year 2007-2008" (notes, "ARCTAS was part of NASA’s contribution to the …")
   - **Rule:** What counts as a fact, rule 1: "An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for, and what it stands for is never written, its entity class included". The record never says what kind of thing the POLARCAT Experiment is: its kind word, "Experiment", fits more than one entity class, and no reference names it: the GCMD Instruments, Platforms and Providers keywords (version 25.2) and Wikidata have no entry for it (checked on 2026-11-13). So "ARCTAS" gives no PART_OF of it, and the organization named before its own name gives no PART_OF either (rule 2, *A fact inside a name*).
@@ -1683,7 +1683,7 @@ A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the r
   - **May matter because:** it says that the aircraft measured in situ and by remote sensing.
   - "suites of … instrumentation" names no instrument, and "conducted measurements" names nothing measured.
 - **Left out:** "Airborne data was used in conjunction with satellite observations from AURA, AQUA, CloudSat, PARASOL, CALIPSO, and MISR." (notes)
-  - **Rule:** What counts as a fact, rule 9: "What data have been used for, or can be used for, is a fact of the work that used them, not of the data: when the record doesn't name that work, it gives no ground truth triple."
+  - **Rule:** What counts as a fact, rule 9: "What data have been used for, or can be used for, is a fact of the work that used them, not of the data: when the record doesn't name that work, the use gives no ground truth triple."
   - **May matter because:** it names the satellites whose observations went with the aircraft data.
 - **Left out:** "The ASDC houses ARCTAS aircraft data, along with data related to MISR" (notes)
   - **Rule:** Writing a classed triple, rule 21: "Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it."
@@ -1813,7 +1813,7 @@ A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the r
 - **Left out:** "while comprehensive in situ measurements of both plasma waves and energetic particles were available" (notes)
   - **Rule:** What counts as a fact, rule 9: "A ground truth triple needs a subject and an object the record names" Whose measurements is not said; "comprehensive" is a judgement (rule 5).
 - **Left out:** "Also, the BARREL data has been used to characterize the spatial scale of precipitation at relativistic energies." (notes)
-  - **Rule:** What counts as a fact, rule 9: "when the record doesn't name that work, it gives no ground truth triple." No work that used the data is named; the statement is also about the BARREL data as a whole (rule 1, *Membership by name*).
+  - **Rule:** What counts as a fact, rule 9: "when the record doesn't name that work, the use gives no ground truth triple." No work that used the data is named; the statement is also about the BARREL data as a whole (rule 1, *Membership by name*).
   - **May matter because:** it says what the data are good for.
   - **Question:** Q24.
 - **Left out:** "initially" and "Austral summer months of" (notes)
@@ -1904,7 +1904,7 @@ A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the r
 A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. 6 items, 1 that may matter.
 
 - **Left out:** "These observations were used for optical and autonomous navigation (NAV) of the flyby spacecraft." (notes), and the title's "NAV"
-  - **Rule:** What counts as a fact, rule 9: "What data have been used for, or can be used for, is a fact of the work that used them, not of the data: when the record doesn't name that work, it gives no ground truth triple."
+  - **Rule:** What counts as a fact, rule 9: "What data have been used for, or can be used for, is a fact of the work that used them, not of the data: when the record doesn't name that work, the use gives no ground truth triple."
   - The navigation is the use itself, and no work that used the data is named. "the flyby spacecraft" is not a name, and the record does not say that it carries the instrument (rule 9: "A ground truth triple needs a subject and an object the record names.").
   - **May matter because:** it says what the images were taken for.
 - **Left out:** "phase", "the mission" and "comet" (notes, "during the cruise phase of the mission" and "Test images of comet 9P/Tempel 1")
@@ -2050,7 +2050,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
   - "zero-filled" says what was done to the values and names no method.
   - **May matter because:** a zero in the data may stand for a missing measurement.
 - **Left out:** "can be plotted in raw form for event searches and simple trend analysis" (notes)
-  - **Rule:** What counts as a fact, rule 9: "What data have been used for, or can be used for, is a fact of the work that used them, not of the data: when the record doesn't name that work, it gives no ground truth triple."
+  - **Rule:** What counts as a fact, rule 9: "What data have been used for, or can be used for, is a fact of the work that used them, not of the data: when the record doesn't name that work, the use gives no ground truth triple."
   - "can be plotted" is also a possibility, not a statement (rule 7). The reason the sentence gives is written: ROUGHLY_PROPORTIONAL_TO "log of the electric field strength".
 - **Left out:** "the use of these is described below" (notes)
   - **Rule:** What counts as a fact, rule 9: "A ground truth triple needs a subject and an object the record names"
@@ -2192,7 +2192,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 - **Left out:** "while comprehensive in situ measurements of both plasma waves and energetic particles were available" (notes)
   - **Rule:** What counts as a fact, rule 9: "A ground truth triple needs a subject and an object the record names" Whose measurements is not said; "comprehensive" is a judgement (rule 5).
 - **Left out:** "Also, the BARREL data has been used to characterize the spatial scale of precipitation at relativistic energies." (notes)
-  - **Rule:** What counts as a fact, rule 9: "when the record doesn't name that work, it gives no ground truth triple." No work that used the data is named; the statement is also about the BARREL data as a whole (rule 1, *Membership by name*).
+  - **Rule:** What counts as a fact, rule 9: "when the record doesn't name that work, the use gives no ground truth triple." No work that used the data is named; the statement is also about the BARREL data as a whole (rule 1, *Membership by name*).
   - **May matter because:** it says what the data are good for.
   - **Question:** Q24.
 - **Left out:** "initially" and "Austral summer months of" (notes)
@@ -2322,7 +2322,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 - **Left out:** "while comprehensive in situ measurements of both plasma waves and energetic particles were available" (notes)
   - **Rule:** What counts as a fact, rule 9: "A ground truth triple needs a subject and an object the record names" Whose measurements is not said; "comprehensive" is a judgement (rule 5).
 - **Left out:** "Also, the BARREL data has been used to characterize the spatial scale of precipitation at relativistic energies." (notes)
-  - **Rule:** What counts as a fact, rule 9: "when the record doesn't name that work, it gives no ground truth triple." No work that used the data is named; the statement is also about the BARREL data as a whole (rule 1, *Membership by name*).
+  - **Rule:** What counts as a fact, rule 9: "when the record doesn't name that work, the use gives no ground truth triple." No work that used the data is named; the statement is also about the BARREL data as a whole (rule 1, *Membership by name*).
   - **May matter because:** it says what the data are good for.
   - **Question:** Q24.
 - **Left out:** "initially" and "Austral summer months of" (notes)
@@ -2603,23 +2603,23 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. 6 items, 2 that may matter.
 
 - **Left out:** "Immune dysregulation is among the main adverse outcomes of spaceflight. Despite its crucial role in host protection effects on the human antibody repertoire are unknown." (notes)
-  - **Rule:** What counts as a fact, rule 8: "The rest of the study is not: its background, its findings, what it says about methods it did not use, and the details of its method beyond what rule 24 writes (how the method was applied, its parameters, what it allows)."
+  - **Rule:** What counts as a fact, rule 8: "Nothing else in the study is a fact of the record's dataset: its background, its findings, what it says about methods it did not use, and the details of its method beyond what rule 24 writes (how the method was applied, its parameters, what it allows)."
   - It is the study's background.
 - **Left out:** "Plasticity" and "in response to a long-term spaceflight" (title)
-  - **Rule:** What counts as a fact, rule 8: "The rest of the study is not: its background, its findings, what it says about methods it did not use, and the details of its method beyond what rule 24 writes (how the method was applied, its parameters, what it allows)."
+  - **Rule:** What counts as a fact, rule 8: "Nothing else in the study is a fact of the record's dataset: its background, its findings, what it says about methods it did not use, and the details of its method beyond what rule 24 writes (how the method was applied, its parameters, what it allows)."
   - The title states the study's finding, that the repertoire changes in response to spaceflight; what the data hold is written, HAS_MEASUREMENTS_OF "human IgM repertoire". "a long-term spaceflight" names no particular flight (rule 9).
   - **May matter because:** a search for data on spaceflight would need it.
 - **Left out:** "25 days before launch after 64 and 129 days spent on the International Space Station (ISS) and after 1 7 and 30 days of Earth reambulation" (notes)
-  - **Rule:** What counts as a fact, rule 8: "The rest of the study is not: its background, its findings, what it says about methods it did not use, and the details of its method beyond what rule 24 writes (how the method was applied, its parameters, what it allows)."
+  - **Rule:** What counts as a fact, rule 8: "Nothing else in the study is a fact of the record's dataset: its background, its findings, what it says about methods it did not use, and the details of its method beyond what rule 24 writes (how the method was applied, its parameters, what it allows)."
   - The times say when the samples were taken, how the study's method was applied.
   - **May matter because:** they tie the data to the International Space Station and to the times of the flight.
 - **Left out:** "This is the first study of this kind." (notes)
-  - **Rule:** What counts as a fact, rule 8: "The rest of the study is not: its background, its findings, what it says about methods it did not use, and the details of its method beyond what rule 24 writes (how the method was applied, its parameters, what it allows)."
+  - **Rule:** What counts as a fact, rule 8: "Nothing else in the study is a fact of the record's dataset: its background, its findings, what it says about methods it did not use, and the details of its method beyond what rule 24 writes (how the method was applied, its parameters, what it allows)."
 - **Left out:** "Our data revealed that the IgM repertoire of cosmonauts was different from the one of control subjects already prior to launch" to "coincided with a higher stress response." (notes)
-  - **Rule:** What counts as a fact, rule 8: "The rest of the study is not: its background, its findings, what it says about methods it did not use, and the details of its method beyond what rule 24 writes (how the method was applied, its parameters, what it allows)."
+  - **Rule:** What counts as a fact, rule 8: "Nothing else in the study is a fact of the record's dataset: its background, its findings, what it says about methods it did not use, and the details of its method beyond what rule 24 writes (how the method was applied, its parameters, what it allows)."
   - They are the study's findings.
 - **Left out:** "These data confirm that about half of the astronauts who spent six months on the ISS are subjected to immunological changes" to "an unprecedented amount of time." (notes)
-  - **Rule:** What counts as a fact, rule 8: "The rest of the study is not: its background, its findings, what it says about methods it did not use, and the details of its method beyond what rule 24 writes (how the method was applied, its parameters, what it allows)."
+  - **Rule:** What counts as a fact, rule 8: "Nothing else in the study is a fact of the record's dataset: its background, its findings, what it says about methods it did not use, and the details of its method beyond what rule 24 writes (how the method was applied, its parameters, what it allows)."
   - They are findings, and "personalized approaches should be implemented" is a recommendation (rule 7).
 
 ## "Dynamics and Chemistry of the Summer Stratosphere Radar and Satellite (Remote Sensing) Data Products" (pool position 98, id 972e69c6-676d-4b25-aaf8-e180a4745617)
@@ -2731,7 +2731,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 - **Left out:** "primary" (notes, "with the primary goal of")
   - **Rule:** What counts as a fact, rule 9: "A word that only says how another fact holds. Such a word gives no ground truth triple, and is taken out of the instance"
 - **Left out:** "Measurements taken by CPEX-CV will assist in moving science forward from previous CPEX and CPEX-AW missions, the calibration and validation of satellite measurements, and the development of airborne sensors, especially those with potential for satellite deployment." (notes)
-  - **Rule:** What counts as a fact, rule 9: "What data have been used for, or can be used for, is a fact of the work that used them, not of the data: when the record doesn't name that work, it gives no ground truth triple."
+  - **Rule:** What counts as a fact, rule 9: "What data have been used for, or can be used for, is a fact of the work that used them, not of the data: when the record doesn't name that work, the use gives no ground truth triple."
   - **May matter because:** it names the earlier CPEX missions and the satellite work the measurements serve.
 - **Left out:** "remote sensing instruments" and "that will allow for the measurement of tropospheric aerosols, winds, temperature, water vapor, and precipitation" (notes, "the NASA DC-8 aircraft will be deployed with remote sensing instruments and dropsondes that will allow for the measurement of …")
   - **Rule:** Writing a classed triple, rule 22: "An item that names no specific entity ("his team") gives no ground truth triple"

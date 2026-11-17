@@ -2,16 +2,17 @@ $words
 
 Below are the labels given to predicate instances in records of a catalog of
 NASA datasets, each read from subject instance to object instance, with the
-number of records it was found in and up to 3 triples from records that state
-it, written "subject instance (entity class) -- predicate instance -- object
-instance (entity class)"; an instance with no entity class is written without
-one. Some labels may name the same predicate under different words (e.g.
-"ABOARD" and "MOUNTED_ON"). Find each set of labels that name the same
-predicate and merge the set into one of its labels, the clearest.
+number of records it was found in ("texts") and up to 3 triples from records
+that state it, written "subject instance (entity class) -- predicate
+instance -- object instance (entity class)"; an instance with no entity
+class is written without one. Some labels may name the same predicate under
+different words (e.g. "ABOARD" and "MOUNTED_ON"). Find each set of labels
+that name the same predicate and merge the set into the clearest of its
+labels.
 
-The entity classes show what the subject instance and the object instance of
-each triple have to do with each other. Two labels name the same predicate
-when one verb describes that for the triples of both, whatever their entity
+The entity classes show how the subject instance and the object instance of
+each triple are related. Two labels name the same predicate when one verb
+describes that relationship for the triples of both, whatever their entity
 classes: different entity classes alone are no reason to keep two labels
 apart, and the same predicate instance alone is no reason to merge them. For
 example, PRODUCED_BY_INSTRUMENT, whose object instances of the entity class
@@ -21,8 +22,8 @@ when the triples of both read "produced by"; COVERS_COUNTRY and COVERS_REGION
 merge, since the data cover both.
 
 Merge only true synonyms, in the same direction. Labels that are merely
-related are NOT synonyms (e.g. "LAUNCHED_BY" and "OPERATED_BY"), nor is a
-broader label and a narrower one (e.g. "RELATED_TO" and "ABOARD"). NEVER merge
+related are NOT synonyms (e.g. "LAUNCHED_BY" and "OPERATED_BY"), and neither are
+a broader label and a narrower one (e.g. "RELATED_TO" and "ABOARD"). NEVER merge
 labels that point in opposite directions (e.g. "MEASURES" and "MEASURED_BY":
 merging them would mix triples read from subject instance to object instance
 with triples read the other way).

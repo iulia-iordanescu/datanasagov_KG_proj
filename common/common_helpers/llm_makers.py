@@ -206,6 +206,12 @@ def _ask_anthropic(prompt: str, model: str, read_timeout: int, cache_until: str 
             return stream.get_final_message()
     body = _as_dict(_sdk_send("anthropic", send))
     _last.reply["http_status"] = 200
+    return _read_anthropic_reply(body)
+
+
+def _read_anthropic_reply(body: dict) -> str:
+    """The answer of a Message (a single request's, or a batch request's succeeded result): its text blocks joined,
+    judged by _finish_reply with the reply's stop reason, token counts and served model."""
     text = "".join(b.get("text") or "" for b in body.get("content") or [] if isinstance(b, dict)
                    and b.get("type") == "text")
     return _finish_reply("anthropic", text, _anthropic_usage(body.get("usage")), body.get("stop_reason"), None,
@@ -263,12 +269,24 @@ def _ask_google(prompt: str, model: str, read_timeout: int, cache_until: str | N
     config = _google_config(model)
     _note_request({"model": model, **config}, ())
     client = _sdk_client("google", read_timeout)             # first: a missing key or package stops here, said plainly
+    typed = _google_typed_config(config)
+    reply = _sdk_send("google", lambda: client.models.generate_content(model=model, contents=prompt, config=typed))
+    _last.reply["http_status"] = 200
+    return _read_google_reply(reply)
+
+
+def _google_typed_config(config: dict):
+    """_google_config's plain data as google-genai's GenerateContentConfig (its thinking_config a ThinkingConfig): the
+    config of a single request and of each batch request alike."""
     from google.genai import types
     typed = {**config, **({"thinking_config": types.ThinkingConfig(**config["thinking_config"])}
                           if "thinking_config" in config else {})}
-    reply = _sdk_send("google", lambda: client.models.generate_content(
-        model=model, contents=prompt, config=types.GenerateContentConfig(**typed)))
-    _last.reply["http_status"] = 200
+    return types.GenerateContentConfig(**typed)
+
+
+def _read_google_reply(reply) -> str:
+    """The answer of a GenerateContentResponse (a single request's, or a batch request's inlined response), judged by
+    _finish_reply: the text, the finish reason and the served model as _ask_google describes them."""
     body = _as_dict(reply)
     candidates = body.get("candidates") or []
     first = candidates[0] if candidates and isinstance(candidates[0], dict) else {}

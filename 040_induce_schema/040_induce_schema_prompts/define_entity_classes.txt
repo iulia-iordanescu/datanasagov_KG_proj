@@ -1,14 +1,14 @@
 $words
 
-Below are entity classes found in records of a catalog of NASA datasets, each
-with examples (instances that have it) and the number of records it was found
-in. For each entity class, write ONE sentence defining it, general enough to
-cover its examples.
+Below are entity classes found in records of a catalog of NASA datasets,
+each with examples (instances that have it) and the number of records it was
+found in ("texts"). For each entity class, write ONE sentence defining it,
+general enough to cover its examples.
 
 A definition may name another entity class, when that makes it clearer (e.g.
-"a named phase of a Mission"). Name only entity classes of the list below,
-spelled exactly as there. This is optional: a definition that names none is
-fine.
+"a named phase of a Mission"). Name only entity classes listed under ENTITY
+CLASSES OF THE SCHEMA below, spelled exactly as listed there. This is
+optional: a definition that names none is fine.
 
 If an entity class is too vague to tell anything apart (e.g. "Thing",
 "Entity", "Item"), do not define it: list it under "too_vague" with a

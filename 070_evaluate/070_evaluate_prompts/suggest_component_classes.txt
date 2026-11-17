@@ -9,22 +9,21 @@ entry gives a "component_class" and its "definition".
 The component classes in SCHEMA were each judged earlier to have no
 counterpart in the schema of GROUND_TRUTH, which has since gained component
 classes. GROUND_TRUTH holds those of its component classes that nothing is
-matched to yet. For each component class in
-SCHEMA, say whether a component class in GROUND_TRUTH, of the same kind,
-has the same meaning. If none of GROUND_TRUTH does, say whether one is for
-its main meaning, when one meaning clearly dominates; a component class of
-GROUND_TRUTH broader than it counts. Suggest nothing for it when its meaning
-splits between several component classes of GROUND_TRUTH. Judge by meaning
-and definition, not by spelling.
-Suggest a pair only if you are confident; leave a component class out
-otherwise.
+matched to yet. For each component class in SCHEMA, say whether a component
+class in GROUND_TRUTH, of the same kind, has the same meaning. If none of
+GROUND_TRUTH does, say whether one has its main meaning, when one meaning
+clearly dominates; a component class of GROUND_TRUTH broader than the one in
+SCHEMA counts. Suggest nothing for it when its meaning splits between
+several component classes of GROUND_TRUTH. Judge by meaning and definition,
+not by spelling. Suggest a pair only if you are confident; leave a component
+class out otherwise.
 
 INEXACT lists component classes of the same schema as SCHEMA, each with its
 "kind", that are translated to a component class of GROUND_TRUTH
 ("translated_to", with its "translated_to_definition") whose meaning is
 narrower than theirs or only overlaps it, so part of their meaning has no
 counterpart yet. For each, say whether a component class in GROUND_TRUTH,
-of the same kind, is for the part of its meaning that its "translated_to"
+of the same kind, covers the part of its meaning that its "translated_to"
 doesn't cover. Suggest nothing for it otherwise.
 
 Use only component classes exactly as they are written in the two lists.

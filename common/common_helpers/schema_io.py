@@ -146,13 +146,14 @@ RULE_19_QUALIFIER = "qualifier,"
 HELD_OUT_ONLY = "held-out only"
 ANY = "any"
 #: The one line schema_text writes under PREDICATES, before the predicates: how to read a definition.
-READS = "Each definition reads from the subject to the object."
+READS = ("Each predicate's definition reads from the subject to the object: a definition such as \"is carried on "
+         "this\" means that the subject is carried on the object.")
 #: The lines schema_text writes under ENTITY CLASSES, before the entity classes, when it shows the rule 19 marks: what a
 #: mark says. What standalone and describing mean has one home, the rules each such prompt also shows (the words
 #: section of common/common_prompts/extraction_rules.txt; annotations/guidelines.md for the second judge).
-MARKS_READ = ("The line under an entity class, rule 19: standalone or rule 19: describing, says which of the two it is "
-              "(rule 19, Whose fact it is). An entity class without that line has no mark yet: decide which it is by "
-              "the rules.")
+MARKS_READ = ("The line \"rule 19: standalone\" or \"rule 19: describing\" under an entity class says whether that "
+              "entity class is standalone or describing (rule 19, Whose fact it is). An entity class without such a "
+              "line has no mark yet: decide which of the two it is by the rules.")
 #: The text shape's section headings ("CLASSES" is the older heading of the
 #: entity classes, still read).
 SECTIONS = {"ENTITY CLASSES": "entity_classes", "CLASSES": "entity_classes", "PREDICATES": "predicates",

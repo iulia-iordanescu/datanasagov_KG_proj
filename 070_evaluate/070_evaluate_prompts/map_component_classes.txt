@@ -7,8 +7,9 @@ SCHEMA lists component classes of another schema, each with its "kind". Every en
 
 For each component class in SCHEMA, give the component class in
 GROUND_TRUTH, of the same kind, that has the same meaning. If none of
-GROUND_TRUTH does, give the one for its main meaning, when one meaning
-clearly dominates; a component class of GROUND_TRUTH broader than it counts.
+GROUND_TRUTH does, give the one that has its main meaning, when one
+meaning clearly dominates; a component class of GROUND_TRUTH broader than
+the one in SCHEMA counts.
 Give null when its meaning splits between several component classes of
 GROUND_TRUTH, or when none of GROUND_TRUTH has its meaning. Judge by meaning
 and definition, not by spelling.

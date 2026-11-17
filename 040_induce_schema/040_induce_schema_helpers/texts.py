@@ -1,5 +1,5 @@
 """
-texts.py -- stage 1 (selection): pick the texts the schema is learned from.
+texts.py -- stage 1 (selecting texts): pick the texts the schema is learned from.
 
 A stratified draw over the same strata as the ground truth candidates pool
 (annotations/ground_truth_candidates.json, its "strata": each maintainer large

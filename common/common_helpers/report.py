@@ -261,7 +261,8 @@ def model_calls(stages: list, test_calls: int, model: str) -> list:
                  + (" (every request asked LiteLLM for a fresh answer and not to keep it, so a repeat's answers are "
                     "new ones; only the step's own `cache/` reuses answers)." if llm.answer_cache_bypassed() else ".")
                  if llm.SERVICE == "litellm" else "")
-              + (f" Each failed call is described in `{llm.OUTCOMES['file']}`." if llm.OUTCOMES["file"] else ""), "",
+              + (f" Each failed call is described in `{llm.OUTCOMES['file']}`." if llm.OUTCOMES["file"] else "")
+              + (f" {llm.batch_note()}" if llm.batch_note() else ""), "",
               f"Model: {model}. Every answer is kept in the step's `cache/`, so a rerun pays only for "
               f"what isn't there yet."
               + (f" Repeat {llm.REPEAT} (setting `repeat`): answers saved by other repeats of this recipe were not "

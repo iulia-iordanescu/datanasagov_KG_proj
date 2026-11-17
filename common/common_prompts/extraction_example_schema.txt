@@ -43,7 +43,7 @@ AngleRange                a range of angles
 
 PREDICATES
 ----------
-Each definition reads from the subject to the object.
+Each predicate's definition reads from the subject to the object: a definition such as "is carried on this" means that the subject is carried on the object.
 
 HAS_MEASUREMENTS_OF       holds measurements of this
 HAS_CONTENT               holds this

@@ -8,8 +8,8 @@ Work in two passes, in this order:
    dataset, organization, person, place, or other entity it names. Don't
    write this list in your answer.
 2. Take the entities one at a time. For each, state every fact the record
-   gives about it$scope. A fact about any of these entities counts as much as
+   states about it$scope. A fact about any of these entities counts as much as
    a fact about the record's dataset: "the Kestrel product LT2 is
    computed from channel 7" gives "LT2" computed from "channel 7", with
    "LT2" as the subject, not the record's dataset.
-The rules still hold, rule 21 on general facts among them.
+All the rules still apply, including rule 21 (general facts).

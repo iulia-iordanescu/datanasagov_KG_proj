@@ -376,7 +376,9 @@ def ask_model(items: list, prompt_for, calls, workers: int, stage: str, plan: st
     without its "triples" list (shape_error) is asked once more, then fails;
     one kept by an earlier run is asked again (common/common_helpers/cache.py, Cache.get).
     plan is the confirmation's first words ("050 will draft 10 record(s)
-    into drafted batch 3"); verb names the work in the log ("drafting")."""
+    into drafted batch 3"); verb names the work in the log ("drafting").
+    With the setting batch (llm.BATCH, 060 only), the calls go as batch jobs to the maker's batch API
+    (common/common_helpers/llm_batch.py, ask_batch), and each answer is handled as a single request's."""
     cache = Cache(calls.cache_dir, stage)
     answers, todo, cut_before = _sort_pieces(items, prompt_for, cache)
 
@@ -390,9 +392,11 @@ def ask_model(items: list, prompt_for, calls, workers: int, stage: str, plan: st
                  f"the same settings, so they aren't asked again (the report's warnings say what to change)")
     if todo:
         n_records = len({rid for rid, _ in todo})
-        calls.paid.start(f"  {plan}: {len(todo)} model call(s) for {n_records} record(s)"
-                         + (f", {len(answers)} text piece(s) answered from the cache" if answers else ""),
-                         to_pay=len(todo))
+        plan_line = (f"  {plan}: {len(todo)} model call(s) for {n_records} record(s)"
+                     + (f", {len(answers)} text piece(s) answered from the cache" if answers else ""))
+        batch = llm.BATCH
+        if not batch:
+            calls.paid.start(plan_line, to_pay=len(todo))
         before = calls.paid.made
         calls.paid.expect(len(todo))
 
@@ -410,19 +414,25 @@ def ask_model(items: list, prompt_for, calls, workers: int, stage: str, plan: st
                     cache.put_cut_off(todo[where][0], error)
                     result.cut_off[where[0]] = getattr(error, "usage", None) or {}
                 log.warning(f"{verb} failed for {where[0]} piece {where[1] + 1}: {error}")
-                calls.paid.outcome(at, todo[where][1], error)
+                # a batch's answers all come at once: its early stop is judged when all are stored (llm.ask_batch)
+                calls.paid.outcome(at, todo[where][1], error, watched=not batch)
                 return
             k, reply = answer
             answers[where] = reply
             cache.put(k, reply)
             log.debug(f"{verb} {where[0]} piece {where[1] + 1} ({n}/{len(todo)})")
-            calls.paid.outcome(at, todo[where][1])
+            calls.paid.outcome(at, todo[where][1], watched=not batch)
 
-        llm.run_parallel(ask, dict(todo), workers, handle,
-                         "Answers already received are kept in the cache; nothing else was written. Run the step "
-                         "again to ask the rest: the answers already received are reused, not paid for again.",
-                         not_sent=lambda keys: calls.paid.not_sent(
-                             [({"stage": stage, "record": w[0], "text_piece": w[1] + 1}, todo[w][1]) for w in keys]))
+        if batch:                                   # the setting batch: one batch job to the maker's batch API
+            llm.ask_batch(dict(todo), cache, shape_error, cache_until,
+                          lambda n: calls.paid.start(plan_line, to_pay=n), handle, calls.paid, stage)
+        else:
+            llm.run_parallel(ask, dict(todo), workers, handle,
+                             "Answers already received are kept in the cache; nothing else was written. Run the step "
+                             "again to ask the rest: the answers already received are reused, not paid for again.",
+                             not_sent=lambda keys: calls.paid.not_sent(
+                                 [({"stage": stage, "record": w[0], "text_piece": w[1] + 1}, todo[w][1])
+                                  for w in keys]))
         result.calls = calls.paid.made - before
 
     for item in items:

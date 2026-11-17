@@ -140,7 +140,8 @@ def shared_specs() -> dict:
     from common import llm
     return {"workers": Spec(int, 1, 64), "max_chars": Spec(int, 1000, 1_000_000), "repeat": Spec(int, 1),
             "confirm_paid_calls": Spec(bool), "ids": Spec(str), "service": Spec(str, choices=tuple(llm.SERVICES)),
-            "model": Spec(str, empty=False), "thinking": Spec(str, choices=tuple(llm.THINKING_LEVELS))}
+            "model": Spec(str, empty=False), "thinking": Spec(str, choices=tuple(llm.THINKING_LEVELS)),
+            "batch": Spec(bool)}
 
 
 def check_settings(settings: dict, specs: dict) -> None:
@@ -225,6 +226,11 @@ def _parse_command_line(step_name, inputs, settings, argv, command=None, guide=N
         # "unrecognized arguments"
         if any(a.split("=", 1)[0] in (f"--{name}", f"--{name.replace('_', '-')}") for a in argv):
             ap.error(message)
+    if "batch" not in settings and any(a.split("=", 1)[0] == "--batch" for a in argv):
+        # Only 060 has it: its model calls are independent of each other (040's later calls each depend on the one
+        # before; in 050, "batch" already names a drafted batch, so it has none yet)
+        ap.error(f"{step_name} has no setting batch: only 060 sends its model calls as batch jobs to a maker's batch "
+                 f"API (060_extract/060_extract.md, *Batch processing*). Run it without --batch.")
     args = ap.parse_args(argv)
 
     chosen_inputs = {}

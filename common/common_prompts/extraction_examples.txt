@@ -2,8 +2,8 @@ WORKED EXAMPLES
 
 Two invented records, each with its complete answer, written to the rules
 above. They use a small example schema of their own, shown here with them.
-For the record you are given, use the schema and predicates the task says
-to use, not this example schema.
+For the record you are given, use the entity classes and predicates the
+task says to use, not those of this example schema.
 
 EXAMPLE SCHEMA
 
