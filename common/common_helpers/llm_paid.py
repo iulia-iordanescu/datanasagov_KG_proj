@@ -352,7 +352,8 @@ class PaidCalls:
             call = getattr(error, "call", None) or {}
             usage = usage or call.get("usage")
             entry.update({"finish_reason": getattr(error, "finish_reason", None) or call.get("finish_reason"),
-                          "native_finish_reason": call.get("native_finish_reason"), **_usage_counts(usage),
+                          "native_finish_reason": call.get("native_finish_reason"),
+                          "stop_details": call.get("stop_details"), **_usage_counts(usage),
                           "usage": usage or None, "http_status": call.get("http_status"),
                           "error_body": call.get("error_body"), "error_type": type(error).__name__,
                           "cause_type": call.get("cause_type"), "error": str(error),

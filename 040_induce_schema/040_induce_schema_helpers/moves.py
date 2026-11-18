@@ -200,6 +200,8 @@ def results(texts, triples, labels, splits, counts, definitions, schema, compari
         "left_out": dropped.details(triples.left_out),
         "labels": labels.of, "vocabulary": labels.vocabulary, "label_batches": labels.batches,
         "unlabeled": labels.unlabeled, "merges": labels.merges, "merge_issues": labels.merge_issues,
+        "merge_fallback": {**{label.BECOMES[k]: f for k, f in labels.merge_fallback.items() if f},
+                           **({"merging again": splits.merge_fallback} if splits.merge_fallback else {})},
         "spelling_folds": labels.spelling_folds,
         "splits": {"sent": splits.sent, "kept": splits.kept, "dropped": splits.dropped,
                    "rejected": splits.rejected, "refused": splits.refused, "undone": splits.undone,
@@ -254,6 +256,24 @@ def results(texts, triples, labels, splits, counts, definitions, schema, compari
         warnings.append(f"{unlabeled} component instance(s) were left unlabeled even after a second try: "
                         f"{named(left, 5)}. They count toward no schema entry. Nothing to do if few; all are "
                         f"listed in {evidence_shown} under `unlabeled`.")
+    fallbacks = [(f, "stage 4") for f in labels.merge_fallback.values() if f]
+    fallbacks += [(splits.merge_fallback, "stage 5, merging again")] if splits.merge_fallback else []
+    for f, where in fallbacks:
+        if f["without_examples"] == "answered":
+            warnings.append(f"The service didn't answer the call merging {f['labels']} {f['kind']} labels ({where}): "
+                            f"{f['first']}. Asked once more with the examples left out, it answered, so those merges "
+                            f"were judged from the labels and their numbers of texts alone, without the subject, object "
+                            f"or triple instances that show what each label means. Check the merges in this report "
+                            f"with that in mind; the call is in {evidence_shown} under `merge_fallback`.")
+        else:
+            warnings.append(f"No {f['kind']} labels were merged in {where}: the service didn't answer the call "
+                            f"merging {f['labels']} of them ({f['first']}), nor the same call with the examples left "
+                            f"out ({f['without_examples']}). Each label stays a schema entry of its own, so synonyms "
+                            f"among them stay apart. The call is recorded in discarded.jsonl and in {evidence_shown} "
+                            f"under `merge_fallback`. A refusal isn't kept in the cache, so running "
+                            f"`py 040_induce_schema/run.py` again asks again; an answer cut off isn't asked again "
+                            f"with the same settings (docs/running_on_nasa_laptop.md, section 5, *A cut-off isn't "
+                            f"paid for twice*). If it fails again, try another model (`--model`).")
     issues = {k: sum(len(v[k]) for v in labels.merge_issues.values())
               for k in ("into_not_a_label", "not_sent", "merged_twice", "cycle")}
     if any(issues.values()):
@@ -280,10 +300,11 @@ def results(texts, triples, labels, splits, counts, definitions, schema, compari
     if schema.missing_definitions:
         n = len(schema.missing_definitions)
         warnings.append(f"{n} schema entr{'ies have' if n != 1 else 'y has'} no definition (the model "
-                        f"didn't return one): "
+                        f"didn't return one, even asked once more, or the service refused): "
                         + named([f"{d['component_class']} ({d['kind']})" for d in schema.missing_definitions], 5)
-                        + f". They stay in the schema, marked \"no definition\", so when step 060 extracts with "
-                        f"this schema, its model sees only the entity class or predicate itself. To ask again, delete "
+                        + f". They stay in the schema with the words \"{check.MISSING_DEFINITION}\" in place of a "
+                        f"definition, so when step 060 extracts with this schema, its model sees the entity class or "
+                        f"predicate with those words and nothing that says what it means. To ask again, delete "
                         f"{repo_path(calls.cache_dir / 'define.json')}, then run `py 040_induce_schema/run.py` again.")
     if definitions.unknown:
         warnings.append(f"The definition replies named {len(definitions.unknown)} schema entr(ies) that "

@@ -26,18 +26,25 @@ What a batch run does that a run of single requests doesn't:
 
     job ids        every job is written to <the step's output folder>/cache/<stage>.batch_jobs.json the moment it is
                    created (batch_state_file). A run stopped while it waits (Ctrl+C, a closed window) leaves its jobs
-                   running at the maker; the next run with the same model and settings collects them instead of paying
-                   again, and sends only the prompts no job holds
+                   running at the maker; the next run whose prompts they hold (the same service, model, thinking
+                   level and repeat, at any answer limit) collects them instead of paying again, and sends only the
+                   prompts no job holds. A cut-off in a job sent at another answer limit is kept with that limit
+                   (common/common_helpers/cache.py, Cache.put_cut_off), so a run at a new limit asks it again
     failures       a request the maker reports as errored, expired or canceled is a failed call, as a single request's
                    error is: recorded in the run's failed-call record, its record left out, asked again on the next run
                    (in a new job). Anthropic bills none of these ("You aren't billed for these requests"); OpenAI bills
                    "tokens consumed from any completed requests" of an expired job; Google's batch page says nothing
                    on it. A malformed answer is asked once more as a single request, as llm.call_llm_json does with
                    any answer
-    single requests  a run with the setting batch false stops before any model call when an uncollected job of
-                   this run's model and settings holds a prompt it would ask (jobs_holding, called by
+    single requests  a run with the setting batch false stops before any model call when an uncollected job holds
+                   a prompt it would ask, at any answer limit (jobs_holding, called by
                    common/common_helpers/extraction.py, ask_model): asking it again as a single request would pay
                    for it twice, so the message says to run with --batch true, which collects the job
+    queue caps     OpenAI and Google cap the input tokens waiting in their batch queue per model, Google and
+                   Anthropic the requests (llm.BATCH_QUEUE_TOKENS, llm.BATCH_QUEUE_REQUESTS): a run's requests are
+                   cut into jobs within them, and each job is sent once the jobs before it (this run's and other
+                   runs' uncollected ones) leave room (_Queue); a job the maker refuses for its queue is sent again
+                   when there is room. Jobs not sent yet are kept nowhere: the next run sends their prompts
     early stop     when the share of failed requests in the stage's jobs is at least llm.EARLY_STOP_FAILURES of
                    llm.EARLY_STOP_WINDOW (and at least EARLY_STOP_FAILURES of them failed), every answer received is
                    stored, nothing is asked again, and the step stops with a message saying what failed
@@ -105,8 +112,9 @@ BATCH_API_TIMEOUT = 600
 
 
 #: A batch job's creation is tried this many times when the service refuses it with a rate limit or a server error
-#: (RetryLater: e.g. Google's 503 "high demand"), BATCH_CREATE_WAIT seconds apart. Never after a timeout or a lost
-#: connection (NoAnswerInTime, RuntimeError): the service may have made the job before the answer was lost, and a
+#: (RetryLater: e.g. Google's 503 "high demand"), BATCH_CREATE_WAIT seconds apart. Never after a timeout, a lost
+#: connection (NoAnswerInTime, RuntimeError) or an error of no known kind (e.g. httpx.ReadError while the answer was
+#: read): the service may have made the job before the answer was lost, and a
 #: second job would pay for the same prompts twice, so the step stops instead, as call_llm stops asking a single
 #: request after a timeout (common/common_helpers/llm_calls.py).
 BATCH_CREATE_ATTEMPTS = 4
@@ -196,18 +204,186 @@ def _request(service: str, custom_id: str, prompt: str, model: str, cache_until:
     return {"contents": prompt, "metadata": {"key": custom_id}, "config": config}, {"model": model, **config}
 
 
-def _chunks(service: str, entries: list) -> list:
-    """The requests cut into jobs within the maker's limits (BATCH_LIMITS: requests and bytes per job)."""
+def _chunks(service: str, entries: list, tokens: list | None = None, most_tokens: int | None = None) -> list:
+    """The requests cut into jobs within the maker's limits (BATCH_LIMITS: requests and bytes per job, and no more
+    requests than llm.BATCH_QUEUE_REQUESTS lets wait in the queue) and, when
+    most_tokens is given (llm.BATCH_QUEUE_TOKENS), within that many estimated input tokens per job (tokens: each
+    entry's estimate, estimated_tokens)."""
     most, most_bytes = BATCH_LIMITS[service]
-    chunks, size = [[]], 0
-    for entry in entries:
+    most = min(most, llm.BATCH_QUEUE_REQUESTS.get(service) or most)     # a job never more than the queue takes
+    chunks, size, held = [[]], 0, 0
+    for i, entry in enumerate(entries):
         n = len(json.dumps(entry, ensure_ascii=False).encode("utf-8")) + 1
-        if chunks[-1] and (len(chunks[-1]) >= most or size + n > most_bytes):
+        t = tokens[i] if tokens else 0
+        if chunks[-1] and (len(chunks[-1]) >= most or size + n > most_bytes
+                           or (most_tokens is not None and held + t > most_tokens)):
             chunks.append([])
-            size = 0
+            size = held = 0
         chunks[-1].append(entry)
         size += n
+        held += t
     return [c for c in chunks if c]
+
+
+#: Characters per token assumed when a prompt's input tokens are estimated for OpenAI's queue cap
+#: (llm.BATCH_QUEUE_TOKENS), and the tokens added for each request's framing (its role markers and the like). OpenAI's
+#: rule of thumb for English text is about 4 characters per token (its help article "What are tokens and how to count
+#: them?"); a prompt of this pipeline also holds identifiers, schema lists and JSON, which take more tokens per
+#: character, so 3 is assumed: about a third more tokens than English prose has, which errs on the side of sending
+#: smaller jobs. The estimate decides only how the requests are cut into jobs, never what a request holds.
+CHARS_PER_TOKEN = 3
+TOKENS_PER_REQUEST = 20
+
+
+def estimated_tokens(prompt: str) -> int:
+    """A conservative estimate of a prompt's input tokens (CHARS_PER_TOKEN, TOKENS_PER_REQUEST), rounded up."""
+    return -(-len(prompt) // CHARS_PER_TOKEN) + TOKENS_PER_REQUEST
+
+
+def queue_cap(service: str, model: str) -> int | None:
+    """The most estimated input tokens this run lets wait in the maker's batch queue for the model
+    (llm.BATCH_QUEUE_TOKENS), or None when there is no cap."""
+    return llm.BATCH_QUEUE_TOKENS.get(service, {}).get(model)
+
+
+def queue_requests(service: str) -> int | None:
+    """The most requests this run lets wait or run in the maker's batch queue, over every model
+    (llm.BATCH_QUEUE_REQUESTS), or None when there is no cap."""
+    return llm.BATCH_QUEUE_REQUESTS.get(service)
+
+
+#: Words of a maker's refusal that its batch queue is full, matched without case: OpenAI's error code
+#: "token_limit_exceeded" and its words "Enqueued token limit" (not stated on its rate limits page, read 2026-11-17,
+#: which names no error for the batch queue cap; OpenAI's batch jobs report it in their `errors`), and Google's
+#: "RESOURCE_EXHAUSTED", the status of its HTTP 429 (https://aistudio.google.com/docs/rate-limits names it for the
+#: spend-based limits and no error for the batch limits). A job refused so is never processed (nothing is billed),
+#: so its requests are sent again in a new job when the queue has room (_Queue), at most QUEUE_FULL_WAITS times in a
+#: row while no job of this run is running.
+QUEUE_FULL_WORDS = ("token_limit_exceeded", "enqueued token limit", "resource_exhausted")
+QUEUE_FULL_WAITS = 60
+
+
+def _queue_full(said) -> bool:
+    """Whether an error or a failed job's words say the maker's batch queue is full (QUEUE_FULL_WORDS)."""
+    text = str(said or "").lower()
+    return any(w in text for w in QUEUE_FULL_WORDS)
+
+
+class QueueFull(Exception):
+    """The maker refused a batch job because its batch queue is full (_queue_full): no job was made."""
+
+
+class _Queue:
+    """The jobs of a run not sent yet, each sent when the maker's batch queue has room for it: the jobs still waiting
+    or running (this run's, and the jobs other runs left uncollected in the state file, until a check says they
+    ended) plus the job itself must stay within the caps: llm.BATCH_QUEUE_TOKENS (estimated input tokens, of jobs of
+    the same model) and llm.BATCH_QUEUE_REQUESTS (requests, of jobs of any model of the service). Without a cap, every
+    job is sent at once. Nothing not yet sent is kept anywhere, on purpose: a run stopped before sending a job leaves
+    its prompts unanswered in the cache and held by no kept job, so the next run sends them, once; a kept list of
+    unsent jobs could only go stale against the cache."""
+
+    def __init__(self, service: str, model: str, chunks: list, send, others: list, path: Path):
+        self.service, self.model, self.chunks, self.send, self.path = service, model, chunks, send, path
+        self.tokens_cap, self.requests_cap = queue_cap(service, model), queue_requests(service)
+        self.others = [j for j in others if j.get("service") == service]     # chunks: [{"entries", "keys", "tokens"}]
+        self.ended_others, self.of_job, self.said, self.refusals = set(), {}, None, 0
+
+    def left(self) -> bool:
+        return bool(self.chunks)
+
+    def requests_left(self) -> int:
+        return sum(len(c["keys"]) for c in self.chunks)
+
+    def _queued(self, running: list) -> tuple:
+        """(estimated input tokens of the model, requests of any model) waiting or running in the maker's queue: this
+        run's jobs not ended (running) and other runs' open jobs, each with the estimate kept with it (0 for a job
+        kept before 2026-11-17, which kept none). An other run's job is asked about (free) until it has ended; one
+        whose state can't be read is counted as still queued."""
+        for j in self.others:
+            if j["id"] in self.ended_others:
+                continue
+            try:
+                if _poll(self.service, j["id"])["ended"]:
+                    self.ended_others.add(j["id"])
+            except Exception as e:                          # noqa: BLE001  unknown: counted as still queued
+                log.debug(f"checking batch job {j['id']} of another run failed ({e}); counted as still queued")
+        live = list(running) + [j for j in self.others if j["id"] not in self.ended_others]
+        tokens = sum(j.get("input_tokens") or 0 for j in live if j.get("model") == self.model)
+        requests = sum(j.get("requests") or len(j.get("keys", [])) for j in live)
+        return tokens, requests
+
+    def _full(self, chunk: dict, running: list) -> str | None:
+        """Why the chunk can't be sent now (the queue would pass a cap), or None."""
+        if self.tokens_cap is None and self.requests_cap is None:
+            return None
+        tokens, requests = self._queued(running)
+        if self.tokens_cap is not None and tokens and tokens + chunk["tokens"] > self.tokens_cap:
+            return (f"about {tokens:,} input tokens of {self.model} are in {SERVICES[self.service]}'s batch queue, and "
+                    f"the cap is {self.tokens_cap:,} (llm.BATCH_QUEUE_TOKENS)")
+        if self.requests_cap is not None and requests and requests + len(chunk["keys"]) > self.requests_cap:
+            return (f"{requests:,} requests are in {SERVICES[self.service]}'s batch queue, and the cap is "
+                    f"{self.requests_cap:,} (llm.BATCH_QUEUE_REQUESTS)")
+        return None
+
+    def submit(self, running: list) -> list:
+        """Send the jobs that fit now, in order; the jobs sent."""
+        sent = []
+        while self.chunks:
+            chunk = self.chunks[0]
+            why = self._full(chunk, running + sent)
+            if why:
+                self._say(f"  the next batch job ({len(chunk['keys']):,} request(s), about {chunk['tokens']:,} input "
+                          f"tokens) waits: {why}; it is sent when an earlier job ends")
+                break
+            try:
+                job = self.send(chunk)
+            except QueueFull as e:
+                if not running and not sent:
+                    self.refusals += 1
+                    if self.refusals >= QUEUE_FULL_WAITS:
+                        sys.exit(f"{SERVICES[self.service]} refused a batch job {self.refusals} times in a row, "
+                                 f"{llm.BATCH_POLL_SECONDS} s apart, saying its batch queue is full ({e}), while no "
+                                 f"batch job of this run was running, so jobs of other work on the account fill the "
+                                 f"queue, or the refusal means another limit. No job was made for those requests, "
+                                 f"and none was paid for. The jobs already sent keep running, their ids kept in "
+                                 f"{_repo(self.path)}. Wait for the account's other batch jobs to end (or check its "
+                                 f"limits: {BATCH_DOCS[self.service]}), then run the same command again: it collects "
+                                 f"the jobs kept and sends the rest.")
+                self._say(f"  {SERVICES[self.service]} refused the next batch job for now, its batch queue being full "
+                          f"({e}); no job was made, and it is sent again once an earlier job ends, or in "
+                          f"{llm.BATCH_POLL_SECONDS} s. Nothing to do; Ctrl+C is safe: the next run sends the jobs "
+                          f"not sent yet")
+                break
+            self.refusals = 0
+            self.chunks.pop(0)
+            self.of_job[job["id"]] = chunk
+            sent.append(job)
+        return sent
+
+    def rejected(self, job: dict, status: dict) -> bool:
+        """Whether an ended job was refused for the queue cap after it was made (OpenAI: status failed, error
+        token_limit_exceeded): then it is marked given up in the state file, its requests no longer counted as sent,
+        and its chunk is put first in line again."""
+        if job["id"] not in self.of_job or "fail" not in status["state"].lower() or not _queue_full(status.get("error")):
+            return False
+        job.update(collected=_now(), state=f"refused for the batch queue cap: {status.get('error')}")
+        _save_job(self.path, job)
+        with _requests_lock:
+            REQUESTS["sent"] -= len(job.get("keys", []))
+        for j in BATCH_JOBS:
+            if j["id"] == job["id"]:
+                j.update(how="refused for the queue cap, its requests sent again", state="failed", answered=0,
+                         failed=0)
+        self.chunks.insert(0, self.of_job.pop(job["id"]))
+        self._say(f"  {SERVICES[self.service]} refused batch job {job['id']} after making it, its batch queue being "
+                  f"full ({status.get('error')}); no request of it was processed, and its "
+                  f"{len(job.get('keys', [])):,} request(s) are sent again in a new job once an earlier job ends")
+        return True
+
+    def _say(self, words: str) -> None:
+        if words != self.said:
+            self.said = words
+            log.info(words)
 
 
 def _create(service: str, model: str, entries: list, label: str) -> str:
@@ -255,13 +431,17 @@ def _poll(service: str, job_id: str) -> dict:
     if service == "openai":
         job = _as_dict(_sdk_send(service, lambda: client.batches.retrieve(job_id)))
         c = job.get("request_counts") or {}
+        errors = [e for e in ((job.get("errors") or {}).get("data") or []) if isinstance(e, dict)]
         return {"ended": job.get("status") in _ENDED["openai"], "state": str(job.get("status")),
                 "counts": f"{c.get('completed') or 0:,} of {c.get('total') or 0:,} answered, {c.get('failed') or 0:,} "
-                          f"failed" if c else ""}
+                          f"failed" if c else "",
+                "error": "; ".join(f"{e.get('code') or ''}: {e.get('message') or ''}".strip(": ") for e in errors)}
     job = _sdk_send(service, lambda: client.batches.get(name=job_id))
     state = _state_name(getattr(job, "state", None))
     stats = _as_dict(getattr(job, "completion_stats", None)) if getattr(job, "completion_stats", None) else {}
+    error = getattr(job, "error", None)
     return {"ended": state in _ENDED["google"], "state": state,
+            "error": str(getattr(error, "message", None) or error or ""),
             "counts": (f"{stats.get('successful_count') or 0:,} answered, {stats.get('failed_count') or 0:,} failed"
                        if stats else "")}
 
@@ -361,22 +541,44 @@ def _read(service: str, reply) -> str:
 # ------------------------------ asking through batch jobs ----------------------
 
 def _identity() -> dict:
-    """What a job's answers depend on besides the prompt: a job is collected only by a run whose identity is the same."""
+    """What a job's answers depend on besides the prompt, kept with the job: the service, the model, the cache identity
+    (llm.cache_identity: the service, the model, the thinking level sent and the repeat) and the answer limit sent."""
     return {"service": llm.SERVICE, "model": llm.MODEL, "cache_identity": cache_identity(),
             "max_answer_tokens": max_tokens_sent()}
 
 
+#: The parts of a job's identity that make its answers this run's answers. The answer limit isn't one of them: an
+#: answer that ended within one limit is the same answer under another, and a cut-off is kept with the limit the job
+#: was sent at (_job_limit), so a run at another limit asks that prompt again.
+_RECIPE = ("service", "model", "cache_identity")
+
+
+def _is_ours(job: dict, identity: dict, keys) -> bool:
+    """Whether a job's answers belong to this run: it holds one of this run's cache keys (a cache key names the service,
+    the model, the thinking level sent and the repeat: common/common_helpers/cache.py, key), or it was sent with this
+    run's service, model and cache identity, at any answer limit."""
+    theirs = job.get("identity") or {}
+    return bool(set(keys) & set(job.get("keys", []))) or all(theirs.get(k) == identity[k] for k in _RECIPE)
+
+
+def _job_limit(job: dict):
+    """The answer limit a job was sent with (its identity's max_answer_tokens); this run's when the job doesn't say."""
+    identity = job.get("identity") or {}
+    return identity["max_answer_tokens"] if "max_answer_tokens" in identity else max_tokens_sent()
+
+
 def jobs_holding(cache_dir: Path, stage: str, keys) -> list:
-    """The uncollected batch jobs, sent by an earlier run with this run's model and settings (_identity), that hold a
-    request for one of these cache keys: [{"id", "created", "held": how many of the keys}]. A run with the setting
-    batch false that asked these keys as single requests would pay for them twice."""
+    """The uncollected batch jobs that hold a request for one of these cache keys, whatever answer limit they were sent
+    with: [{"id", "created", "held": how many of the keys}]. A cache key already names the service, the model, the
+    thinking level sent and the repeat, so a job holding one of the keys holds a prompt of this run. A run with the
+    setting batch false that asked these keys as single requests would pay for them twice."""
     path = batch_state_file(cache_dir, stage)
     if not path.exists():
         return []
-    wanted, identity = set(keys), _identity()
+    wanted = set(keys)
     return [{"id": j.get("id"), "created": j.get("created"), "held": len(wanted & set(j.get("keys", [])))}
             for j in _load(path)["jobs"]
-            if not j.get("collected") and j.get("identity") == identity and wanted & set(j.get("keys", []))]
+            if not j.get("collected") and wanted & set(j.get("keys", []))]
 
 
 def ask_batch(todo: dict, cache, check, cache_until, start, handle, paid, stage: str) -> int:
@@ -385,8 +587,9 @@ def ask_batch(todo: dict, cache, check, cache_until, start, handle, paid, stage:
     common/common_helpers/llm_paid.py's run_parallel does for single requests. Prompts with one cache key are sent
     once. start(n): called before the first new job is sent, with how many requests it pays for (PaidCalls.start: the
     question, then the test call). A job of an earlier run with the same model and settings that wasn't collected is
-    collected instead of sending its prompts again; an answer it holds for a prompt this run doesn't ask, and that
-    isn't in the cache yet, is stored too (it was paid for). cache: the stage's Cache; check: the stage's shape check.
+    collected instead of sending its prompts again, whatever answer limit it was sent with (_is_ours); an answer it
+    holds for a prompt this run doesn't ask, and that isn't in the cache yet, is stored too (it was paid for), a
+    cut-off as a cut-off. cache: the stage's Cache; check: the stage's shape check.
     The number of answers handed to the stage."""
     service, model = llm.SERVICE, llm.MODEL
     refusal = batch_refusal(service)
@@ -400,8 +603,8 @@ def ask_batch(todo: dict, cache, check, cache_until, start, handle, paid, stage:
     identity = _identity()
     state = _load(path)
     open_jobs = [j for j in state["jobs"] if not j.get("collected")]
-    resumed = [j for j in open_jobs if j.get("identity") == identity]
-    others = [j for j in open_jobs if j.get("identity") != identity]
+    resumed = [j for j in open_jobs if _is_ours(j, identity, by_key)]
+    others = [j for j in open_jobs if not _is_ours(j, identity, by_key)]
     if others:
         listed = ", ".join(f"{j.get('id')} ({(j.get('identity') or {}).get('cache_identity')})" for j in others)
         note = (f"{len(others)} batch job(s) sent by an earlier run of this step with another model or settings "
@@ -415,34 +618,49 @@ def ask_batch(todo: dict, cache, check, cache_until, start, handle, paid, stage:
     new_keys = [k for k in by_key if k not in covered]
     jobs = []
     for j in resumed:
+        other_limit = (f", at the answer limit {_job_limit(j)} (this run's is {max_tokens_sent()}: an answer it cut off "
+                       f"is asked again by the next run, at this run's limit)"
+                       if _job_limit(j) != max_tokens_sent() else "")
         log.info(f"  collecting batch job {j['id']} at {SERVICES[service]}, sent by an earlier run on {j.get('created')} "
-                 f"({j.get('requests', len(j.get('keys', []))):,} request(s)): its answers are not paid for again")
+                 f"({j.get('requests', len(j.get('keys', []))):,} request(s){other_limit}): its answers are not paid "
+                 f"for again")
         jobs.append(j)
         BATCH_JOBS.append({"service": service, "id": j["id"], "requests": j.get("requests", len(j.get("keys", []))),
                            "how": "resumed"})
+    queue = None
     try:
         if new_keys:
             start(len(new_keys))
             built = {k: _request(service, k, prompt_of[k], model, cache_until) for k in new_keys}
-            chunks = _chunks(service, [built[k][0] for k in new_keys])
+            tokens = {k: estimated_tokens(prompt_of[k]) for k in new_keys}
+            chunks = _chunks(service, [built[k][0] for k in new_keys], [tokens[k] for k in new_keys],
+                             queue_cap(service, model))
             keys_of = {id(e): k for k, (e, _) in built.items()}
-            for i, chunk in enumerate(chunks, 1):
-                label = f"{paid.step or 'pipeline'}-{stage}-{dt.datetime.now():%Y%m%d-%H%M%S}-{i}"
-                job_id = _create_with_retries(service, model, chunk, label, jobs, path)
-                keys = [keys_of[id(e)] for e in chunk]
+            made = []
+
+            def send(chunk: dict) -> dict:
+                label = f"{paid.step or 'pipeline'}-{stage}-{dt.datetime.now():%Y%m%d-%H%M%S}-{len(made) + 1}"
+                job_id = _create_with_retries(service, model, chunk["entries"], label, jobs, path)
+                made.append(job_id)
+                keys = chunk["keys"]
                 job = {"id": job_id, "service": service, "model": model, "identity": identity, "keys": keys,
-                       "requests": len(keys), "created": _now(), "settings_sent": built[keys[0]][1],
-                       "step": paid.step, "stage": stage, "collected": None}
+                       "requests": len(keys), "input_tokens": chunk["tokens"], "created": _now(),
+                       "settings_sent": built[keys[0]][1], "step": paid.step, "stage": stage, "collected": None}
                 _save_job(path, job)
                 with _requests_lock:
                     REQUESTS["sent"] += len(keys)
                 BATCH_JOBS.append({"service": service, "id": job_id, "requests": len(keys), "how": "submitted"})
-                jobs.append(job)
-                log.info(f"  sent {len(keys):,} request(s) as batch job {job_id} to {BATCH_API[service]} "
-                         f"(job {i} of {len(chunks)}); its id is kept in {_repo(path)}")
-        if not jobs:
+                log.info(f"  sent {len(keys):,} request(s) as batch job {job_id} to {BATCH_API[service]} (about "
+                         f"{chunk['tokens']:,} input tokens; the run's requests are cut into {len(chunks)} job(s)); "
+                         f"its id is kept in {_repo(path)}")
+                return job
+            queue = _Queue(service, model, [{"entries": c, "keys": [keys_of[id(e)] for e in c],
+                                             "tokens": sum(tokens[keys_of[id(e)]] for e in c)} for c in chunks],
+                           send, others, path)
+            jobs.extend(queue.submit(list(jobs)))
+        if not jobs and not (queue and queue.left()):
             return 0
-        _wait(service, jobs, path)
+        _wait(service, jobs, path, queue)
         results = {}
         for job in jobs:
             got = _results(service, job["id"], job.get("state", ""), job.get("keys", []))
@@ -455,9 +673,12 @@ def ask_batch(todo: dict, cache, check, cache_until, start, handle, paid, stage:
                 results.setdefault(k, (*value, job))
     except KeyboardInterrupt:
         ids = ", ".join(j["id"] for j in jobs) or "none yet"
+        unsent = (f" {queue.requests_left():,} request(s) waited for room in {SERVICES[service]}'s batch queue and "
+                  f"were not sent: the next run sends them." if queue and queue.left() else "")
         raise Interrupted(f"Stopped with Ctrl+C while the batch job(s) ran ({ids}). They keep running at "
                           f"{SERVICES[service]}, and their ids are kept in {_repo(path)}: run the same command again "
-                          f"(same model and settings) and it collects their answers instead of paying for them again. "
+                          f"(same model and settings) and it collects their answers instead of paying for them again."
+                          f"{unsent} "
                           f"{SERVICES[service]} keeps a job's results for {RESULTS_KEPT[service]}. A job being created "
                           f"at the moment of Ctrl+C may exist at {SERVICES[service]} without its id kept; its "
                           f"prompts would be sent again.") from None
@@ -466,12 +687,15 @@ def ask_batch(todo: dict, cache, check, cache_until, start, handle, paid, stage:
 
 def _create_with_retries(service: str, model: str, chunk: list, label: str, sent: list, path: Path) -> str:
     """_create, tried again on a rate limit or a server error (RetryLater: the service refused, so no job was made);
-    a timeout or a lost connection stops the step without trying again, since the job may exist (BATCH_CREATE_ATTEMPTS);
-    any other refusal stops the step, saying so."""
+    a timeout, a lost connection or an error of no known kind (one that carries no HTTP status, such as
+    httpx.ReadError) stops the step without trying again, since the job may exist (BATCH_CREATE_ATTEMPTS); any other
+    refusal (ApiError) stops the step, saying so."""
     for attempt in range(BATCH_CREATE_ATTEMPTS):
         try:
             return _create(service, model, chunk, label)
         except RetryLater as e:                         # before RuntimeError, its parent: a refusal, so no job
+            if _queue_full(e):
+                raise QueueFull(str(e)) from None
             if attempt == BATCH_CREATE_ATTEMPTS - 1:
                 error = e
                 break
@@ -479,18 +703,23 @@ def _create_with_retries(service: str, model: str, chunk: list, label: str, sent
                         f"{BATCH_CREATE_WAIT} s (attempt {attempt + 2} of {BATCH_CREATE_ATTEMPTS}). Nothing to do: "
                         f"rate limits and server errors usually pass.")
             llm.time.sleep(BATCH_CREATE_WAIT)
-        except (NoAnswerInTime, RuntimeError) as e:     # no answer: the job may exist
+        except ApiError as e:                           # a refusal with an HTTP status: no job
+            if _queue_full(e):
+                raise QueueFull(str(e)) from None
+            error = e
+            break
+        except Exception as e:                          # noqa: BLE001  no answer, or an error of no known kind: the job may exist
+            # NoAnswerInTime (a timeout), RuntimeError (a lost connection), or an error _sdk_error doesn't place (e.g.
+            # httpx.ReadError while the answer was read): none says the service refused, so the job may have been made
             already = (f" The batch job(s) sent before it ({', '.join(j['id'] for j in sent)}) keep running; their ids "
                        f"are kept in {_repo(path)}, and the next run collects them." if sent else "")
-            sys.exit(f"Sending a batch job of {len(chunk):,} request(s) to {BATCH_API[service]} got no answer ({e}), "
+            said = e if isinstance(e, (NoAnswerInTime, RuntimeError)) else f"{type(e).__name__}: {e}"
+            sys.exit(f"Sending a batch job of {len(chunk):,} request(s) to {BATCH_API[service]} got no answer ({said}), "
                      f"so whether the job was made isn't known: {SERVICES[service]} may have made it before the answer "
                      f"was lost. It isn't sent again, which could pay for the same prompts twice.{already} What to do: "
                      f"look at the account's batch jobs ({BATCH_DOCS[service]} says where); if a job named {label} "
                      f"exists, wait for it to end and cancel or ignore its results, since its id isn't kept and no run "
                      f"collects it; then run the step again, which sends the prompts no kept job holds.")
-        except ApiError as e:
-            error = e
-            break
     already = (f" The batch job(s) already sent ({', '.join(j['id'] for j in sent)}) keep running; their ids are kept "
                f"in {_repo(path)}, and the next run collects them." if sent else "")
     sys.exit(f"{BATCH_API[service]} refused the batch job ({error}), so none of its requests were sent, and nothing "
@@ -508,18 +737,26 @@ def _repo(path: Path) -> str:
         return str(path)
 
 
-def _wait(service: str, jobs: list, path: Path) -> None:
+def _wait(service: str, jobs: list, path: Path, queue=None) -> None:
     """Ask each job's state every BATCH_POLL_SECONDS until every job has ended; a line when a job's state or counts
     change, and at least every BATCH_PROGRESS_SECONDS. A failed check is tried again at the next one. Any other error
     stops the step and leaves the job uncollected, so the next run asks about it again; only a job the service says it
     doesn't know (HTTP 404) at two checks BATCH_POLL_SECONDS apart is marked as given up, and its requests are then
-    sent again by the next run."""
+    sent again by the next run. queue (_Queue): the jobs not sent yet, each sent as soon as the maker's batch queue has
+    room for it, and a job the maker refused for its queue cap after making it sent again; jobs grows by each job
+    sent."""
     clock, began = llm.time.monotonic, llm.time.monotonic()
     pending, said, shown, not_found = list(jobs), {}, None, {}
     log.info(f"  waiting for {len(jobs)} batch job(s) at {SERVICES[service]}: most end within an hour, every one "
              f"within 24 hours. The run may be left running; Ctrl+C stops the waiting, not the job(s), and the next "
              f"run collects them.")
-    while pending:
+    while pending or (queue and queue.left()):
+        if queue and queue.left():
+            new = queue.submit(list(pending))
+            jobs.extend(new)
+            pending.extend(new)
+            if new:
+                shown = None
         for job in list(pending):
             try:
                 status = _poll(service, job["id"])
@@ -553,13 +790,17 @@ def _wait(service: str, jobs: list, path: Path) -> None:
                 shown = None
             if status["ended"]:
                 pending.remove(job)
+                if queue and queue.rejected(job, status):
+                    jobs.remove(job)
         now = clock()
         if shown is None or now - shown >= llm.BATCH_PROGRESS_SECONDS:
             shown = now
             minutes = (now - began) / 60
             log.info(f"  batch job(s) after {minutes:.0f} min: " + "; ".join(f"{j['id']}: {said.get(j['id'], '?')}"
-                                                                         for j in jobs))
-        if pending:
+                                                                         for j in jobs)
+                     + (f"; {queue.requests_left():,} request(s) not sent yet, waiting for room in the batch queue"
+                        if queue and queue.left() else ""))
+        if pending or (queue and queue.left()):
             llm.time.sleep(llm.BATCH_POLL_SECONDS)
 
 
@@ -567,6 +808,20 @@ def _not_found(error: ApiError) -> bool:
     """Whether the service answered HTTP 404 (it doesn't know the job): the status the error carries, or its words."""
     status = getattr(error, "status", None) or getattr(error, "status_code", None)
     return status == 404 or "HTTP 404" in str(error)
+
+
+def _with_job_limit(error, job: dict):
+    """A cut-off (llm.CutOff) of a job's answer, carrying the answer limit the job was sent with (max_answer_tokens,
+    which common/common_helpers/cache.py, Cache.put_cut_off, keeps with the cut-off), so a run at another limit asks
+    the prompt again; when that limit isn't this run's, the error's words say so. Any other error as it is."""
+    if not isinstance(error, llm.CutOff):
+        return error
+    limit = _job_limit(job)
+    error.max_answer_tokens = limit
+    if limit != max_tokens_sent():
+        error.args = (f"{error} (in batch job {job['id']}, sent at the answer limit {limit}; this run's limit is "
+                      f"{max_tokens_sent()}, so the next run asks it again at that limit)",)
+    return error
 
 
 def _hand_over(service, results, by_key, prompt_of, cache, check, cache_until, handle, paid, jobs, path) -> int:
@@ -588,7 +843,7 @@ def _hand_over(service, results, by_key, prompt_of, cache, check, cache_until, h
             judged[k] = (text, None, dict(_last.reply))
         except Exception as e:                              # noqa: BLE001  (CutOff, Refused, ApiError: as a single request's)
             e.call = {**dict(_last.reply), **(getattr(e, "call", None) or {})}
-            judged[k] = (None, e, None)
+            judged[k] = (None, _with_job_limit(e, job), None)
     asked = [k for k in judged if k in by_key]
     failed = [k for k in asked if judged[k][1] is not None]
     early = len(failed) >= EARLY_STOP_FAILURES and len(failed) * EARLY_STOP_WINDOW >= EARLY_STOP_FAILURES * len(asked)
@@ -612,7 +867,12 @@ def _hand_over(service, results, by_key, prompt_of, cache, check, cache_until, h
             handle(n, where, None, error)
         counts[job_of[k]]["failed"] += 1
     for k, (text, error, _) in judged.items():               # answers to prompts this run doesn't ask (paid for)
-        if k in by_key or error is not None:
+        if k in by_key:
+            continue
+        if isinstance(error, llm.CutOff):                   # a cut-off is kept as one, at its job's limit
+            cache.put_cut_off(k, error)
+            continue
+        if error is not None:
             continue
         data, state = find_json(text)
         if state == "object" and isinstance(data, dict) and not (check and check(data)):

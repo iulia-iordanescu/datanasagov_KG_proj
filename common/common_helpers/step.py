@@ -90,6 +90,10 @@ class Results:
     harvest_date: str | None = None                 # set by 010; later steps inherit it
     harvest_partial: bool | None = None             # set by 010: True for a trial harvest (fewer records than the
                                                     # catalog has, --max_records); later steps inherit it
+    if_inputs_changed: str = ""                     # what to do with the files written, should an input change after
+                                                    # results() wrote them (_inputs_still_the_same); "" for "run the
+                                                    # step again" (050: the drafted batch is usable, a rerun drafts
+                                                    # the next records)
 
 
 @dataclass(frozen=True)
@@ -300,6 +304,34 @@ def _uncommitted(files: list) -> bool:
     return bool(out.strip())
 
 
+#: The keys of a JSON input that say which run wrote it, not what it holds: (top-level key, key inside it). 030's
+#: splits.json is written once and then kept, and names the run that drew it under "drawn"; a new draw of the same
+#: lists (the file deleted and drawn again) changes that run id only. Its seed, under "drawn", counts: 040 reads it.
+#: A "made" key is not here: later steps read its model and run id (060's schema, 070's report).
+RUN_ID_KEYS = (("drawn", "run_id"),)
+
+
+def content_sha256(files) -> str | None:
+    """The hash of what one JSON input holds, without the run id it names (RUN_ID_KEYS), or None when the input isn't
+    one JSON file holding such a run id (then its files' hashes say whether it changed). The status
+    (common/common_helpers/status.py) compares it, so a file drawn again with the same content isn't taken for a
+    change."""
+    files = list(files)
+    if len(files) != 1 or Path(files[0]).suffix != ".json":
+        return None
+    try:
+        data = read_json(files[0])
+    except (ValueError, OSError):
+        return None
+    if not isinstance(data, dict) or not any(isinstance(data.get(outer), dict) and inner in data[outer]
+                                             for outer, inner in RUN_ID_KEYS):
+        return None
+    data = {k: ({x: y for x, y in v.items() if (k, x) not in RUN_ID_KEYS} if isinstance(v, dict) else v)
+            for k, v in data.items()}
+    import hashlib
+    return hashlib.sha256(json.dumps(data, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()
+
+
 def _describe_inputs(inputs: dict, defaults: dict | None = None) -> tuple:
     """For each input: its files, their hash, and the run that produced them
     (from the manifest beside them, if any). Returns (rows, warnings,
@@ -341,6 +373,9 @@ def _describe_inputs(inputs: dict, defaults: dict | None = None) -> tuple:
         row = {"name": key, "path": repo_path(path), "files": len(files),
                "sha256": audit.sha256(files), "run_id": run_id, "origin": origin,
                "file_hashes": {audit.ref_path(f): audit.sha256([f]) for f in files}}
+        content = content_sha256(files)
+        if content is not None:
+            row["content_sha256"] = content
         if key in defaults:
             row["given"] = Path(path).resolve() != _default_input_path(defaults[key]).resolve()
         rows.append(row)
@@ -350,19 +385,34 @@ def _describe_inputs(inputs: dict, defaults: dict | None = None) -> tuple:
     return rows, warnings, harvest_dates, harvest_partial
 
 
-def _inputs_still_the_same(inputs: dict, rows: list) -> None:
+def _inputs_still_the_same(inputs: dict, rows: list, written: str = "") -> None:
     """Stop if an input's files changed while the step ran (between the hashes taken at the start, which the manifest
     would record, and now): the annotation tool saving a ground truth file while 070 waited at its question, a hand
     edit, another step writing its output. The outputs may then mix the old and the new content, and the manifest
-    would describe files the run never read, so none is written (the run ends stopped) and the step is run again."""
+    would describe files the run never read, so none is written (the run ends stopped) and the step is run again.
+    written: what to do instead, for outputs results() already wrote that a rerun would not write again
+    (Results.if_inputs_changed)."""
     changed = [(row["name"], row["path"]) for row in rows
                if audit.sha256(input_files(inputs[row["name"]])) != row["sha256"]]
     if changed:
         raise Stop(f"{len(changed)} input(s) changed while the step ran: "
                    + "; ".join(f"{name} ({path})" for name, path in changed)
                    + ". They were read at the start, and something wrote them since (the annotation tool, a hand edit, "
-                   "or another step), so this run's outputs may mix the old and the new content, and no manifest is "
-                   "written for them. Run the step again (a step that pays reuses every answer already received).")
+                   "or another step), so no manifest is written for this run's outputs. "
+                   + (written or "This run's outputs may mix the old and the new content. Run the step again (a step "
+                      "that pays reuses every answer already received)."))
+
+
+#: The inputs of the run in progress and their rows as described at its start (run_step), for inputs_still_the_same.
+_RUN_INPUTS: dict = {}
+
+
+def inputs_still_the_same() -> None:
+    """For a step's results(), before it writes a file that a rerun would not write again (050's drafted batch: a
+    rerun drafts the next records): stop, with nothing written, if an input changed since the run read it. Then running
+    the step again redoes this run's work, from the cache. Outside a run, it checks nothing."""
+    if _RUN_INPUTS:
+        _inputs_still_the_same(_RUN_INPUTS["inputs"], _RUN_INPUTS["rows"])
 
 
 def _name_in(folder: Path, f) -> str:
@@ -799,6 +849,7 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None, may_
         log.debug(f"setting {key} = {value!r}" + (" (command line)" if key in changed else ""))
 
     input_rows, output_rows, results, error = [], [], None, None
+    discarding = False                   # True once dropped.reset() ran for this run: DISCARDS are this run's
     run_lock = None                      # this run's lock file in the output folder, once made (_take_run_lock)
     old_manifest = None                  # nothing to restore if the run stops before taking it
     previous = (None, [])                # the previous run's files given a second name (_keep_previous)
@@ -827,8 +878,10 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None, may_
             previous = (None, [])
         log.debug(f"output folder: {repo_path(output)}")
         audit.begin_run(run_id, chosen_inputs)
+        _RUN_INPUTS.update(inputs=chosen_inputs, rows=input_rows)      # for inputs_still_the_same, during main
         prompt_files.reset_prompts()
         dropped.reset()                  # the items this run's stages discard (dropped.discard), written below
+        discarding = True
 
         results = main(chosen_inputs, chosen_settings, output)
         if not isinstance(results, Results):
@@ -841,7 +894,8 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None, may_
         if results.harvest_partial is not None:
             run["harvest_partial"] = results.harvest_partial
         output_rows = _describe_outputs(output, results)
-        _inputs_still_the_same(chosen_inputs, input_rows)      # else Stop: no manifest describes files it didn't read
+        # else Stop: no manifest describes files it didn't read
+        _inputs_still_the_same(chosen_inputs, input_rows, results.if_inputs_changed)
         run["status"] = RAN              # the statuses and exit codes: docs/running_on_nasa_laptop.md, section 4
     except InputMissing as exc:
         run["status"], error = FAILED, RunError(str(exc))
@@ -858,8 +912,14 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None, may_
         run["status"], error = FAILED, RunError(f"{type(exc).__name__}: {exc}", traceback.format_exc())
     finally:
         run["failed_calls"] = _failed_calls()            # also for a stopped or failed run, before the run id is gone
+        _RUN_INPUTS.clear()
         audit.end_run()
         run["prompts"] = prompt_files.prompts_used()      # also for a stopped or failed run
+        # a run that didn't finish: what its stages discarded before the end (files deleted or written over among
+        # them), beside its log, each item marked with the run's status (dropped.write_unfinished)
+        written = (dropped.write_unfinished(LOGS_DIR / f"{run_id}_discarded.jsonl", run["status"])
+                   if discarding and run["status"] != RAN and step_name in PIPELINE_STEPS else None)
+        run["discarded_unfinished"] = repo_path(Path(written)) if written else None
 
     finished = dt.datetime.now().astimezone()
     run["finished"] = _stamp(finished)
@@ -892,6 +952,9 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None, may_
     if run["failed_calls"]:
         log.info(f"  failed model calls: {run['failed_calls']['file']} ({run['failed_calls']['entries']:,}; each "
                  f"says why, and what to change)")
+    if run.get("discarded_unfinished"):
+        log.info(f"  items discarded before the run ended {run['status']}: "
+                 f"{run['discarded_unfinished']}")
     audit.stop_log()
     if error:
         sys.exit(EXIT_CODES[run["status"]])

@@ -221,7 +221,7 @@ class FairSampleByPart(unittest.TestCase):
 
     # --- step 070
 
-    def evaluated(self, finished, unfinished=(), extracted=None, made=None):
+    def evaluated(self, finished, unfinished=(), extracted=None, made=None, failed=(), settings=None):
         import importlib.util
         import sys
         spec = importlib.util.spec_from_file_location("records_070", ROOT / "070_evaluate" / "070_evaluate_helpers" / "records.py")
@@ -231,7 +231,10 @@ class FairSampleByPart(unittest.TestCase):
         self.write_ground_truth(finished, unfinished)
         extracted = list(finished) if extracted is None else extracted
         (self.tmp / "details.json").write_text(json.dumps({"made": made or {}, "records": [
-            {"id": i, "status": "extracted"} for i in extracted]}), encoding="utf-8")
+            {"id": i, "status": "extracted"} for i in extracted] + [
+            {"id": i, "status": "failed", "error": f"piece 1: {why}"} for i, why in dict(failed).items()],
+            "left_out": {"records": [{"id": i, "maintainer": "M", "reason": "cut_off" if "cut off" in why else "service_error",
+                                      "why": why} for i, why in dict(failed).items()]}}), encoding="utf-8")
         write_csv(self.tmp / "extracted.csv", ["id"], [])
         write_csv(self.tmp / "removed.csv", ["id", "reason"], [])
         write_csv(self.tmp / "candidates.csv", ["id", "stratum"], [{"id": i, "stratum": "s"} for i in self.ids])
@@ -247,7 +250,50 @@ class FairSampleByPart(unittest.TestCase):
                   "extracted_triples_details": self.tmp / "details.json", "extracted_triples": self.tmp / "extracted.csv",
                   "extracted_triples_removed": self.tmp / "removed.csv", "schema_used": self.tmp / "schema_used.json",
                   "records": self.tmp / "records.jsonl", "partial_reviews": self.tmp / "reviews.csv"}
-        return module.pick_records(inputs, {"confirm_paid_calls": False})
+        return module.pick_records(inputs, {"confirm_paid_calls": False, **(settings or {})})
+
+    def test_070_a_failed_extraction_is_scored_as_nothing(self):
+        """A finished record whose extraction failed in 060's run is evaluated, as extracting nothing, and the fair
+        sample goes on past it (evaluation version 4); near miss: a record 060 didn't choose still ends its part's
+        fair sample."""
+        ev = self.evaluated(finished=["r0", "r1", "r3", "r5"], extracted=["r0", "r3", "r5"],
+                            failed={"r1": "the answer was cut off"})
+        self.assertEqual([(r["id"], r["extraction_failed"]) for r in ev.records],
+                         [("r0", None), ("r1", "cut_off"), ("r3", None), ("r5", None)])
+        self.assertEqual(ev.left_out, {})
+        note = next(n for n in ev.notes if "060's model calls failed" in n)
+        self.assertIn("for 1 of the 4 record(s) evaluated", note)
+        self.assertIn("only repeats the cut", note)                       # a cut-off: rerunning 060 the same way won't help
+        self.assertNotIn("only repeats the cut", next(n for n in self.evaluated(
+            finished=["r0", "r1"], extracted=["r0"], failed={"r1": "HTTP 500"}).notes if "model calls failed" in n))
+        near = self.evaluated(finished=["r0", "r1", "r3", "r5"], extracted=["r0", "r3", "r5"])
+        self.assertEqual([r["id"] for r in near.records], ["r0"])
+        self.assertEqual(near.left_out["finished, but not chosen by 060's last run"], ["r1"])
+
+    def test_070_held_out_look_stops_when_a_held_out_record_is_missing(self):
+        """With evaluate_held_out true, a finished held-out record 060's run didn't choose stops the run before
+        anything is evaluated, unless evaluate_held_out_incomplete is true; near misses: a failed one is scored, and
+        without evaluate_held_out nothing stops."""
+        from common.stop import Stop
+        look = {"evaluate_held_out": True}
+        with self.assertRaises(Stop) as stop:
+            self.evaluated(finished=["r0", "r2", "r4"], extracted=["r0", "r2"], settings=look)
+        text = str(stop.exception)
+        for words in ("stopped before looking at the held-out part", "pool position #4 (`r4`)", "no look was logged",
+                      "--evaluate_held_out_incomplete true"):
+            self.assertIn(words, text)
+        forced = self.evaluated(finished=["r0", "r2", "r4"], extracted=["r0", "r2"],
+                                settings={**look, "evaluate_held_out_incomplete": True})
+        self.assertEqual([r["id"] for r in forced.records], ["r0", "r2"])
+        self.assertTrue(any("evaluate_held_out_incomplete is true" in n for n in forced.notes))
+        failed = self.evaluated(finished=["r0", "r2", "r4"], extracted=["r0", "r2"], failed={"r4": "HTTP 500"},
+                                settings=look)
+        self.assertEqual([r["id"] for r in failed.records], ["r0", "r2", "r4"])
+        plain = self.evaluated(finished=["r0", "r2", "r4"], extracted=["r0", "r2"])
+        self.assertEqual([r["id"] for r in plain.records], ["r0", "r2"])
+        # no held-out record would be evaluated (the first is missing): no look, so no stop
+        none = self.evaluated(finished=["r0", "r2", "r4"], extracted=["r0", "r4"], settings=look)
+        self.assertEqual([r["id"] for r in none.records], ["r0"])
 
     def test_070_tuning_continues_past_an_unfinished_held_out_record(self):
         ev = self.evaluated(finished=["r0", "r1", "r3", "r5"], unfinished=["r2"])
@@ -273,7 +319,7 @@ class FairSampleByPart(unittest.TestCase):
         # a held-out record finished but not extracted stops the held-out run, not the tuning one
         ev = self.evaluated(finished=["r0", "r1", "r2", "r3"], extracted=["r0", "r1", "r3", "r4"])
         self.assertEqual([r["id"] for r in ev.records], ["r0", "r1", "r3"])
-        self.assertEqual(ev.left_out["finished, but not extracted by 060's last run"], ["r2"])
+        self.assertEqual(ev.left_out["finished, but not chosen by 060's last run"], ["r2"])
         # nothing evaluable: the message names the first gap of each part
         from common.stop import Stop
         with self.assertRaises(Stop) as stop:
@@ -292,7 +338,7 @@ class FairSampleByPart(unittest.TestCase):
         ev = self.evaluated(finished=["r0", "r1", "r2", "r3", "r4"], extracted=["r0", "r1", "r3"], made=tuning_only)
         self.assertEqual([r["id"] for r in ev.records], ["r0", "r1", "r3"])
         self.assertEqual({r["part"] for r in ev.records}, {"tuning"})
-        self.assertEqual(ev.left_out["finished, but not extracted by 060's last run"], ["r2", "r4"])
+        self.assertEqual(ev.left_out["finished, but not chosen by 060's last run"], ["r2", "r4"])
         notes = [n for n in ev.notes if "weren't extracted" in n]
         self.assertEqual(len(notes), 1)
         self.assertIn("060's last run extracted from the tuning records only (its setting extract_from was tuning), "
@@ -302,19 +348,20 @@ class FairSampleByPart(unittest.TestCase):
         self.assertIn("--extract_from ground_truth", notes[0])
         # near-miss 1: a finished TUNING record such a run didn't extract is not explained by the setting
         ev = self.evaluated(finished=["r0", "r1", "r2", "r3"], extracted=["r0", "r1"], made=tuning_only)
-        notes = [n for n in ev.notes if "weren't extracted" in n]
+        notes = [n for n in ev.notes if "weren't extracted" in n or "weren't chosen" in n]
         self.assertEqual(len(notes), 2)
         self.assertIn("1 finished ground truth record(s) that aren't tuning records (1 held-out", notes[0])
-        self.assertIn("1 finished ground truth record(s) weren't extracted by 060's last run, so this run leaves "
-                      "them out: r3. To evaluate them, run `py 060_extract/run.py`, then", notes[1])
+        self.assertIn("1 finished ground truth record(s) weren't chosen by 060's last run (it neither extracted "
+                      "from them nor recorded a failure for them), so this run leaves them out: r3. To evaluate "
+                      "them, run `py 060_extract/run.py` so that it chooses them, then", notes[1])
         # near-miss 2: the same records missing from a run that extracted from the ground truth (or whose setting
         # isn't recorded), or from one that named its records with ids: the general note, as before
         for made in ({"settings": {"extract_from": "ground_truth", "ids": ""}}, {},
                      {"settings": {"extract_from": "tuning", "ids": "r0,r1,r3"}}):
             ev = self.evaluated(finished=["r0", "r1", "r2", "r3", "r4"], extracted=["r0", "r1", "r3"], made=made)
-            notes = [n for n in ev.notes if "weren't extracted" in n]
+            notes = [n for n in ev.notes if "weren't chosen" in n]
             self.assertEqual(len(notes), 1, made)
-            self.assertIn("2 finished ground truth record(s) weren't extracted by 060's last run", notes[0])
+            self.assertIn("2 finished ground truth record(s) weren't chosen by 060's last run", notes[0])
             self.assertNotIn("tuning records only", notes[0])
 
     # --- step 060
@@ -2646,6 +2693,58 @@ class ReadThenWrite(unittest.TestCase):
             logging.shutdown()
             shutil.rmtree(tmp, ignore_errors=True)
 
+    def test_a_file_a_rerun_would_not_write_again(self):
+        """A step whose results write a file a rerun wouldn't write again (050's drafted batch: a rerun drafts the next
+        records) checks its inputs first (step.inputs_still_the_same): an input changed before that check stops the
+        run with nothing written, and the message says to run the step again. An input changed after the file was
+        written: the message is the step's own (Results.if_inputs_changed), saying the file is usable, never to run
+        the step again. Near miss: outside a run the check checks nothing."""
+        import logging
+        import tempfile
+        from unittest import mock
+        from common import step
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        self.addCleanup(logging.shutdown)
+        src = tmp / "in.txt"
+        src.write_text("v1", encoding="utf-8")
+        step.inputs_still_the_same()                                       # outside a run: nothing to check
+
+        def main(change_before: bool):
+            def run(inputs, settings, output):
+                if change_before:
+                    Path(inputs["records"]).write_text("v2", encoding="utf-8")
+                step.inputs_still_the_same()                               # before the file is written
+                output.mkdir(parents=True, exist_ok=True)
+                (output / "batch_1.csv").write_text("rows", encoding="utf-8")
+                if not change_before:
+                    Path(inputs["records"]).write_text("v3", encoding="utf-8")
+                return step.Results(headline={}, files=[output / "batch_1.csv"],
+                                    if_inputs_changed="batch_1.csv is complete: open it; don't run the step again.")
+            return run
+        patches = (mock.patch.object(step, "RESULTS_DIR", tmp / "results"),
+                   mock.patch.object(step, "REPORTS_DIR", tmp / "reports"),
+                   mock.patch.object(step, "LOGS_DIR", tmp / "logs"))
+        for p in patches:
+            p.start()
+            self.addCleanup(p.stop)
+        out = tmp / "results" / "999_stand_in"
+
+        def last_report() -> str:
+            return max((tmp / "reports").glob("999_stand_in_*.md"),
+                       key=lambda p: p.stat().st_mtime_ns).read_text(encoding="utf-8")
+        with self.assertRaises(SystemExit):
+            step.run_step("999_stand_in", {"records": str(src)}, {}, main(True), argv=[])
+        self.assertFalse((out / "batch_1.csv").exists())                  # stopped before writing
+        self.assertIn("Run the step again", last_report())
+        self.assertNotIn("is complete: open it", last_report())
+        with self.assertRaises(SystemExit):
+            step.run_step("999_stand_in", {"records": str(src)}, {}, main(False), argv=[])
+        self.assertTrue((out / "batch_1.csv").exists())
+        self.assertIn("batch_1.csv is complete: open it; don't run the step again.", last_report())
+        self.assertNotIn("Run the step again", last_report())
+        self.assertEqual(step._RUN_INPUTS, {})                             # cleared at the end of every run
+
 
 class RunLock(unittest.TestCase):
     """Two runs of one step at once are refused: run_step makes common.step.RUN_LOCK in the step's output folder
@@ -2981,7 +3080,7 @@ class OneSelection(unittest.TestCase):
         # the advice for the first gap of each part names the state of the record there
         positions = {r["id"]: r["position"] for r in self.pool}
         gap = lambda order: records_070._first_gap(order, "tuning", positions, set(), self.gt)   # noqa: E731
-        self.assertIn("finished, but not extracted", gap(["fin_t"]))
+        self.assertIn("finished, but not chosen by 060's last run", gap(["fin_t"]))
         self.assertIn("not finished in the ground truth", gap(["draft_t"]))
         self.assertIn("in batch_000.csv and batch_001.csv, annotated twice", gap(["twice"]))
         self.assertIn("neither 0 nor 1", gap(["bad"]))

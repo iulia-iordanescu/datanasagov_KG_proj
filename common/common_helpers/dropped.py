@@ -158,6 +158,8 @@ def reasks_headline(counts: dict) -> dict:
 #                                                       the step's code: something vanished without a record)
 #     write(output) -> path; discards_section(path)     run_step, after main: DISCARDS_FILE in the step's output
 #                                                       folder and the report's section "Items discarded"
+#     write_unfinished(path, status)                    run_step, for a run that didn't finish: what it discarded
+#                                                       before the end, in outputs/logs/<run id>_discarded.jsonl
 #
 # One entry, one line of DISCARDS_FILE:
 #     {"stage": "stage 2 (extract)", "action": "discarded" | "folded" | "replaced", "item_type": "triple instance",
@@ -255,6 +257,18 @@ def write(output) -> str:
     from common.files import write_jsonl
     path = Path(output) / DISCARDS_FILE
     write_jsonl(path, DISCARDS)
+    return str(path)
+
+
+def write_unfinished(path, status: str) -> str | None:
+    """For a run that didn't finish (stopped, failed or interrupted): write the items its stages discarded before the
+    end, each marked with the run's status ("run_status"), to path (outputs/logs/<run id>_discarded.jsonl, beside the
+    log), and return path; None, and no file, when it discarded nothing. Not DISCARDS_FILE in the output folder: that
+    file belongs to the last run that finished, which the manifest restored after a stop lists."""
+    if not DISCARDS:
+        return None
+    from common.files import write_jsonl
+    write_jsonl(path, [{**e, "run_status": status} for e in DISCARDS])
     return str(path)
 
 

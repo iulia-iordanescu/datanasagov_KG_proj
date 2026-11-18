@@ -86,11 +86,11 @@ def load(run_id: str, kept: Path = KEPT) -> dict:
 
 
 def extraction_of(run: dict) -> dict:
-    """What names a run's extraction: 060's run id (as the look's line records it), and its service, model, repeat
-    and current schema (from the recipe)."""
+    """What names a run's extraction: 060's run id (as the look's line records it: compare_runs.extraction_run_id),
+    and its service, model, repeat and current schema (from the recipe)."""
     ex = compare_runs.recipe_of(run).get("extraction (060)", {})
     settings = ex.get("settings") or {}
-    return {"run_id": run["look"].get("extraction_run_id") or ex.get("run_id") or "",
+    return {"run_id": compare_runs.extraction_run_id(run),
             "service": settings.get("service", "?"), "model": settings.get("model", "?"),
             "repeat": settings.get("repeat", "?"), "schema": ex.get("schema") or "?"}
 
@@ -427,19 +427,7 @@ def check(runs: list) -> str | None:
     if twice:
         return (f"The same run is given more than once ({', '.join(twice)}), and its repeat would count twice in the "
                 f"pooled numbers. Give each run once: `py helpers/held_out_results.py` lists them.")
-    by_extraction = {}
-    for run in runs:
-        ex = extraction_of(run)["run_id"]
-        if ex:
-            by_extraction.setdefault(ex, []).append(run["run_id"])
-    again = {ex: which for ex, which in by_extraction.items() if len(which) > 1}
-    if again:
-        return ("Two or more of the runs given are looks at the same extraction, whose repeat would count twice in "
-                "the pooled numbers: "
-                + "; ".join(f"060's run {ex}: {', '.join(which)}" for ex, which in sorted(again.items()))
-                + ". Give one look per extraction (`py helpers/held_out_results.py` lists them with their 060 run), "
-                  "then run the command again.")
-    return None
+    return compare_runs.same_extraction(runs, "py helpers/held_out_results.py")
 
 
 def main(argv=None) -> int:

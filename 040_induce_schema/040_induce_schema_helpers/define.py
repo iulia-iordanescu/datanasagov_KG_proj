@@ -30,7 +30,8 @@ component instance left unlabeled:
   - a definition that names a word shaped like an entity class (looks_like_an_entity_class:
     CamelCase, two or more capitalised parts each followed by lowercase letters,
     "PhysicalQuantity") that is no entity class being defined (not_entity_classes:
-    the spelling must be exact; a plural "s" or "es" is allowed). Words such as
+    the spelling must be exact, or one of its plurals: "s", "es", and "ies"
+    for a final "y", common/common_helpers/schema_io.spellings). Words such as
     "MODIS" (capitals only), "SeaWiFS", "GeoTIFF" or "NetCDF" (a part without
     lowercase letters after its capital) and "Instrument" (one part) are never taken
     for one, so a domain's proper nouns aren't; a CamelCase proper noun ("McMurdo")
@@ -39,6 +40,10 @@ component instance left unlabeled:
   - a pinned predicate's definition that doesn't name every entity class of
     its "must_name" (common/common_helpers/schema_io.unnamed_pinned, the check
     tests/test_schema_io.py applies to the ground truth schema's pins).
+The second ask is the first prompt for those entries, with one line per entry
+under them saying what was wrong with the first reply about it (again_note),
+as a re-ask for a reply of the wrong shape says what was wrong
+(common/common_helpers/llm_calls.py, call_llm_json).
 The second reply's definition replaces the first (recorded as replaced in the record
 of discarded items, common/common_helpers/dropped.py); when the second reply gives
 none, or still names such a word, the definition kept is recorded as replaced too
@@ -50,8 +55,9 @@ mark, as before.
 
 This stage only writes words. It merges nothing (merging is stage 4's job,
 done once, over all labels at a time) and chooses nothing: the examples are
-picked by code (stage 6): the component instances that most often got each
-entity class, the triple instances that most often state each predicate. Stage 8 checks what the model sent back.
+picked by code (stage 6, count.representative): one from each of the schema
+entry's patterns found in the most texts, each from another text and, where
+possible, another maintainer. Stage 8 checks what the model sent back.
 
 Adapted from assemble() in archive/to_be_reshaped/best_induce_schema.py, which also
 merged near-duplicates here, a second merge in batches of 40 where synonyms
@@ -67,8 +73,8 @@ from pathlib import Path
 from common.cache import Cache, ask_cached, ask_split, needs
 from common.audit import log
 from common import dropped
-from common.prompt_files import fill, load
-from common.schema_io import unnamed_pinned
+from common.prompt_files import again_note as prompt_again_note, fill, load
+from common.schema_io import spellings, unnamed_pinned
 from common.triples_io import KIND_OF_KEY
 
 #: The two kinds of schema entry that get a definition.
@@ -115,11 +121,12 @@ SHAPE = needs(definitions=dict)
 
 def not_entity_classes(definition: str, entity_classes) -> list:
     """The words of a definition shaped like an entity class (ENTITY_CLASS_SHAPE) that are no entity class of
-    entity_classes, spelled exactly; a plural "s" or "es" after one is allowed. Each once, in the order written."""
-    known = set(entity_classes)
+    entity_classes, spelled exactly or as one of its plurals (common/common_helpers/schema_io.spellings: "s", "es",
+    and "ies" for a final "y" after a consonant). Each once, in the order written."""
+    known = {w for c in entity_classes for w in spellings(c)}
     out = []
     for word in ENTITY_CLASS_SHAPE.findall(definition or ""):
-        if word in known or (word.endswith("s") and word[:-1] in known) or (word.endswith("es") and word[:-2] in known):
+        if word in known:
             continue
         if word not in out:
             out.append(word)
@@ -161,9 +168,10 @@ def write_definitions(counts, settings: dict, calls) -> Definitions:
                                              if e["component_class"] in must else {})} for e in wanted}
         listing = json.dumps(defined_classes, ensure_ascii=False)
 
-        def ask(names: list, again: bool = False) -> dict:
+        def ask(names: list, notes: dict | None = None) -> dict:
             """{name: (field, text)} from the replies about these entries, asked DEFINE_BATCH at a time; every
-            item a reply gives that isn't taken is recorded (_take)."""
+            item a reply gives that isn't taken is recorded (_take). notes: {name: what was wrong with the first
+            reply about it}, for the second ask, which says it under the entries (again_note); None for the first."""
             got = {}
             for start in range(0, len(names), DEFINE_BATCH):
                 batch = [entries[n] for n in names[start:start + DEFINE_BATCH]]
@@ -172,7 +180,7 @@ def write_definitions(counts, settings: dict, calls) -> Definitions:
                 # with the reason (common.cache.ask_split).
                 replies = ask_split(lambda part: ask_cached(
                     cache, calls, fill(PROMPTS[kind], entity_classes=listing,
-                                       entries=json.dumps(part, ensure_ascii=False, indent=0)),
+                                       entries=json.dumps(part, ensure_ascii=False, indent=0)) + again_note(part, notes),
                     f"  040 will ask the model to define the schema's entries, {DEFINE_BATCH} per call", check=SHAPE),
                     batch, refused)
                 for e, why in refused:
@@ -181,7 +189,7 @@ def write_definitions(counts, settings: dict, calls) -> Definitions:
                     result.refused.append({"kind": WORD[kind], "component_class": e["component_class"], "why": why})
                     dropped.discard(STAGE, "schema entry", f"refused by the model's service, so it gets no "
                                     f"definition: {why}", {"kind": WORD[kind], **e})
-                _take(kind, {e["component_class"] for e in batch}, replies, got, result, again)
+                _take(kind, {e["component_class"] for e in batch}, replies, got, result, notes is not None)
             return got
 
         first = ask(list(entries))
@@ -197,18 +205,25 @@ def write_definitions(counts, settings: dict, calls) -> Definitions:
             return not_entity_classes(d, known), unnamed_pinned(d, [(c, c) for c in must.get(n, [])])
         wrong = {n: problems(n, d) for n, d in result.of[kind].items()}
         wrong = {n: w for n, w in wrong.items() if w[0] or w[1]}
+        notes = {}                    # {name: what was wrong, as the second ask tells the model (again_note)}
         for n in missing:
             result.asked_again.append({"kind": WORD[kind], "component_class": n,
                                        "why": "neither defined nor called too vague"})
+            notes[n] = 'it was neither defined nor listed under "too_vague"'
         for n, (w, u) in wrong.items():
             result.asked_again.append({"kind": WORD[kind], "component_class": n, "why": "; ".join(
                 (["its definition names " + ", ".join(w) + ", which " + ("is" if len(w) == 1 else "are")
                   + " no entity class being defined"] if w else [])
                 + (["its definition doesn't name " + ", ".join(u) + ", which its pin allows (it must name each)"]
                    if u else []))})
+            notes[n] = "; ".join(
+                ([f"its definition named {', '.join(w)}, which {'is' if len(w) == 1 else 'are'} not listed under "
+                  f"ENTITY CLASSES OF THE SCHEMA"] if w else [])
+                + ([f"its definition didn't name {', '.join(u)}, which its \"must_name\" lists"] if u else []))
         if missing or wrong:
-            # One more try for those, as labeling does (stage 3), with the same prompt
-            second = ask(missing + list(wrong), again=True)
+            # One more try for those, as labeling does (stage 3), the prompt saying under the entries what was wrong
+            # with each (again_note), as a re-ask for a reply of the wrong shape does (common.llm.call_llm_json)
+            second = ask(missing + list(wrong), notes)
             for n in missing:
                 if n in second:
                     field_name, text = second[n]
@@ -245,6 +260,13 @@ def write_definitions(counts, settings: dict, calls) -> Definitions:
                  + (f"; {len(missing) + len(wrong)} asked once more" if missing or wrong else ""))
     result.calls, result.reused = calls.paid.made - before, cache.reused
     return result
+
+
+def again_note(part: list, notes: dict | None) -> str:
+    """What the second ask adds under the entries (nothing for the first ask): what was wrong with the first reply
+    about each entry of this part (common/common_helpers/prompt_files.py, again_note)."""
+    return prompt_again_note([(e["component_class"], notes[e["component_class"]]) for e in part
+                              if notes and e["component_class"] in notes])
 
 
 def _take(kind: str, sent: set, replies: list, got: dict, result: Definitions, again: bool) -> None:

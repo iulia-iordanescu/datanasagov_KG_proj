@@ -56,6 +56,7 @@ INPUTS = {
 
 SETTINGS = {
     "evaluate_held_out":  False,  # also show the held-out part's numbers (for the end; each look is logged)
+    "evaluate_held_out_incomplete": False,  # true: look at the held-out part even when 060's run lacks a finished held-out record
     "extraction_run":     "",     # the run id of a kept run of 060 to score; empty: 060's latest run (or the files given)
     "service":            SERVICE, # the service that reaches the model: asksage, litellm, anthropic, openai, google
     "model":              MODEL,  # the AI model to ask (py helpers/models.py lists them)

@@ -43,6 +43,7 @@ from common.stop import Stop
 OUTPUT_NAME = "records.jsonl"
 #: The stage names its discarded items carry (common/common_helpers/dropped.py).
 STAGE_1 = "stage 1 (load_raw)"
+STAGE_3 = "stage 3 (clean_text)"
 SHOW = 20                            # items listed in the report before "…"
 #: Text fields that are one line by nature: every run of line breaks and
 #: spaces inside becomes one space. (notes keeps its line breaks: they
@@ -198,13 +199,21 @@ def clean_text(catalog: Catalog) -> Catalog:
             # hidden in an HTML code (&Acirc;&reg;) is caught too.
             repaired = fix_encoding(text)
             if repaired != text:
-                catalog.repaired.append({"id": record["id"], "field": name,
-                                         "lost": "\ufffd" in repaired and "\ufffd" not in text})
+                lost = "\ufffd" in repaired and "\ufffd" not in text
+                catalog.repaired.append({"id": record["id"], "field": name, "lost": lost})
+                dropped.replace(STAGE_3, "text field value", "garbled characters (text decoded with the wrong "
+                                "encoding before it reached the catalog) repaired by ftfy's fix_encoding"
+                                + ("; a character the catalog had already lost now shows as \ufffd" if lost else ""),
+                                {"field": name, "value": text}, {"value": repaired}, record_id=record["id"])
                 text = repaired
             record[name] = text
             if name in ONE_LINE_FIELDS:
                 one_line = " ".join(text.split())
                 catalog.made_one_line[name] += one_line != text
+                if one_line != text:
+                    dropped.replace(STAGE_3, "text field value", f"{name} is one line by nature: each run of line "
+                                    f"breaks and spaces inside made one space, and the spaces at its ends removed",
+                                    {"field": name, "value": text}, {"value": one_line}, record_id=record["id"])
                 record[name] = one_line
             methods[name] = note.tier
             catalog.tiers[name][note.tier] += 1

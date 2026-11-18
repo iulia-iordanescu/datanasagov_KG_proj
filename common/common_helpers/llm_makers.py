@@ -15,7 +15,8 @@ from common.llm import (
     DIRECT_SERVICES, ERROR_BODY_CHARS, READ_TIMEOUT, SERVICES, TEMPERATURE, _env, _last, _requests_lock,
     max_tokens_sent, temperature_sent, thinking_sent)
 from common.llm_errors import (
-    ApiError, NoAnswerInTime, RETRY_STATUSES, RetryLater, _retry_after, stop_if_budget_gone, stop_if_forbidden)
+    ApiError, NoAnswerInTime, RETRY_STATUSES, Refused, RetryLater, _retry_after, stop_if_budget_gone,
+    stop_if_forbidden)
 from common.llm_replies import _finish_reply, _note_request
 from common.llm_litellm import _chat_payload, _messages, _read_chat_reply
 
@@ -211,11 +212,24 @@ def _ask_anthropic(prompt: str, model: str, read_timeout: int, cache_until: str 
 
 def _read_anthropic_reply(body: dict) -> str:
     """The answer of a Message (a single request's, or a batch request's succeeded result): its text blocks joined,
-    judged by _finish_reply with the reply's stop reason, token counts and served model."""
+    judged by _finish_reply with the reply's stop reason, token counts and served model. A Message's stop_details
+    (the anthropic SDK's RefusalStopDetails, sent with stop_reason "refusal": its policy `category`, e.g. "cyber",
+    and a human-readable `explanation`, each None when there is none) is kept in the request's record
+    (llm._last.reply["stop_details"]), which the failed-call record copies (llm_paid.PaidCalls._record), and a
+    refusal's message names them."""
     text = "".join(b.get("text") or "" for b in body.get("content") or [] if isinstance(b, dict)
                    and b.get("type") == "text")
-    return _finish_reply("anthropic", text, _anthropic_usage(body.get("usage")), body.get("stop_reason"), None,
-                         body.get("model"))
+    details = body.get("stop_details")
+    details = {k: details.get(k) for k in ("category", "explanation")} if isinstance(details, dict) else None
+    _last.reply["stop_details"] = details
+    try:
+        return _finish_reply("anthropic", text, _anthropic_usage(body.get("usage")), body.get("stop_reason"), None,
+                             body.get("model"))
+    except Refused as e:
+        if details and any(details.values()):
+            e.args = (f"{e} (Anthropic's stop_details: category {details['category']!r}, explanation "
+                      f"{details['explanation']!r})", *e.args[1:])
+        raise
 
 
 def _ask_openai(prompt: str, model: str, read_timeout: int, cache_until: str | None = None) -> str:

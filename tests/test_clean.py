@@ -246,6 +246,25 @@ class Discards(Moves):
         self.assertIn("Accounting check failed in stage 1 (load_raw): 5 records read from the batch files went in, 2 "
                       "were kept and 2 were recorded as discarded, so 1 went missing", str(caught.exception))
 
+    def test_replaced_values_recorded(self):
+        """Stage 3 records each value it replaces whole: a title made one line, and a value whose garbled characters
+        ftfy repaired, each with the old value and the new. Near misses: a title already one line, correct text with
+        accents, and a notes field's line breaks (notes keeps them) are not recorded."""
+        raw = [{"id": "a", "title": "Title\n   two lines", "notes": "The OpenGISÂ® service\n\nSecond paragraph.",
+                "maintainer": "m"},
+               {"id": "b", "title": "One line", "notes": "naïve café — 10°25 S", "maintainer": "m"}]
+        (self.tmp / "batch_00000.json").write_text(json.dumps(batch(raw)), encoding="utf-8")
+        (self.tmp / "batch_01000.json").unlink()
+        self.run_moves()
+        replaced = [e for e in self.dropped.DISCARDS if e["action"] == "replaced"]
+        self.assertEqual([(e["stage"], e["record_id"], e["item"]["field"], e["item"]["value"], e["kept_as"]["value"])
+                          for e in replaced],
+                         [("stage 3 (clean_text)", "a", "title", "Title\n   two lines", "Title two lines"),
+                          ("stage 3 (clean_text)", "a", "notes", "The OpenGISÂ® service\n\nSecond paragraph.",
+                           "The OpenGIS® service\n\nSecond paragraph.")])
+        self.assertIn("one line by nature", replaced[0]["reason"])
+        self.assertIn("ftfy", replaced[1]["reason"])
+
 
 if __name__ == "__main__":
     unittest.main()

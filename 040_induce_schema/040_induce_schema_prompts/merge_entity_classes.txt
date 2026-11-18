@@ -1,9 +1,10 @@
 $words
 
 Below are the labels given to subject instances and object instances in
-records of a catalog of NASA datasets, each with the instances that most
-often got it ("examples") and the number of records it was found in
-("texts"). Some labels may name the same type of entity under different
+records of a catalog of NASA datasets, each with the number of records it
+was found in ("texts") and up to $examples_per_label instances that got it,
+taken from different records where possible ("examples"). A label sent
+without examples is judged by its words and its number of records alone. Some labels may name the same type of entity under different
 words (e.g. "Instrument" and "Sensor"). Find each set of labels that name
 the same type of entity and merge the set into the clearest of its labels.
 

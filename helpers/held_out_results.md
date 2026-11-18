@@ -20,7 +20,7 @@ A run of step 070 with `--evaluate_held_out true` that evaluates at least one he
 
 Step 070 evaluates one run of step 060 per run: 060's latest by default, or the run named with `--extraction_run <060 run id>`, whose four files (`extracted_triples.csv`, `extracted_triples_removed.csv`, `extracted_triples_details.json`, `schema_used.json`) it finds as that run wrote them. `previous_runs/<060 run id>/` holds only the files the next run changed, so a file missing there is the copy kept in a later run's folder, or the live one: the one with the sha256 that the run's `_manifest.json` records for it (`common/common_helpers/step.py`, `output_of_run` and `gather_run`). Step 070 reads them beside that manifest, copied into its own `extractions/<060 run id>/` when they aren't all in the run's folder. When the run isn't kept, or a file has no copy left, it stops before anything is evaluated, so no look is logged (`070_evaluate/070_evaluate.md`, *Scoring a kept run of 060*). The look's line in `annotations/held_out_looks.csv` names the run scored (`extraction_run_id`).
 
-Two looks at one extraction can't be summarized together, since its repeat would count twice: the command stops and lists them. Give one of them; the report says how many looks the log holds for that extraction.
+Two looks at one extraction can't be summarized together, since its repeat would count twice: the command stops and lists them (`same_extraction` in `helpers/compare_runs.py`, the check that also refuses two evaluations of one run of 060 as repeats there). Give one of them; the report says how many looks the log holds for that extraction.
 
 ## What the report says
 

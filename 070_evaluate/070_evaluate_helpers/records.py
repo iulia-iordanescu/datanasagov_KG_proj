@@ -15,15 +15,24 @@ shown before anything is evaluated, and the person is asked whether to go
 ahead (unless confirm_paid_calls is false).
 
 A record is evaluated when a person has finished it in the ground truth
-(all_facts_extracted = 1 on every row) AND step 060's last run extracted from it.
-Of those, only the FAIR SAMPLE is evaluated: for EACH PART of the pool (tuning,
-held-out) separately, the longest run of that part's first records (in pool
-order) that are all evaluated. The pool is shuffled, so its order restricted to
+(all_facts_extracted = 1 on every row) AND step 060's last run chose it: it
+extracted from it, or its model calls failed for it (cut off, refused, a failed
+call: its details file says so). A failed record is scored as extracting
+nothing (FAILED_TO_DO): its ground truth triples count against recall, it adds
+no occurrence, and its describes triple counts as not named, as an evaluation
+of extraction counts a system's missing output (docs/improvements.md,
+2026-11-17). Of those, only the FAIR SAMPLE is evaluated: for EACH PART of the
+pool (tuning, held-out) separately, the longest run of that part's first
+records (in pool order) that are all evaluated. The pool is shuffled, so its order restricted to
 one part is still random, and that run is a fair sample of the part (and the two
 runs together of the catalog), which the margins of error require (see stats.py).
 An unfinished record of one part never holds back the other part. A record after
-a gap in its own part (an unfinished or unextracted record before it) or not in
-the pool at all (hand-picked) is left out and listed, with what to do.
+a gap in its own part (an unfinished record, or one 060's run didn't choose,
+before it) or not in the pool at all (hand-picked) is left out and listed, with
+what to do. With evaluate_held_out true, the step stops before anything is
+evaluated when a finished held-out record is missing from 060's run for any
+reason but a recorded failure (held_out_gap), unless the setting
+evaluate_held_out_incomplete is true.
 
 For each evaluated record: its pool position, its part (tuning or held-out,
 from 030), its stratum (from the pool file), its title, its ground
@@ -81,8 +90,10 @@ class Evaluated:
     catalog_records: int = 0                       # records in 020's records.jsonl: the whole catalog
     learned_from: dict = field(default_factory=dict)  # the records the current schema was learned from (060's schema_used.json)
     extraction_manifest: dict = field(default_factory=dict)  # 060's _manifest.json: its run's code version, settings, prompts, inputs
-    extraction_failed: list = field(default_factory=list)  # finished records 060's model calls failed for, with why and
-                                                   # maintainer (common/common_helpers/dropped.py); left out of every number
+    extraction_failed: list = field(default_factory=list)  # evaluated records 060's model calls failed for, with why,
+                                                   # reason and maintainer (common/common_helpers/dropped.py); each
+                                                   # scored as extracting nothing
+    chosen_by_060: int = 0                         # finished ground truth records 060's run chose (extracted or failed)
     finished: list = field(default_factory=list)   # the finished ground truth records, {"id", "maintainer"}
     held_out_only: dict = field(default_factory=dict)  # the ground truth schema's held-out-only entries, by kind
                                                    # (schema_io: {"entity_classes": set, "predicates": set})
@@ -229,7 +240,9 @@ def _first_gap(order: list, part: str, positions: dict, taken: set, gt, without_
                 f"records after it can't be evaluated. Nothing to do here; 020's report counts such records")
     state = gt.state(gap)
     if gt.records.get(gap, {}).get("finished"):
-        return f"{head}: finished, but not extracted by 060's last run. Run `py 060_extract/run.py`"
+        return (f"{head}: finished, but not chosen by 060's last run (it neither extracted from it nor recorded a "
+                f"failure for it). Run `py 060_extract/run.py` so that it chooses that record (its setting ids, or "
+                f"extract_from)")
     if state == IN_TWO_FILES:
         return (f"{head}: in {' and '.join(gt.records[gap]['files'])}, annotated twice. Delete its rows from all "
                 f"files but one (by hand), finish it in `py helpers/annotate.py`, run `py 060_extract/run.py`")
@@ -240,6 +253,72 @@ def _first_gap(order: list, part: str, positions: dict, taken: set, gt, without_
         return f"{head}: not finished in the ground truth. Finish it in `py helpers/annotate.py` (tick *All facts extracted*), run `py 060_extract/run.py`"
     return (f"{head}: not in the ground truth yet. Draft it with "
             f"`py 050_annotate/run.py` (set --part {part}), correct and finish it in `py helpers/annotate.py`, run `py 060_extract/run.py`")
+
+
+#: What a failed extraction means for this evaluation, and what to do, by its reason (a key of common.dropped.KINDS):
+#: the 070 counterpart of dropped.TO_DO, which speaks of the step whose call failed. A record 060's model calls failed
+#: for is scored as extracting nothing (module docstring); whether running 060 again can change that depends on why.
+FAILED_TO_DO = {
+    "cut_off": "the answer reached the answer limit 060's run sent ({limit}). Running `py 060_extract/run.py` again "
+               "at that limit only repeats the cut (060 keeps the cut-off in its cache and doesn't ask again), so "
+               "these records stay scored as extracting nothing for this recipe. A higher answer limit "
+               "(MAX_ANSWER_TOKENS in common/common_helpers/llm.py) or a lower thinking setting (--thinking) asks "
+               "them again, and is then a different recipe, to be compared as one",
+    "refused": "the model or its service declined to answer. Asking again gets the same answer, so these records "
+               "stay scored as extracting nothing: the refusal is part of what this model does with them",
+    "malformed": "the reply wasn't in the required shape, even when asked again. Run `py 060_extract/run.py` again "
+                 "(only these records are asked again; every other answer comes from its cache), then "
+                 "`py 070_evaluate/run.py`",
+    "service_error": "the model's service returned an error. Run `py 060_extract/run.py` again (only these records "
+                     "are asked again; every other answer comes from its cache), then `py 070_evaluate/run.py`",
+    "other": "another error (060's run log gives it). Run `py 060_extract/run.py` again (only these records are "
+             "asked again), then `py 070_evaluate/run.py`",
+}
+
+
+def failed_note(failed: list, evaluated_count: int, limit) -> str:
+    """The warning on the evaluated records whose extraction failed: how many of the records evaluated, by reason,
+    which, how they are scored, and what to do for each reason (FAILED_TO_DO). failed: entries {"id", "reason",
+    "maintainer"}; limit: the answer limit 060's run sent (its details file), or None."""
+    by_reason = {}
+    for e in failed:
+        by_reason.setdefault(e["reason"], []).append(e["id"])
+    reasons = "; ".join(f"{dropped.KINDS[k].split(':')[0]}: {len(ids)} ({named(ids, 5)}): "
+                        + FAILED_TO_DO[k].format(limit=f"{limit:,} tokens" if isinstance(limit, int) else "not recorded")
+                        for k, ids in by_reason.items())
+    return (f"060's model calls failed for {len(failed)} of the {evaluated_count} record(s) evaluated, so each of "
+            f"those {len(failed)} is scored as extracting nothing: its ground truth triples count against recall, it "
+            f"adds no occurrence (so nothing to precision), and its describes triple counts as not named. By reason: "
+            f"{reasons}. The report's section *Records whose extraction failed* lists them by reason and by "
+            f"maintainer.")
+
+
+def held_out_gap(order: list, finished: set, chosen: set, fair: set, positions: dict, forced, notes: list) -> str | None:
+    """With evaluate_held_out true: why the step stops before a look at the held-out part, or None. It stops when a
+    held-out record would be evaluated (a look would be logged) while a finished held-out record is missing from
+    060's run for a reason other than a recorded failure (not chosen: a failure is scored, as extracting nothing),
+    since such a look would count against the held-out part with fewer records than it has. forced (the setting
+    evaluate_held_out_incomplete): the look goes ahead, and a note in notes names the records missing."""
+    if not any(rid in fair for rid in order):
+        return None
+    missing = [rid for rid in order if rid in finished and rid not in chosen]
+    if not missing:
+        return None
+    which = named([f"pool position #{positions[rid]} (`{rid}`)" for rid in missing], 10, "; ")
+    if forced:
+        notes.append(f"evaluate_held_out_incomplete is true, so this look at the held-out part goes ahead without "
+                     f"{len(missing)} finished held-out record(s) that 060's last run didn't choose: {which}. The "
+                     f"held-out numbers of this look cover only the held-out records before the first of them (the "
+                     f"fair sample), and the look is logged as any other.")
+        return None
+    return (f"Step 070 stopped before looking at the held-out part: {len(missing)} finished held-out record(s) are "
+            f"missing from 060's last run (it neither extracted from them nor recorded a failure for them): {which}. "
+            f"A look now would be logged in annotations/held_out_looks.csv and count against the held-out part, while "
+            f"its numbers lack those records (each look counts: docs/upkeep.md, *At the end: the held-out "
+            f"part*). Nothing was evaluated and no look was "
+            f"logged. Run `py 060_extract/run.py` so that it chooses every finished held-out record (e.g. "
+            f"`--extract_from ground_truth`), then run `py 070_evaluate/run.py --evaluate_held_out true` again; or, to "
+            f"look with those records missing on purpose, add `--evaluate_held_out_incomplete true`.")
 
 
 def _read_pending(inputs: dict) -> list:
@@ -301,7 +380,8 @@ def _note_second_opinion(evaluated: Evaluated, table: dict, inputs: dict) -> Non
 
 #: The step's settings' rules (common.step.Spec); run_step checks them before any input is read, and so does
 #: pick_records, with the same table (the shared settings' rules: common.step.shared_specs).
-SPECS = {"evaluate_held_out": Spec(bool), "suggest": Spec(bool), "extraction_run": Spec(str)}
+SPECS = {"evaluate_held_out": Spec(bool), "evaluate_held_out_incomplete": Spec(bool), "suggest": Spec(bool),
+         "extraction_run": Spec(str)}
 
 #: Step 070's four inputs from step 060: the files the setting extraction_run takes from one kept run of 060.
 FROM_060 = ("extracted_triples", "extracted_triples_removed", "extracted_triples_details", "schema_used")
@@ -351,22 +431,19 @@ def extraction_inputs(inputs: dict, settings: dict, given: set) -> dict:
 def _record_not_evaluated(gt, evaluated: Evaluated, not_chosen: list, outside: list, extracted: dict, catalog: dict,
                           since: int) -> None:
     """One entry per record of the ground truth this run doesn't evaluate, with why (not finished; finished, but
-    060's model calls failed for it, or 060's last run didn't choose it; outside the fair sample), and per record
+    060's last run didn't choose it; outside the fair sample), and per record
     060 extracted from that isn't in the ground truth; then the accounting check: records in the ground truth =
     records evaluated + records recorded here."""
     annotated = set(gt.select(ANNOTATED).ids)
     for rid in gt.select(TO_FIX).ids:
         dropped.discard(STAGE, "record", f"not finished in the ground truth (its state: {gt.state(rid)}), so not "
                         "evaluated", {"id": rid, "title": (catalog.get(rid) or {}).get("title")}, record_id=rid)
-    for e in evaluated.extraction_failed:
-        dropped.discard(STAGE, "record", f"finished, but 060's model calls failed for it in its last run "
-                        f"({dropped.KINDS[e['reason']]}), so not evaluated", e, record_id=e["id"])
     for rid in not_chosen:
-        dropped.discard(STAGE, "record", "finished, but not extracted by 060's last run, so not evaluated",
+        dropped.discard(STAGE, "record", "finished, but not chosen by 060's last run, so not evaluated",
                         {"id": rid, "title": (catalog.get(rid) or {}).get("title")}, record_id=rid)
     for rid in outside:
-        dropped.discard(STAGE, "record", "outside the fair sample (after an unfinished or unextracted record of its own "
-                        "part of the pool, or not in the pool), so not evaluated",
+        dropped.discard(STAGE, "record", "outside the fair sample (after an unfinished record, or one 060's last run "
+                        "didn't choose, of its own part of the pool, or not in the pool), so not evaluated",
                         {"id": rid, "title": (catalog.get(rid) or {}).get("title")}, record_id=rid)
     dropped.account(STAGE, "records in the ground truth", len(annotated), len(evaluated.records), since=since,
                     item_type="record", only=lambda e: e.get("record_id") in annotated)
@@ -464,16 +541,20 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
                                       "reason": dropped.kind_from_text(why)}
     evaluated.finished = [{"id": rid, "maintainer": (catalog.get(rid) or {}).get("maintainer") or dropped.UNDEFINED}
                           for rid in sorted(finished)]
-    evaluated.extraction_failed = [failed_by_060[rid] for rid in not_extracted if rid in failed_by_060]
+    failed_ids = {rid for rid in not_extracted if rid in failed_by_060}
     not_chosen = [rid for rid in not_extracted if rid not in failed_by_060]
-    taken = finished & extracted_ids
+    # A record whose extraction failed was chosen by 060 and is scored as extracting nothing: it stays in the fair
+    # sample (module docstring).
+    taken = finished & (extracted_ids | failed_ids)
+    evaluated.chosen_by_060 = len(taken)
     parts = pool_parts(pool_rows)                  # each part is a fair sample on its own: its own run from its own first record
     fair = {rid for order in parts.values() for rid in fair_prefix(order, taken)}
     outside = sorted(taken - fair)
+    evaluated.extraction_failed = [failed_by_060[rid] for rid in sorted(failed_ids & fair)]
     evaluated.left_out = {k: v for k, v in {
-        "finished, but 060's model calls failed for them in its last run": [e["id"] for e in evaluated.extraction_failed],
-        "finished, but not extracted by 060's last run": not_chosen,       # 060 didn't choose them
-        "outside the fair sample (after an unfinished or unextracted record of their own part of the pool, or not in the pool)": outside,
+        "finished, but not chosen by 060's last run": not_chosen,
+        "outside the fair sample (after an unfinished record, or one 060's last run didn't choose, of their own part "
+        "of the pool, or not in the pool)": outside,
     }.items() if v}
     positions = {r["id"]: r["position"] for r in pool_rows}
     part_of = {r["id"]: r["part"] for r in pool_rows}
@@ -486,14 +567,13 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
 
     gap = gaps_of()
     if evaluated.extraction_failed:
-        failed = evaluated.extraction_failed
-        evaluated.notes.append(f"{len(failed)} finished ground truth record(s) are left out because 060's model calls "
-                            f"failed for them in its last run, so every number of this run is computed without them: "
-                            + named([f"{e['id']} ({dropped.KINDS[e['reason']].split(':')[0]}; maintainer "
-                                     f"{e['maintainer']})" for e in failed], 5, "; ")
-                            + ". The report's section *Records left out* counts them by reason and by maintainer, and "
-                              "says for each reason whether running `py 060_extract/run.py` again can bring them in "
-                              "(then run `py 070_evaluate/run.py` again).")
+        evaluated.notes.append(failed_note(evaluated.extraction_failed, len(fair),
+                                           evaluated.extraction_made.get("max_answer_tokens")))
+    if settings.get("evaluate_held_out"):
+        problem = held_out_gap(parts.get(HELD_OUT, []), finished, extracted_ids | failed_ids, fair, positions,
+                               settings.get("evaluate_held_out_incomplete"), evaluated.notes)
+        if problem:
+            raise Stop(problem)
     # 060's run may have extracted from the tuning records only (its setting extract_from, with no ids): then the
     # finished records of the other part were left out on purpose, and running 060 the same way again wouldn't
     # bring them in.
@@ -512,9 +592,10 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
                             f"this extraction. To evaluate those records, run `py 060_extract/run.py --extract_from "
                             f"ground_truth`, then run `py 070_evaluate/run.py` again.")
     if others:
-        evaluated.notes.append(f"{len(others)} finished ground truth record(s) weren't extracted by 060's "
-                            f"last run, so this run leaves them out: {named(others)}. To evaluate them, run "
-                            f"`py 060_extract/run.py`, then run `py 070_evaluate/run.py` again.")
+        evaluated.notes.append(f"{len(others)} finished ground truth record(s) weren't chosen by 060's last run (it "
+                            f"neither extracted from them nor recorded a failure for them), so this run leaves them "
+                            f"out: {named(others)}. To evaluate them, run `py 060_extract/run.py` so that it chooses "
+                            f"them, then run `py 070_evaluate/run.py` again.")
     if outside:
         not_in_pool = [rid for rid in outside if rid not in positions]
         evaluated.notes.append(f"{len(outside)} record(s) are left out because they aren't in the fair sample (the "
@@ -532,10 +613,12 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
     for rid in evaluated.pool:
         if rid not in fair:
             continue
+        failure = failed_by_060.get(rid) if rid in failed_ids else None
+        ex_rows = [] if failure else extracted.get(rid, [])     # a failed record: scored as extracting nothing
         gt_triples, gt_describes = _triples(rows_of.get(rid, []))
-        ex_triples, ex_describes = _triples(extracted.get(rid, []))
+        ex_triples, ex_describes = _triples(ex_rows)
         _record_rows(rid, rows_of.get(rid, []), "ground truth")
-        _record_rows(rid, extracted.get(rid, []), "extracted")
+        _record_rows(rid, ex_rows, "extracted")
         evaluated.records.append({
             "id": rid, "position": by_id[rid]["position"], "part": by_id[rid]["part"],
             "stratum": strata.get(rid, ""), "title": titles.get(rid, ""),
@@ -543,6 +626,8 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
             "removed": dict(removed.get(rid, {})), "pending": pending_of.get(rid, []),
             "second_opinion": groups_of(rid, gt_triples, second_opinion),
             "second_opinion_repeats": repeats_of(rid, gt_triples, second_opinion),
+            # why 060's model calls failed for it (a key of common.dropped.KINDS), or None: extracted
+            "extraction_failed": failure["reason"] if failure else None,
         })
     _record_not_evaluated(gt, evaluated, not_chosen, outside, extracted, catalog, since)
     _note_second_opinion(evaluated, second_opinion, inputs)
@@ -556,7 +641,7 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
                             f"file was written with a stratum for every pool record, so it was probably edited: "
                             f"compare it with Git's copy (`git diff {candidates}`).")
     if not evaluated.records:
-        raise Stop("Nothing to evaluate yet: no finished ground truth record that 060 extracted is in the "
+        raise Stop("Nothing to evaluate yet: no finished ground truth record that 060's last run chose is in the "
                    "fair sample, so 070 can't evaluate. "
                    + (f"{gap}, then run `py 070_evaluate/run.py` again. " if gap else "")
                    + " ".join(evaluated.notes))

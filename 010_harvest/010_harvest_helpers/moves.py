@@ -145,11 +145,12 @@ def download_catalog(settings: dict, output: Path) -> Harvest:
         log.info(f"  a complete harvest is saved ({len(saved.files)} batch files, {saved.reported:,} records); "
                  f"kept, and the catalog not asked (--new_harvest true replaces it)")
         return saved
+    session = ckan_client.make_session()
+    # Page 0 first: only once the catalog has answered is a saved harvest moved aside (--new_harvest true), so a
+    # catalog that can't be reached leaves the saved harvest where it was, and every later step's input unchanged.
+    first, first_request = ckan_client.fetch_page(session, 0, page_size)
     if saved:
         set_aside = _set_aside(saved)
-
-    session = ckan_client.make_session()
-    first, first_request = ckan_client.fetch_page(session, 0, page_size)
     reported = first["count"]
     target = min(reported, max_records) if max_records > 0 else reported
     log.info(f"  catalog reports {reported} records; harvesting {target} in pages of {page_size}")

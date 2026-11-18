@@ -568,7 +568,7 @@ class Pipeline(unittest.TestCase):
         r = subprocess.run(summarize + [p.stem for p in looks_kept], capture_output=True, text=True, encoding="utf-8",
                            errors="replace", cwd=self.repo)
         self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
-        self.assertIn("looks at the same extraction", r.stderr)
+        self.assertIn("evaluations of the same run of 060", r.stderr)
         r = subprocess.run(summarize, capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=self.repo)
         self.assertEqual((r.returncode, r.stdout.count("held-out records   060:")), (0, 2), r.stdout + r.stderr)
         self.assertEqual((self.annotations / "held_out_looks.csv").read_bytes(), log_before)   # no look was added

@@ -26,7 +26,7 @@ from common.files import write_csv, write_json
 from common.ground_truth import (ANNOTATED, COLUMNS as GROUND_TRUTH_COLUMNS, DRAFTED_BY, ROW_ERRORS, RULES, check_rows, draft_name,
                                  fair_words, file_name)
 from common.report import cell, counted, listed_label, model_calls, named, per_text_headline, per_text_table, this_report
-from common.step import Results, repo_path
+from common.step import Results, inputs_still_the_same, repo_path
 from common.triples_io import is_describes
 
 #: A drafted batch's columns: the ground truth's (rules empty: a person records them), then the checks, then where
@@ -105,6 +105,9 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
                              DRAFTED_BY: llm.MODEL, RULES: "", "flags": " ".join(r["errors"] + r["flags"]),
                              ORIGIN_COLUMN: audit.origin("records", item["id"])})
     if csv_rows:
+        # Before the batch is written: once it is, a rerun drafts the next records, so an input changed during the run
+        # stops here, with nothing written, and running 050 again drafts these records again from the cache.
+        inputs_still_the_same()
         write_csv(batch_path, COLUMNS, csv_rows, new=True)       # a drafted batch is never overwritten
         write_json(details_path, {
             "made": {"run_id": audit.current_run_id(), **llm.describe(), "settings": settings},
@@ -204,4 +207,8 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
                   **dropped.reasks_headline(llm.REASKS)},
         details="\n".join(lines),
         warnings=warnings,
+        if_inputs_changed=(
+            f"{batch_path.name} was written before the change was seen, from the inputs as read at the start, and "
+            f"is complete: open it in the annotation tool as usual. Don't run 050 again for it: a new run drafts the "
+            f"next records and pays for them." if files else ""),
     )

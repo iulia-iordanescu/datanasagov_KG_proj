@@ -2,10 +2,12 @@ $words
 
 Below are the labels given to predicate instances in records of a catalog of
 NASA datasets, each read from subject instance to object instance, with the
-number of records it was found in ("texts") and up to 3 triples from records
-that state it, written "subject instance (entity class) -- predicate
+number of records it was found in ("texts") and up to $examples_per_label
+triples that state it, taken from different records where possible
+("examples"), written "subject instance (entity class) -- predicate
 instance -- object instance (entity class)"; an instance with no entity
-class is written without one. Some labels may name the same predicate under
+class is written without one. A label sent without examples is judged by
+its words and its number of records alone. Some labels may name the same predicate under
 different words (e.g. "ABOARD" and "MOUNTED_ON"). Find each set of labels
 that name the same predicate and merge the set into the clearest of its
 labels.

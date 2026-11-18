@@ -211,7 +211,8 @@ flowchart TD
 ## 6. The folders
 
 ```
-010_harvest/ … 080_build_graph/   one folder per step: run.py (its control panel), its guide, its code
+010_harvest/ … 070_evaluate/      one folder per step: run.py (its control panel), its guide, its code
+                                  (080_build_graph/ isn't built yet, so it has no folder)
 common/                           code that more than one step uses
 helpers/                          tools that aren't steps: the annotation tool, audit, run comparison, models
 annotations/                      what people make and keep in Git: the ground truth and its files

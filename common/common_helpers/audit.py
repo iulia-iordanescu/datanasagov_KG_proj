@@ -79,8 +79,9 @@ def sha256(files) -> str:
     """One hash over one or more files, in the order given. One file: its bytes alone (so a file's hash is the
     plain sha256 of its content). Several (an input of many files, e.g. the ground truth's batch files): each file's
     name and length before its bytes, so renaming a file, or moving bytes from one file to the next, changes the
-    hash. Manifests written before 2026-11-01 hashed several files' bytes alone, so such an input shows as changed
-    once in the status after this change."""
+    hash. Manifests written before 2026-11-01 hashed several files' bytes alone; the status compares each file's own
+    hash (the manifest's file_hashes: common/common_helpers/status.py, input_changed), so that change of method makes
+    no input look changed."""
     files = list(files)
     h = hashlib.sha256()
     for f in files:

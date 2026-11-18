@@ -2,7 +2,7 @@
 
 Part of [Evaluation metrics](../metrics.md), which explains the notation and lists every metric.
 
-Every metric is computed on the evaluated [records](../../docs/terminology.md#1-records-and-their-text) only (the [fair sample](../../docs/terminology.md#4-ground-truth-and-samples) of finished, extracted records). Reading it for the whole catalog assumes two things:
+Every metric is computed on the evaluated [records](../../docs/terminology.md#1-records-and-their-text) only (the [fair sample](../../docs/terminology.md#4-ground-truth-and-samples) of [finished records](../../docs/terminology.md#4-ground-truth-and-samples) that 060's run chose: extracted, or scored as extracting nothing when its [model calls](../../docs/terminology.md#8-the-pipeline) failed). Reading it for the whole catalog assumes two things:
 
 - the evaluated records are a random sample of the catalog (only the fair sample is evaluated: for each part, the first records of the part in pool order, with none of the part skipped; the pool's order restricted to one part is still random, so each part is a random sample on its own);
 - the pipeline wasn't adjusted to these records (true of the [held-out part](../../docs/terminology.md#7-evaluating-extraction-step-070) until it is looked at).

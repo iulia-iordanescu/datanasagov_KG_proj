@@ -186,6 +186,39 @@ BATCH_PROGRESS_SECONDS = 600
 BATCH_LIMITS = {"anthropic": (100_000, 240_000_000), "openai": (50_000, 190_000_000), "google": (100_000, 18_000_000)}
 
 
+#: The most input tokens this pipeline lets wait in a maker's batch queue for one model at one time, by service and
+#: model; a model not listed has no cap here. A run whose requests hold more is sent as several jobs, each sent once
+#: the jobs before it have left the queue (common/common_helpers/llm_batch.py, _Queue). The values leave a margin of
+#: about 10% below the account's caps for the estimate of a prompt's tokens (llm_batch.py, estimated_tokens).
+#:   openai  "The Batch/Background Rate Limit caps the total input tokens queued for a model. Once a batch job
+#:           completes, its tokens no longer count toward the limit. The API counts input tokens at submission"
+#:           (https://developers.openai.com/api/docs/guides/rate-limits, read 2026-11-17). The account's caps (its usage
+#:           tier, Build, on its limits page, read 2026-11-17): gpt-6.1-sol and gpt-6.1-terra 1,350,000 tokens,
+#:           gpt-6-luna 20,000,000
+#:   google  "Enqueued tokens per model": "the maximum number of tokens that can be enqueued for batch processing
+#:           across all your active batch jobs for a given model" (https://aistudio.google.com/docs/rate-limits, read
+#:           2026-11-17). Tier 1: gemini-4-argon 5,000,000, gemini-3.8-flash 3,000,000, gemini-3.5-flash-lite
+#:           10,000,000
+#: Anthropic's batch pages state no token cap (BATCH_QUEUE_REQUESTS has its cap on requests).
+BATCH_QUEUE_TOKENS = {"openai": {"gpt-6.1-sol": 1_200_000, "gpt-6.1-terra": 1_200_000, "gpt-6-luna": 18_000_000},
+                      "google": {"gemini-4-argon": 4_500_000, "gemini-3.8-flash": 2_700_000,
+                                 "gemini-3.5-flash-lite": 9_000_000}}
+
+
+#: The most requests this pipeline lets wait or run in a maker's batch queue at one time, by service, counted over
+#: every uncollected job of the service, whatever its model; a job also holds no more than this many requests.
+#:   google     "Concurrent batch requests": 100 for every model (https://aistudio.google.com/docs/rate-limits, read
+#:              2026-11-17). The page doesn't define the term, and its batch page (https://aistudio.google.com/docs/
+#:              batch-api) uses "request" for one item of a job. Read as 100 requests, it also holds if Google means
+#:              100 jobs (a run sends far fewer than 100 jobs), so the narrower reading is the one applied: a run of
+#:              more than 100 requests is sent as jobs of at most 100, one after another.
+#:   anthropic  the Start tier's "Batch requests in processing queue": 200,000, with at most 100,000 per batch (its
+#:              rate limits page, https://platform.claude.com/docs/en/api/rate-limits, read 2026-11-17; the 100,000 per
+#:              job is BATCH_LIMITS)
+#: OpenAI caps tokens, not requests in the queue (BATCH_QUEUE_TOKENS).
+BATCH_QUEUE_REQUESTS = {"google": 100, "anthropic": 200_000}
+
+
 #: The batch jobs this run submitted or collected (common/common_helpers/llm_batch.py), for the run's record
 #: (describe) and the report's Model calls: {"service", "id", "requests", "how": "submitted" | "resumed", "state",
 #: "answered", "failed"}. Reset by paid_calls.

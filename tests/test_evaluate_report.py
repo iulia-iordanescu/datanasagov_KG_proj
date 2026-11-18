@@ -296,7 +296,7 @@ class HeldOutResults(unittest.TestCase):
         self.assertIn("given more than once", self.h.check(runs + runs[:1]))
         again = self.look("model-a", 1, self.PAIRS["model-a"][0])
         again["run_id"] = "070_evaluate_2026-11-21_1200"                               # a second look, the same 060 run
-        self.assertIn("looks at the same extraction, whose repeat would count twice", self.h.check(runs + [again]))
+        self.assertIn("evaluations of the same run of 060", self.h.check(runs + [again]))
 
     def test_reads_kept_results_only(self):
         """The command lists and summarizes from the files kept: no line is added to the log, nothing is written

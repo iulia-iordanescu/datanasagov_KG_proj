@@ -346,15 +346,28 @@ def schema_text(schema: dict, rule_19_marks: bool = False) -> str:
 
 
 
+def spellings(entity_class: str) -> tuple:
+    """The words that name an entity class in a definition: its own spelling and its plurals, "s", "es", and, for one
+    ending in a consonant and "y", "ies" ("PhysicalQuantity", "PhysicalQuantitys", "PhysicalQuantityes",
+    "PhysicalQuantities"; "Day": "Days", "Dayes", no "Daies"). A wrong plural ("Instrumentes") names it too: the check
+    asks only whether the entity class is meant. Shared by unnamed_pinned and 040's defining (stage 7,
+    not_entity_classes), so both read a plural alike."""
+    out = [entity_class, entity_class + "s", entity_class + "es"]
+    if len(entity_class) > 1 and entity_class.endswith("y") and entity_class[-2].lower() not in "aeiou":
+        out.append(entity_class[:-1] + "ies")
+    return tuple(out)
+
+
 def unnamed_pinned(definition: str, pins) -> list:
     """The entity classes a pin names (pins: [(subject class, object class)], "any" left out), in order, that the
-    definition doesn't name. Named means written as a whole word, in the entity class's own spelling, or with a plural
-    "s" ("one of the Channels"); "grid" or "Gridded" doesn't name Grid. A predicate's definition is the one home of its
-    meaning and no prompt shows a pin (schema_text), so a pinned predicate's definition must name what the pin allows:
-    the ground truth schema's test (tests/test_schema_io.py, DefinitionsNamePins) and 040's defining (stage 7) both
-    check it with this."""
+    definition doesn't name. Named means written as a whole word, in the entity class's own spelling, or as one of its
+    plurals (spellings: "one of the Channels", "PhysicalQuantities"); "grid" or "Gridded" doesn't name Grid. A
+    predicate's definition is the one home of its meaning and no prompt shows a pin (schema_text), so a pinned
+    predicate's definition must name what the pin allows: the ground truth schema's test (tests/test_schema_io.py,
+    DefinitionsNamePins) and 040's defining (stage 7) both check it with this."""
     named = dict.fromkeys(x for pair in pins for x in pair if x != ANY)
-    return [c for c in named if not re.search(r"(?<![\w-])" + re.escape(c) + r"s?(?![\w-])", definition or "")]
+    return [c for c in named if not re.search(r"(?<![\w-])(?:" + "|".join(map(re.escape, spellings(c))) + r")(?![\w-])",
+                                              definition or "")]
 
 
 def pins_not_in_definition(schema: dict) -> list:

@@ -580,7 +580,14 @@ NOT_THE_RECIPE = ("extraction (060) / run_id", "extraction (060) / git_commit",
 REPEAT_PATHS = ("extraction (060) / settings / repeat", "extraction (060) / model_calls / repeat")
 
 
-def _recipe(evaluated, translation, inputs_manifest: dict) -> dict:
+def _verdicts_applied(records: list) -> list:
+    """The verdicts of annotations/partial_pair_reviews.csv that apply to these records (pairing.compare_record:
+    each filed under a ground truth triple and an occurrence that pair at the partial level), sorted: [the pair's
+    key..., the verdict]."""
+    return sorted(v for r in records for v in ((r.get("compared") or {}).get("partial_review") or {}).get("verdicts", []))
+
+
+def _recipe(evaluated, translation, inputs_manifest: dict, records: list | None = None) -> dict:
     """What made this run's numbers, for py helpers/compare_runs.py to show what differs between runs: 060's run
     (code version, settings, how its model calls were sent (llm.describe(), from its details file: the exact model
     that answered, the answer limit, temperature, thinking, effort), prompts, and the schema files it read, by
@@ -588,7 +595,10 @@ def _recipe(evaluated, translation, inputs_manifest: dict) -> dict:
     translation, the version of what counts as the same component instance (text_match.MATCHING_VERSION), the version
     of what 070 counts (pairing.EVALUATION_VERSION: the gate, the keys, the tie rule), the facts
     that wait on an expert (that occurrences matching them are left out of precision, how many there are, and their
-    rows by fingerprint), and the model that proposed the translation)."""
+    rows by fingerprint), the verdicts on partial pairs that apply to the records kept (records: those of the file
+    the recipe is written to; all evaluated records when not given), by count and fingerprint, and the model that
+    proposed the translation)."""
+    verdicts = _verdicts_applied(getattr(evaluated, "records", []) if records is None else records)
     extraction = {"run_id": evaluated.extraction_made.get("run_id") or inputs_manifest.get("run_id"),
                   "git_commit": inputs_manifest.get("git_commit"), "settings": inputs_manifest.get("settings", {}),
                   "model_calls": {k: evaluated.extraction_made.get(k) for k in MODEL_CALL_FIELDS},
@@ -611,6 +621,9 @@ def _recipe(evaluated, translation, inputs_manifest: dict) -> dict:
                                  UNTRANSLATABLE_FIELD: {
                                      "excluded_from_precision": True,
                                      "to_none_predicates_sha256": _fingerprint(sorted(translation.to_none.get("predicate", [])))},
+                                 # the verdicts on partial pairs that decided pairs of these records: a review between
+                                 # two runs changes this, so they aren't taken for repeats (helpers/compare_runs.py)
+                                 "partial_pair_verdicts": {"applied": len(verdicts), "sha256": _fingerprint(verdicts)},
                                  **{k: v for k, v in llm.describe().items() if k in ("service", "model")}}}
 
 
@@ -629,7 +642,7 @@ def _keep_evaluation(evaluated, translation, output, records: list, inputs_manif
     # Each record's own fingerprints, so py helpers/compare_runs.py can tell a record whose ground truth, pending
     # rows or translation changed between runs (and leave it out) from one whose extraction did (the thing compared).
     write_json(path, {
-        "run_id": run_id, **more, "recipe": _recipe(evaluated, translation, inputs_manifest),
+        "run_id": run_id, **more, "recipe": _recipe(evaluated, translation, inputs_manifest, records),
         "records": [{"id": r["id"], "position": r["position"], "stratum": r["stratum"], "twin": r.get("twin"),
                      "ground_truth_sha256": _fingerprint(_ground_truth_rows(r)),
                      "pending_sha256": _fingerprint(pending.get(r["id"], [])),
@@ -640,7 +653,10 @@ def _keep_evaluation(evaluated, translation, output, records: list, inputs_manif
                      "groups": {name: {k: dict(c) for k, c in g.items()}
                                 for name, g in (r["compared"].get("groups") or {}).items()},
                      "drafted_by_spellings": dict(r["compared"].get("drafted_by_spellings") or {}),
-                     "describes": {k: r["compared"]["describes"][k] for k in ("truth", "said", "right")}}
+                     "describes": {k: r["compared"]["describes"][k] for k in ("truth", "said", "right")},
+                     # why 060's model calls failed for it (a key of common.dropped.KINDS), scored as extracting
+                     # nothing; None: extracted
+                     "extraction_failed": r.get("extraction_failed")}
                     for r in records]}, new=True)
     return path
 
@@ -713,6 +729,11 @@ def _per_record(records: list, hidden: int) -> str:
         gt, ex = r["gt"], c["translated"]
         lines += [f"## {r['title'] or r['id']}", "",
                   f"Pool position {r['position']} · {r['part']} · stratum {r['stratum'] or '(none)'} · id `{r['id']}`", ""]
+        if r.get("extraction_failed"):
+            lines += [f"**060's model calls failed for this record** "
+                      f"({dropped.KINDS[r['extraction_failed']].split(':')[0]}), so it is scored as extracting "
+                      f"nothing: each ground truth triple below is ground truth only (section *Records whose "
+                      f"extraction failed* of the report).", ""]
         lines += _record_block(own[r["id"]])
         d = c["describes"]
         mark = "✓" if d["right"] else "✗"
@@ -886,6 +907,75 @@ def _mismatch_lines(mismatches: list) -> list:
     return lines + [""]
 
 
+def _records_words(evaluated, part: str, count: int) -> str:
+    """A part's headline count: the records evaluated, of the finished ground truth records of the part, and how many
+    of them are scored as extracting nothing because 060's model calls failed for them."""
+    finished = {f["id"] for f in evaluated.finished}
+    expected = sum(1 for rid, p in _parts_of(evaluated).items() if p == part and rid in finished)
+    failed = sum(1 for r in evaluated.records if r["part"] == part and r.get("extraction_failed"))
+    return (f"{count} records evaluated of the {expected} finished ground truth records of the part"
+            + (f", {failed} of them scored as extracting nothing because 060's model calls failed for them"
+               if failed else ""))
+
+
+def _parts_of(evaluated) -> dict:
+    """{record id: its part} of the pool records (from the evaluated records and the ground truth's pool order)."""
+    gt = evaluated.ground_truth
+    parts = {r["id"]: r["part"] for r in evaluated.records}
+    for rid, rec in (getattr(gt, "records", None) or {}).items():
+        if rec.get("part"):
+            parts.setdefault(rid, rec["part"])
+    return parts
+
+
+def _more_records(evaluated, part: str) -> str:
+    """What brings more records of a part into the evaluation, by what holds them back: finished records 060's run
+    didn't choose, or none finished beyond the fair sample (then drafting and finishing more is the way). A failed
+    extraction holds no record back: it is evaluated, scored as extracting nothing."""
+    parts = _parts_of(evaluated)
+    held_back = [rid for why, ids in evaluated.left_out.items() for rid in ids if parts.get(rid) == part]
+    if held_back:
+        return (f"{len(held_back)} finished record(s) of the part are not evaluated ({named(held_back)}; the report's "
+                f"warnings say why for each): run `py 060_extract/run.py` so that it chooses them, {AGAIN}")
+    return (f"Every finished record of the part in the fair sample is evaluated, so more must be finished: draft "
+            f"(`py 050_annotate/run.py`) and finish (`py helpers/annotate.py`) the next records of the pool, in order, "
+            f"run `py 060_extract/run.py`, {AGAIN}")
+
+
+def failed_section(evaluated) -> list:
+    """The report's section on the evaluated records whose extraction failed in 060's run, each scored as extracting
+    nothing: how many of the records evaluated, by reason (with what that means and what to do:
+    records.FAILED_TO_DO) and by maintainer."""
+    lines = ["### Records whose extraction failed", ""]
+    failed = evaluated.extraction_failed
+    if not failed:
+        return lines + [f"None: 060's run answered every one of the {len(evaluated.records)} record(s) evaluated.", ""]
+    limit = evaluated.extraction_made.get("max_answer_tokens")
+    by_reason = {}
+    for e in failed:
+        by_reason.setdefault(e["reason"], []).append(e["id"])
+    lines += [f"060's model calls failed for {len(failed)} of the {len(evaluated.records)} record(s) evaluated, so each "
+              f"is scored as extracting nothing: its ground truth triples count against recall, it adds no occurrence, "
+              f"and its describes triple counts as not named. A failure to produce output counts as no output, as "
+              f"evaluations of extraction count it. The reason for each is in "
+              f"`060_extract/extracted_triples_details.json` (key `left_out`).", "",
+              "| Reason | Records | Which | What it means here, and what to do |", "|---|---:|---|---|"]
+    lines += [f"| {dropped.KINDS[k]} | {len(ids)} | {cell(named(ids, 10))} | "
+              f"{cell(records_stage.FAILED_TO_DO[k].format(limit=f'{limit:,} tokens' if isinstance(limit, int) else 'not recorded'))} |"
+              for k, ids in by_reason.items()]
+    evaluated_by = {}
+    for r in evaluated.records:
+        m = next((f["maintainer"] for f in evaluated.finished if f["id"] == r["id"]), dropped.UNDEFINED)
+        evaluated_by[m] = evaluated_by.get(m, 0) + 1
+    by_maintainer = {}
+    for e in failed:
+        by_maintainer[e["maintainer"]] = by_maintainer.get(e["maintainer"], 0) + 1
+    lines += ["", "| Maintainer | Failed | Of the records evaluated from this maintainer |", "|---|---:|---:|"]
+    lines += [f"| {cell(m)} | {n} | {evaluated_by.get(m, 0)} |"
+              for m, n in sorted(by_maintainer.items(), key=lambda x: -x[1])]
+    return lines + [""]
+
+
 def mismatch_warning(frequent: list) -> str:
     """The warning about component class mismatches seen pairing.MISMATCH_WARN or more times, split by kind."""
     def shown(c):
@@ -935,6 +1025,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                  "interval_method": "clustered Wilson", "few_records_caveat_below": stats.FEW_RECORDS},
         "evaluated": {p: [r["id"] for r in evaluated.records if r["part"] == p] for p in PARTS},
         "left_out": evaluated.left_out,
+        "extraction_failed": evaluated.extraction_failed,   # evaluated, each scored as extracting nothing
         "learned_from": evaluated.learned_from,
         "parts": {p: {"numbers": v["numbers"], "strata": v["strata"], "margin_checks": v["margin_checks"],
                       "per_component_class": v["per_component_class"], "per_record": v["per_record"],
@@ -971,10 +1062,8 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                             + ("so its numbers have no margin of error" if n["records"] < 2 else
                                "so each margin of error is a rough width, not a bound (its design effect is itself "
                                "estimated from these few records)")
-                            + f", and they are too few to draw conclusions from. Draft (`py 050_annotate/run.py`) and finish (`py helpers/annotate.py`) more "
-                            f"records of the pool, in order, run "
-                            f"`py 060_extract/run.py`, {AGAIN} Until then, read {repo_path(per_record_path)} rather "
-                            f"than the numbers.")
+                            + f", and they are too few to draw conclusions from. {_more_records(evaluated, part)} "
+                            f"Until then, read {repo_path(per_record_path)} rather than the numbers.")
         elif drifted:
             warnings.append(f"The {part} part: {len(drifted)} stratum(s) whose proportion of the evaluated records differs "
                             f"from its proportion of the pool by more than {100 * stats.SHARE_GAP:.0f} points: "
@@ -1102,16 +1191,14 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
     if evaluated.left_out:
         lines += ["Left out: " + "; ".join(f"{len(v)} {k}" for k, v in evaluated.left_out.items())
                   + f". Not finished yet in the ground truth: {evaluated.unfinished}.", ""]
-    lines += dropped.section(evaluated.extraction_failed, evaluated.finished,
-                             "this evaluation (extraction had nothing for them)",
-                             "060_extract/extracted_triples_details.json")
+    lines += failed_section(evaluated)
 
     for part, v in metrics.items():
         if part == "kept_aside" or v["numbers"] is None:
             continue
         n = v["numbers"]
-        lines += [f"### Metrics: {part} part ({n['records']} records, {n['gt_triples']} ground truth triples, "
-                  f"{n['extracted']} occurrences)", ""]
+        lines += [f"### Metrics: {part} part ({_records_words(evaluated, part, n['records'])}, "
+                  f"{n['gt_triples']} ground truth triples, {n['extracted']} occurrences)", ""]
         if _too_few(n):
             lines += [_too_few(n), ""]
         part_records = [r for r in evaluated.records if r["part"] == part]

@@ -77,6 +77,8 @@ INDUCTION = "induction_candidates"
 STAGE_2 = "stage 2 (ground_truth_candidates)"
 STAGE_3 = "stage 3 (induction_candidates)"
 STAGE_RESULTS = "results (writes splits.json once)"
+#: The inputs the draw reads, named in splits.json under "drawn"; the ground truth is read only for the report.
+DRAW_INPUTS = ("records", "candidates")
 SHOW = 20                                   # rows listed in the report before "…"
 #: The tuning / held-out rule (see above). Fixed, not settings: changing them
 #: after metrics have been looked at would defeat the held-out part.
@@ -222,14 +224,20 @@ def _lists(pool: Candidates, induction: Induction) -> dict:
             INDUCTION: {"maintainers": induction.maintainers, "records": induction.records}}
 
 
-def _from_trial_harvest(inputs: dict) -> bool:
-    """Whether the records come from a trial harvest: the run that made them
-    says so in its manifest (harvest_partial, passed on from 010)."""
-    manifest = Path(inputs["records"]).parent / MANIFEST_NAME
+def _from_trial_harvest(inputs: dict) -> bool | None:
+    """Whether the records come from a trial harvest: the run that made them says so in its manifest
+    (harvest_partial, passed on from 010). None when that can't be told: no readable manifest beside the records, one
+    that doesn't say, or one that describes another version of the records file (its recorded sha256 isn't the file's
+    now: the file was replaced by hand, or by a run of 020 that didn't finish)."""
+    records = Path(inputs["records"])
     try:
-        return bool(read_json(manifest).get("harvest_partial"))
-    except (OSError, ValueError):
-        return False
+        manifest = read_json(records.parent / MANIFEST_NAME)
+        rows = [r for r in manifest.get("outputs", []) if r.get("file") == records.name]
+        if not rows or rows[0].get("sha256") != audit.sha256([records]) or manifest.get("harvest_partial") is None:
+            return None
+        return bool(manifest["harvest_partial"])
+    except (OSError, ValueError, AttributeError, TypeError):
+        return None
 
 
 def _record_unkept_draw(drawn: dict, existing: dict, path: Path) -> None:
@@ -245,6 +253,42 @@ def _record_unkept_draw(drawn: dict, existing: dict, path: Path) -> None:
                                                      else "don't have this record"),
                                     {"list": k, "entry": {e: v for e, v in entry.items() if e != ORIGIN_FIELD}},
                                     record_id=entry["id"])
+
+
+#: The stage name the ground truth's unread files and rows carry, read for the count of twins across the parts.
+STAGE_TWINS = "results (twins across the tuning and held-out parts)"
+
+
+def twins_across_parts(pool: Candidates, records: dict, ground_truth=None) -> list:
+    """Report lines: how many held-out pool records are twins (common/common_helpers/ground_truth.py, twin_kinds) of a
+    tuning pool record, by twin kind, and how many of the finished held-out records are, as the ground truth
+    (ground_truth: its files' path, a wildcard; none given or no file: no record is finished) stands at this run.
+    A held-out record that shares its text with a tuning record is not unseen text once the tuning records have been
+    looked at, so its count is shown before any held-out look."""
+    from common.ground_truth import EVALUABLE, TWIN_KINDS, read_ground_truth, record_skipped, twin_kinds
+    by_part = {part: {r["id"]: records[r["id"]] for r in pool.records if r["part"] == part and r["id"] in records}
+               for part in (TUNING, HELD_OUT)}
+    kinds = twin_kinds(by_part[HELD_OUT], by_part[TUNING])
+    twins = collections.Counter(k for k in kinds.values() if k)
+    finished = []
+    if ground_truth and input_files(Path(ground_truth)):
+        gt = read_ground_truth(Path(ground_truth).parent, pool.records)
+        record_skipped(STAGE_TWINS, gt)
+        finished = [i for i in gt.select(EVALUABLE).ids if i in by_part[HELD_OUT]]
+    finished_twins = sorted(i for i in finished if kinds[i])
+    held = len(by_part[HELD_OUT])
+    lines = ["### Twins across the tuning and held-out parts", "",
+             f"A held-out pool record with the same title, the same `notes`, or both as a tuning pool record is a twin "
+             f"of it (the same twin kinds as above). Its text is then not unseen once the tuning records have been "
+             f"looked at, so it is counted here before any held-out look. Held-out pool records that are twins of a "
+             f"tuning pool record: **{sum(twins.values()):,} of {held:,}**"
+             + (" (" + ", ".join(f"{twins[k]:,} {k}" for k in TWIN_KINDS if twins[k]) + ")" if twins else "")
+             + f". Of the finished held-out records (as the ground truth stands at this run): "
+             f"**{len(finished_twins):,} of {len(finished):,}**"
+             + (f" ({named(finished_twins)})" if finished_twins else "") + ".", ""]
+    log.info(f"  twins across the parts: {sum(twins.values())} of {held} held-out pool records; "
+             f"{len(finished_twins)} of {len(finished)} finished held-out records")
+    return lines
 
 
 def results(pool: Candidates, induction: Induction, records: dict, inputs: dict, settings: dict,
@@ -269,14 +313,25 @@ def results(pool: Candidates, induction: Induction, records: dict, inputs: dict,
                             f"on the kept file. To take the change, delete {repo_path(path)} and run "
                             f"`py 030_split/run.py` again.")
     else:
-        if _from_trial_harvest(inputs):
+        trial = _from_trial_harvest(inputs)
+        if trial:
             raise Stop(f"The records come from a trial harvest (part of the catalog only, --max_records), so "
                        f"030 can't write {repo_path(path)}: it is written once and then kept, so the trial's "
                        f"records would stay in it. Run the full harvest (`py 010_harvest/run.py` without "
                        f"--max_records), then `py 020_clean/run.py`, then run `py 030_split/run.py` again.")
+        if trial is None:
+            records_path = Path(inputs["records"])
+            raise Stop(f"030 can't tell whether {repo_path(records_path)} comes from the full harvest: "
+                       f"{repo_path(records_path.parent / MANIFEST_NAME)} is missing or unreadable, doesn't say, or "
+                       f"describes another version of the records file (it was replaced by hand, or by a run of "
+                       f"020 that didn't finish). {repo_path(path)} is written once and then kept, so it is not "
+                       f"written from records of unknown origin. Run `py 020_clean/run.py` (on the full harvest), "
+                       f"then run `py 030_split/run.py` again.")
         document = {**drawn, "drawn": {
             "run_id": audit.current_run_id(), "settings": settings,
-            "inputs": {name: audit.ref_path(input_files(Path(p))[0]) for name, p in inputs.items()}}}
+            # the inputs the draw read (the ground truth is read for the report only)
+            "inputs": {name: audit.ref_path(input_files(Path(p))[0]) for name, p in inputs.items()
+                       if name in DRAW_INPUTS}}}
         write_json(path, document)
         log.info(f"  wrote {OUTPUT_NAME}")
 
@@ -362,6 +417,7 @@ def results(pool: Candidates, induction: Induction, records: dict, inputs: dict,
                         [(f"all {len(induction.records):,} induction candidates",
                           f"the {len(induction.records):,} induction candidates",
                           {r["id"]: records[r["id"]] for r in induction.records})])
+    lines += twins_across_parts(pool, records, inputs.get("ground_truth"))
 
     return Results(
         files=[path],

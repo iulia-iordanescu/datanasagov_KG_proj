@@ -189,10 +189,46 @@ class Labeling(unittest.TestCase):
     def test_match(self):
         labels, missing = label._match(["MODIS", "Aqua  craft", "Terra", "Aura"],
                                        {"MODIS": "Instrument", "aqua craft": "Spacecraft", "Terra": " ", "Aura": 3,
-                                        "extra": "Ignored"})
+                                        "extra": "Ignored"}, "entity")
         self.assertEqual(labels, {"MODIS": "Instrument", "Aqua  craft": "Spacecraft"})
         self.assertEqual(missing, ["Terra", "Aura"])
-        self.assertEqual(label._match(["a"], "not a dict"), ({}, ["a"]))
+        self.assertEqual(label._match(["a"], "not a dict", "entity"), ({}, ["a"]))
+
+    def test_label_must_be_one_word(self):
+        """A label must be one word of the format its prompt asks for (label.well_formed): a phrase, an arrow or a
+        hyphen is not taken, and recorded; near misses that are taken: another case (stage 4 folds it), digits, an
+        underscore in a predicate label, spaces at the ends."""
+        for kind, good, bad in (
+                ("entity", ["Instrument", "instrument", "Level2Product", " PhysicalQuantity "],
+                 ["Space craft", "Data -> Mission", "Level-2", "Physical_Quantity", "2Level", "", 7, None]),
+                ("predicate", ["ABOARD", "MEASURED_BY", "aboard", "LEVEL2_OF", " MEASURED_BY "],
+                 ["MEASURED BY", "MEASURED__BY", "_ABOARD", "ABOARD_", "MEASURED-BY", "A -> B", "", ["ABOARD"]])):
+            for value in good:
+                with self.subTest(kind=kind, value=value):
+                    self.assertTrue(label.well_formed(kind, value))
+            for value in bad:
+                with self.subTest(kind=kind, value=value):
+                    self.assertFalse(label.well_formed(kind, value))
+        from common import dropped
+        dropped.reset()
+        self.addCleanup(dropped.reset)
+        triples = texts(("t1", "m", "T1", "", [("MODIS", "is aboard", "Aqua")]))
+        replies = iter([{"labels": {"MODIS": "Instrument", "Aqua": "Space craft"}},       # a phrase: asked again
+                        {"labels": {"Aqua": "Spacecraft"}},
+                        {"labels": {"is aboard": "IS ABOARD"}}, {"labels": {"is aboard": "ABOARD"}}])
+        prompts = []
+        with Scripted({}) as calls:
+            llm.call_llm_json = lambda prompt, **kw: prompts.append(prompt) or next(replies)
+            result = label.label_component_instances(triples, calls)
+        self.assertTrue(prompts[1].endswith("- \"Aqua\": its label, \"Space craft\", isn't one CamelCase word (letters "
+                                            "and digits only), the format asked for"), prompts[1][-200:])
+        self.assertNotIn("Your last reply", prompts[0])
+        self.assertEqual((result.of["entity"]["Aqua"], result.of["predicate"]), ("Spacecraft", {"is aboard": "ABOARD"}))
+        # the second ask of a batch of one isn't the first prompt again, which the cache would answer: 4 calls made
+        self.assertEqual(result.calls, 4)
+        reasons = [e["reason"] for e in dropped.DISCARDS if e["stage"] == label.STAGE]
+        self.assertEqual(sum("isn't one CamelCase word" in r for r in reasons), 1, reasons)
+        self.assertEqual(sum("isn't one UPPER_SNAKE_CASE word" in r for r in reasons), 1, reasons)
 
     def test_source_text_sent(self):
         """Each component instance is sent with its shortest triple instance and that triple instance's source text."""
@@ -254,11 +290,70 @@ class Merging(unittest.TestCase):
         m = self.merge([{"into": "Gadget", "labels": ["Sensor"]},                    # into not a label
                         {"into": "Instrument", "labels": ["Sensor", "Widget", "Instrument"]},
                         {"into": "Spacecraft", "labels": ["Sensor"]},                # merged twice: the first stands
-                        "not a dict", {"into": "Craft", "labels": "Spacecraft"}])
+                        "not a dict", {"into": "Craft", "labels": "Spacecraft"},
+                        {"into": ["Instrument"], "labels": ["Detector"]},           # into isn't text: no label
+                        {"into": {"x": 1}, "labels": ["Detector"]},
+                        {"into": "Instrument", "labels": [{"x": 1}, ["Detector"], 7, "Detector"]}])  # labels not text
         issues = m.merge_issues["entity"]
-        self.assertEqual((issues["into_not_a_label"], issues["not_sent"], issues["merged_twice"]), (["Gadget"], ["Widget"], ["Sensor"]))
+        self.assertEqual((issues["into_not_a_label"], issues["not_sent"], issues["merged_twice"]),
+                         (["Gadget", ["Instrument"], {"x": 1}], ["Widget", {"x": 1}, ["Detector"], 7], ["Sensor"]))
         self.assertEqual(m.merged_into["entity"]["Sensor"], "Instrument")
         self.assertEqual(m.merged_into["entity"]["Spacecraft"], "Spacecraft")
+        self.assertEqual(m.merged_into["entity"]["Detector"], "Instrument")      # near miss: the text label is merged
+
+    def scripted_failures(self, *outcomes):
+        """merge.merge_labels over entity labels only, each call's outcome in turn: an exception to raise, or a
+        reply; (labels, the prompts sent, the discards)."""
+        from common import dropped
+        dropped.reset()
+        self.addCleanup(dropped.reset)
+        triples = texts(("t1", "m1", "T1", "", [("MODIS", "is aboard", "Aqua"), ("CERES", "is aboard", "Terra")]))
+        labels = label.Labels(of={"entity": {"MODIS": "Instrument", "CERES": "Sensor", "Aqua": "Spacecraft",
+                                             "Terra": "Spacecraft"}, "predicate": {"is aboard": "ABOARD"}},
+                              vocabulary={"entity": ["Instrument", "Sensor", "Spacecraft"], "predicate": ["ABOARD"]})
+        prompts, left = [], list(outcomes)
+
+        def answer(prompt, **kw):
+            prompts.append(prompt)
+            got = left.pop(0)
+            if isinstance(got, Exception):
+                raise got
+            return got
+        with Scripted({}) as calls:
+            llm.call_llm_json = answer
+            m = merge.merge_labels(labels, triples, calls)
+        return m, prompts, list(dropped.DISCARDS)
+
+    def test_refused_asked_again_without_examples(self):
+        """A merge call refused (or cut off, or twice of the wrong shape) is asked once more with the examples left
+        out; its answer is used, and the fallback is kept for the report."""
+        for failure in (llm.Refused("content filter"), llm.CutOff("cut off"), llm.BadReply("not JSON twice")):
+            with self.subTest(failure=type(failure).__name__):
+                m, prompts, _ = self.scripted_failures(failure, {"merges": [{"into": "Instrument",
+                                                                             "labels": ["Sensor"]}]})
+                first = json.loads(prompts[0][prompts[0].rindex("LABELS:") + len("LABELS:"):])
+                again = json.loads(prompts[1][prompts[1].rindex("LABELS:") + len("LABELS:"):])
+                self.assertTrue(all("examples" in e for e in first))
+                self.assertEqual(again, [{"label": e["label"], "texts": e["texts"]} for e in first])
+                self.assertEqual(m.merged_into["entity"]["Sensor"], "Instrument")
+                self.assertEqual(m.merge_fallback["entity"], {"kind": "entity class", "labels": 3,
+                                                              "first": str(failure), "without_examples": "answered"})
+                self.assertIsNone(m.merge_fallback.get("predicate"))         # one label: no call
+
+    def test_refused_twice_merges_nothing(self):
+        """Refused again without examples: no label of the call is merged, the call is recorded, the step goes on;
+        near miss: a failure that isn't a refusal, a cut-off or a bad reply still stops the step."""
+        m, prompts, discards = self.scripted_failures(llm.Refused("filter"), llm.Refused("filter again"))
+        self.assertEqual(len(prompts), 2)
+        self.assertEqual(m.merged_into["entity"], {"Instrument": "Instrument", "Sensor": "Sensor",
+                                                   "Spacecraft": "Spacecraft"})
+        self.assertEqual(m.merge_fallback["entity"]["without_examples"], "filter again")
+        call = [e for e in discards if e["item_type"] == "merge call"]
+        self.assertEqual(len(call), 1)
+        self.assertEqual(call[0]["item"], {"kind": "entity class", "labels": ["Instrument", "Sensor", "Spacecraft"]})
+        self.assertIn("filter; asked again: filter again", call[0]["reason"])
+        with self.assertRaises(llm.ApiError):
+            self.scripted_failures(llm.ApiError("HTTP 401: key not valid"))
 
     def test_titles_count_like_stage_5(self):
         """A label used only for titles (WebTool here) reaches the model with its texts and its titles as examples."""
@@ -278,7 +373,8 @@ class Merging(unittest.TestCase):
     def test_predicate_listing_shows_entity_classes(self):
         """Stage 4 shows each predicate label with up to EXAMPLES triple instances, each instance with its entity class
         as stage 4's own entity class merge left it (Sensor merged into Instrument first); an unlabeled instance is
-        written without one; the most frequent first, ties in reading order."""
+        written without one; chosen by count.representative (a new text and maintainer first, then a new text, ties
+        alphabetically)."""
         triples = texts(("t1", "m1", "T1", "", [("CERES", "is aboard", "Terra"), ("MODIS", "is aboard", "Aqua"),
                                                 ("MODIS", "is aboard", "Aqua")]),
                         ("t2", "m1", "T2", "", [("OMI", "flies on", "Mystery"), ("AIRS", "is aboard", "Aqua")]))
@@ -295,8 +391,8 @@ class Merging(unittest.TestCase):
         prompt = next(p for p in model.prompts if "FLIES_ON" in p)
         listing = {e["label"]: e for e in json.loads(prompt[prompt.rindex("LABELS:") + len("LABELS:"):])}
         self.assertEqual(listing["ABOARD"], {"label": "ABOARD", "texts": 2, "examples": [
-            "MODIS (Instrument) -- is aboard -- Aqua (Spacecraft)", "CERES (Instrument) -- is aboard -- Terra (Spacecraft)",
-            "AIRS (Instrument) -- is aboard -- Aqua (Spacecraft)"]})
+            "AIRS (Instrument) -- is aboard -- Aqua (Spacecraft)", "CERES (Instrument) -- is aboard -- Terra (Spacecraft)",
+            "MODIS (Instrument) -- is aboard -- Aqua (Spacecraft)"]})
         self.assertEqual(listing["FLIES_ON"]["examples"], ["OMI (Instrument) -- flies on -- Mystery"])
         entity_prompt = next(p for p in model.prompts if "Sensor" in p)
         self.assertIn('"CERES"', entity_prompt)                            # entity labels: their instances, as before
@@ -362,7 +458,7 @@ class Counting(unittest.TestCase):
 
     def test_titles_count(self):
         ds = self.entry("entity_classes", "Dataset")
-        self.assertEqual((ds["support"], ds["examples"]), (2, ["MODIS L2", "AIRS L1"]))
+        self.assertEqual((ds["support"], ds["examples"]), (2, ["AIRS L1", "MODIS L2"]))         # ties alphabetically
         self.assertEqual((self.c.texts_with_triple_instances, self.c.texts_with_describes_class), (2, 2))
 
     def test_split_reassigns_by_its_grouping(self):
@@ -384,10 +480,41 @@ class Counting(unittest.TestCase):
         self.assertEqual(c.pinned, {"ABOARD_SPACECRAFT": [("any", "Spacecraft")]})
 
     def test_predicate_examples_are_facts(self):
-        """A predicate's examples are the triple instances that most often state it: they show its subject and
-        object, which its definition must say."""
-        self.assertEqual(self.entry("predicates", "ABOARD")["examples"][0], "MODIS -- is aboard -- Aqua")
-        self.assertIn("AIRS -- flies on -- Aqua", self.entry("predicates", "ABOARD")["examples"])
+        """A predicate's examples are triple instances that state it (count.representative): they show its subject and
+        object, which its definition must say; its pattern found in the most texts gives the first, then each other
+        group (here CERES's, whose object has no label) one, before the first gives a second."""
+        self.assertEqual(self.entry("predicates", "ABOARD")["examples"],
+                         ["AIRS -- flies on -- Aqua", "CERES -- is aboard -- Mystery", "AIRS -- is aboard -- Terra",
+                          "MODIS -- is aboard -- Aqua", "OMI -- is aboard -- Aura"])
+
+
+class Representative(unittest.TestCase):
+    """count.representative: the examples of a schema entry, one per group (pattern) found in the most texts first,
+    each from a new text and, where possible, a new maintainer; deterministic."""
+
+    def test_near_duplicates_give_one_example(self):
+        """Five near-duplicate texts of one maintainer repeat one wording in pattern A; pattern B has one text of
+        another maintainer; pattern A has another wording in a text of a third maintainer. Then A gives its most
+        supported wording, B its one, and A's second pick is the third maintainer's, not a near-duplicate."""
+        dup = [("A", "granule -- from -- MODIS", f"d{i}", "m1") for i in range(5)]
+        dup += [("A", "granule v2 -- from -- MODIS", f"d{i}", "m1") for i in range(5)]
+        cands = dup + [("B", "map -- from -- Landsat", "x", "m2"), ("A", "scene -- from -- ASTER", "y", "m3")]
+        self.assertEqual(count.representative(cands, 3), ["granule -- from -- MODIS", "map -- from -- Landsat",
+                                                         "scene -- from -- ASTER"])
+        self.assertEqual(count.representative(list(reversed(cands)), 3), count.representative(cands, 3))  # order-free
+        # near miss: with room for more, the near-duplicate's other wording comes last (no new text is left)
+        self.assertEqual(count.representative(cands, 5)[3:], ["granule v2 -- from -- MODIS"])
+
+    def test_most_supported_groups_first_and_edges(self):
+        cands = [("small", "s", "t1", "m1"), ("big", "b1", "t2", "m2"), ("big", "b2", "t3", "m2"),
+                 ("mid", "m", "t4", "m3"), ("mid", "m", "t5", "m3")]
+        self.assertEqual(count.representative(cands, 3), ["b1", "m", "s"])           # big (2 texts), mid (2), small
+        self.assertEqual(count.representative(cands, 1), ["b1"])
+        self.assertEqual(count.representative([], 5), [])
+        self.assertEqual(count.representative(cands, 0), [])
+        # within a group, a new maintainer first: g2's second pick is b2 (m4), not b1 (m1, already shown)
+        cands = [("g1", "s", "t1", "m1"), ("g2", "b1", "t2", "m1"), ("g2", "b2", "t3", "m4"), ("g2", "b0", "t9", "m1")]
+        self.assertEqual(count.representative(cands, 3), ["b0", "s", "b2"])
 
 
 class SplitLookup(unittest.TestCase):
@@ -483,7 +610,11 @@ class Splitting(SplitFixture, unittest.TestCase):
             ("predicate not sent (ABOARD has one pattern)", {**ok, "predicate": "ABOARD"}, split.NOT_SENT),
             ("no name", {**ok, "into": "  "}, split.NO_NAME),
             ("an existing name, spelled otherwise", {**ok, "into": "aboard"}, split.NAME_TAKEN),
-            ("its own name", {**ok, "into": "Sourced From"}, split.NAME_TAKEN),
+            ("its own name", {**ok, "into": "Sourced_From"}, split.NAME_TAKEN),
+            ("a phrase", {**ok, "into": "Sourced From"}, split.NOT_ONE_WORD),
+            ("an arrow", {**ok, "into": "Data -> Mission"}, split.NOT_ONE_WORD),
+            ("a hyphen", {**ok, "into": "FROM-MISSION"}, split.NOT_ONE_WORD),
+            ("not text", {**ok, "into": ["FROM_MISSION"]}, split.NO_NAME),
             ("no grouping", {**ok, "by": "verb"}, split.NO_GROUPING),
             ("grouping left out", {k: v for k, v in ok.items() if k != "by"}, split.NO_GROUPING),
             ("no group", {**ok, "takes": []}, split.NO_GROUPS),
@@ -628,7 +759,8 @@ class Splitting(SplitFixture, unittest.TestCase):
         self.assertEqual([(p["subject"], p["object"], p["texts"]) for p in m["patterns"]],
                          [("Instrument", "Variable", 2), ("Spacecraft", "Variable", 2), ("Instrument", "Image", 1),
                           ("Spacecraft", "Image", 1)])
-        self.assertEqual(m["patterns"][0]["examples"], ["MODIS -- measures -- temperature", "AIRS -- measures -- humidity"])
+        self.assertEqual(m["patterns"][0]["examples"], ["AIRS -- measures -- humidity",
+                                                        "MODIS -- measures -- temperature"])   # ties alphabetically
         self.assertEqual(len(prompts), 1)                                   # nothing split: no merging again
 
     def test_unlabeled_subject_is_not_moved_or_shown(self):
@@ -684,8 +816,8 @@ class MergingAgain(SplitFixture, unittest.TestCase):
         _, prompts = self.run_stage([self.MISSION, self.CRAFT])
         listing = {e["label"]: e["examples"] for e in json.loads(
             prompts[1][prompts[1].rindex("LABELS:") + len("LABELS:"):])}
-        self.assertEqual(listing["FROM_CRAFT"], ["images (Data) -- came from -- Cassini (Spacecraft)",
-                                                 "y (Data) -- came from -- MODIS (Instrument)"])
+        self.assertEqual(listing["FROM_CRAFT"], ["y (Data) -- came from -- MODIS (Instrument)",
+                                                 "images (Data) -- came from -- Cassini (Spacecraft)"])
         self.assertTrue(all("(Mission)" in x for x in listing["FROM_MISSION"]))
         self.assertFalse(any("(Mission)" in x for x in listing["FROM_CRAFT"]))
         words = lambda xs: {x.split(" -- ")[1] for x in xs}                # noqa: E731
@@ -1184,7 +1316,7 @@ class FoldBeforeMerging(unittest.TestCase):
         self.assertEqual(label.one_spelling([], ["Level2", "Level3"]), ["Level2", "Level3"])    # digits apart
         triples = texts(("t1", "m", "T1", "", [("MODIS", "is aboard", "Aqua"), ("AIRS", "is aboard", "Terra")]))
         replies = iter([{"labels": {"MODIS": "Instrument", "Aqua": "Spacecraft", "AIRS": "instrument",
-                                    "Terra": "Space craft"}}, {"labels": {"is aboard": "ABOARD"}}])
+                                    "Terra": "SpaceCraft"}}, {"labels": {"is aboard": "ABOARD"}}])
         with Scripted({}) as calls:
             llm.call_llm_json = lambda prompt, **kw: next(replies)
             result = label.label_component_instances(triples, calls)
@@ -1256,7 +1388,8 @@ class Defining(unittest.TestCase):
         known = ["Instrument", "Spacecraft", "PhysicalQuantity", "MapProjection"]
         cases = [("a device on a Spacecraft", []),                                   # one part: never checked
                  ("holds measurements of this PhysicalQuantity", []),
-                 ("holds several PhysicalQuantities", ["PhysicalQuantities"]),       # "ies": not a plural of it
+                 ("holds several PhysicalQuantities", []),                           # plural "ies" for a "y"
+                 ("holds several PhysicalQuantityies", ["PhysicalQuantityies"]),     # near miss: no such plural
                  ("is drawn in these MapProjections", []),                           # plural "s"
                  ("was made by MODIS aboard SeaWiFS, as GeoTIFF or NetCDF", []),     # proper nouns: no lowercase part
                  ("was taken at McMurdo", ["McMurdo"]),                              # a CamelCase proper noun: listed
@@ -1295,8 +1428,13 @@ class Defining(unittest.TestCase):
         self.assertEqual(listing, ["Instrument", "Spacecraft"])            # Rare below min_support, Thing too vague
         sent = json.loads(first[first.rindex("PREDICATES:") + len("PREDICATES:"):])
         self.assertEqual(sent[0]["patterns"], [{"subject": "Instrument", "object": "Spacecraft", "texts": 2}])
-        again = json.loads(prompts[2][prompts[2].rindex("PREDICATES:") + len("PREDICATES:"):])
+        entries, note = prompts[2][prompts[2].rindex("PREDICATES:") + len("PREDICATES:"):].split("\n\nYour last", 1)
+        again = json.loads(entries)
         self.assertEqual([e["component_class"] for e in again], ["HAS", "ABOARD"])   # missing, then wrong word
+        self.assertEqual(note.split("\n")[1:], [   # what was wrong with each, as call_llm_json's re-ask says it
+            '- HAS: it was neither defined nor listed under "too_vague"',
+            "- ABOARD: its definition named SpaceVehicle, which is not listed under ENTITY CLASSES OF THE SCHEMA"])
+        self.assertNotIn("Your last reply", prompts[1])                    # near miss: the first ask has no note
         self.assertEqual(d.of["predicates"], {"ABOARD": "is carried on this Spacecraft",
                                               "HAS": "has this PhysicalQuantity"})
         self.assertEqual(d.not_entity_classes, [])                         # HAS was missing, not checked twice
@@ -1370,8 +1508,10 @@ class DefiningPinnedPredicates(unittest.TestCase):
         must = {e["component_class"]: e.get("must_name") for e in sent}
         self.assertEqual(must, {"FROM_MISSION": ["Mission"], "FROM_CRAFT": ["Data", "Spacecraft"], "ABOUT_RARE": None,
                                 "HAS": None})                              # Rare isn't being defined; HAS isn't pinned
-        again = json.loads(prompts[2][prompts[2].rindex("PREDICATES:") + len("PREDICATES:"):])
-        self.assertEqual([e["component_class"] for e in again], ["FROM_MISSION"])
+        entries, note = prompts[2][prompts[2].rindex("PREDICATES:") + len("PREDICATES:"):].split("\n\nYour last", 1)
+        self.assertEqual([e["component_class"] for e in json.loads(entries)], ["FROM_MISSION"])
+        self.assertEqual(note.split("\n")[1:], ["- FROM_MISSION: its definition didn't name Mission, which its "
+                                                '"must_name" lists'])
         self.assertEqual(d.of["predicates"]["FROM_MISSION"], "was produced during this Mission")
         self.assertEqual(d.pins_not_named, [])
         self.assertIn("doesn't name Mission, which its pin allows", d.asked_again[0]["why"])
@@ -1396,6 +1536,11 @@ class SharedPinCheck(unittest.TestCase):
         from common.schema_io import unnamed_pinned
         cases = [("came from this Mission", [("any", "Mission")], []),
                  ("came from one of these Missions", [("any", "Mission")], []),        # plural "s"
+                 ("holds these PhysicalQuantities", [("any", "PhysicalQuantity")], []),  # plural "ies" for a "y"
+                 ("holds these PhysicalQuantitys", [("any", "PhysicalQuantity")], []),   # a wrong plural names it too
+                 ("covers these Days", [("any", "Day")], []),
+                 ("covers these Daies", [("any", "Day")], ["Day"]),                    # near miss: "y" after a vowel
+                 ("came from these Processes", [("any", "Process")], []),              # plural "es"
                  ("came from this mission", [("any", "Mission")], ["Mission"]),        # spelling must be exact
                  ("came from this Missionary", [("any", "Mission")], ["Mission"]),     # a whole word only
                  ("came from this Sub-Mission", [("any", "Mission")], ["Mission"]),    # inside a hyphenated word

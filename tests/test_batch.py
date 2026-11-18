@@ -17,6 +17,11 @@ ask) through tests/test_model_calls.py's FakeSDK. For each maker (anthropic, ope
                         a job's creation that timed out isn't sent again; an error while polling (but a 404 seen
                         twice) leaves the job uncollected
     Google's order      inlined responses without their keys are matched to the requests by order
+    queue caps          jobs cut under a cap of input tokens (OpenAI, Google) or requests (Google), each sent
+                        after the one before ended; Ctrl+C between them, then a rerun, sends no prompt twice;
+                        a job refused for the queue (at creation or after) is sent again; other runs' open
+                        jobs count against the cap
+    answer limits       a job sent at another answer limit is collected; its cut-offs are kept at its own limit
 """
 import json
 import sys
@@ -496,13 +501,49 @@ class Batch(unittest.TestCase):
         self.assertEqual((list(replies.of), len(self.sdk.requests)), (["r02"], 2))   # the test call and r02
         path = self.tmp / "050_annotate" / "cache" / "extract.batch_jobs.json"
         state = self.state()
-        state["jobs"][0]["identity"] = {**state["jobs"][0]["identity"], "cache_identity": "x"}
+        self.assertEqual(llm_batch.jobs_holding(path.parent, "extract", {"a key no job holds"}), [])
+        # a job is found by the cache keys it holds, which name the model, thinking level and repeat: a job sent at
+        # another answer limit still holds this run's prompts
+        state["jobs"][0]["identity"] = {**state["jobs"][0]["identity"], "max_answer_tokens": 32000}
         path.write_text(json.dumps(state), encoding="utf-8")
-        self.assertEqual(llm_batch.jobs_holding(path.parent, "extract", {state["jobs"][0]["keys"][0]}), [])
+        held = llm_batch.jobs_holding(path.parent, "extract", {state["jobs"][0]["keys"][0]})
+        self.assertEqual([(j["id"], j["held"]) for j in held], [(job_id, 1)])
+
+    def test_a_job_sent_at_another_answer_limit_is_collected(self):
+        """A job sent at limit A and collected by a run at limit B: no new job, nothing paid again; a cut-off in it is
+        kept with limit A, so the cache asks it again at B but not at A; a cut-off held by the job for a prompt this
+        run doesn't ask is kept as a cut-off too."""
+        from common.cache import Cache
+        with mock.patch.object(llm, "MAX_ANSWER_TOKENS", 32000):
+            self.stop_while_waiting("anthropic", ["r00", "r01", "r02"])
+        (job_id,) = self.fakes["anthropic"].jobs
+        self.assertEqual(self.state()["jobs"][0]["identity"]["max_answer_tokens"], 32000)
+        self.sdk.requests.clear()
+        _, replies = self.run_batch("anthropic", ["r00", "r01"], {"r01": "cut", "r02": "cut"}, test_call=False)
+        self.assertEqual(list(self.fakes["anthropic"].jobs), [job_id])           # collected, not sent again
+        self.assertEqual(self.sdk.requests, [])
+        self.assertEqual((list(replies.of), replies.kinds), (["r00"], {"r01": "cut_off"}))
+        for words in (job_id, "answer limit 32000", f"this run's limit is {llm.MAX_ANSWER_TOKENS}"):
+            self.assertIn(words, replies.failed["r01"])
+        markers = {k: v["_pipeline_cut_off"] for k, v in self.cached().items() if "_pipeline_cut_off" in v}
+        self.assertEqual(len(markers), 2)                                       # r01 and r02, not asked by this run
+        self.assertEqual({m["max_answer_tokens"] for m in markers.values()}, {32000})
+        cache = Cache(self.tmp / "050_annotate" / "cache", "extract")
+        self.assertTrue(all(cache.cut_off(k) is None for k in markers))          # asked again at this run's limit
+        with mock.patch.object(llm, "MAX_ANSWER_TOKENS", 32000):                # near-miss: at the job's limit, not
+            self.assertTrue(all(cache.cut_off(k) for k in markers))
+        # near-miss: a cut-off at this run's own limit carries no note about another limit
+        self.setUp_again()
+        _, replies = self.run_batch("anthropic", ["r00", "r01"], {"r01": "cut"})
+        self.assertNotIn("answer limit", replies.failed["r01"])
+        (marker,) = [v["_pipeline_cut_off"] for v in self.cached().values() if "_pipeline_cut_off" in v]
+        self.assertEqual(marker["max_answer_tokens"], llm.MAX_ANSWER_TOKENS)
 
     def test_a_create_that_timed_out_is_not_sent_again(self):
         from common.llm_errors import NoAnswerInTime
-        for raised in (NoAnswerInTime("APITimeoutError: timed out"), RuntimeError("no connection")):
+        read_error = type("ReadError", (Exception,), {})                       # httpx's, which _sdk_error doesn't place
+        for raised in (NoAnswerInTime("APITimeoutError: timed out"), RuntimeError("no connection"),
+                       read_error("connection closed while reading")):
             with self.subTest(raised=type(raised).__name__):
                 self.setUp_again()
                 fake = self.fakes.setdefault("anthropic", FakeBatch("anthropic"))
@@ -569,6 +610,131 @@ class Batch(unittest.TestCase):
         self.assertEqual([len(r) for r in self.fakes["openai"].jobs.values()], [2, 1])
         self.assertEqual(len(replies.of), 3)
         self.assertEqual(len(self.state()["jobs"]), 2)
+
+    # ---------------------------------------------------------------- the makers' batch queue caps
+
+    def watch_creates(self, service):
+        """The fake's poll count at each job's creation, so a test can see each job sent after the one before ended
+        (the fake ends every job once it has been polled more than `running` times)."""
+        fake = self.fakes.setdefault(service, FakeBatch(service))
+        at, real = [], fake.create
+
+        def create(requests):
+            at.append(fake.polls)
+            return real(requests)
+        fake.create = create
+        return fake, at
+
+    def test_jobs_cut_under_the_token_cap_and_sent_one_after_another(self):
+        """OpenAI's cap on the input tokens queued per model: 5 prompts of about 33 estimated tokens each under a cap
+        of 70 go as 3 jobs (2, 2, 1), each sent after the one before ended; every prompt answered once."""
+        prompt = "RULES\n----- BEGIN RECORD -----\n#r00#"
+        self.assertEqual(llm_batch.estimated_tokens(prompt), -(-len(prompt) // 3) + 20)
+        fake, at = self.watch_creates("openai")
+        with mock.patch.dict(llm.BATCH_QUEUE_TOKENS, {"openai": {"gpt-6.1-sol": 70}}):
+            _, replies = self.run_batch("openai", ["r00", "r01", "r02", "r03", "r04"])
+        self.assertEqual([len(r) for r in fake.jobs.values()], [2, 2, 1])
+        self.assertEqual(at[0], 0)
+        self.assertTrue(all(b > a for a, b in zip(at, at[1:])))          # each job sent after a later poll
+        self.assertEqual(len(replies.of), 5)
+        self.assertEqual(llm.REQUESTS["sent"], 1 + 5)                     # the test call and each prompt once
+        self.assertTrue(all(j.get("input_tokens") for j in self.state()["jobs"]))
+        # near-misses: a model without a cap, and a cap through another service, send every job at once
+        for service, caps in (("openai", {"openai": {"gpt-6-luna": 70}}), ("anthropic", {"openai": {"claude-opus-5-5": 70}})):
+            with self.subTest(service=service):
+                self.setUp_again()
+                fake, at = self.watch_creates(service)
+                with mock.patch.dict(llm.BATCH_QUEUE_TOKENS, caps):
+                    self.run_batch(service, ["r00", "r01", "r02"])
+                self.assertEqual([len(r) for r in fake.jobs.values()], [3])
+
+    def test_jobs_cut_under_the_requests_cap(self):
+        """Google's concurrent batch requests: with a cap of 2, 5 prompts go as jobs of 2, 2 and 1, one after
+        another."""
+        fake, at = self.watch_creates("google")
+        with mock.patch.dict(llm.BATCH_QUEUE_REQUESTS, {"google": 2}):
+            _, replies = self.run_batch("google", ["r00", "r01", "r02", "r03", "r04"])
+        self.assertEqual([len(r) for r in fake.jobs.values()], [2, 2, 1])
+        self.assertTrue(all(b > a for a, b in zip(at, at[1:])))
+        self.assertEqual(len(replies.of), 5)
+
+    def test_stopped_while_jobs_wait_for_the_queue(self):
+        """Ctrl+C after the first of 3 jobs was sent: the message says how many requests weren't sent; the next run
+        collects the first job and sends the rest, so no prompt is sent twice."""
+        with mock.patch.dict(llm.BATCH_QUEUE_TOKENS, {"openai": {"gpt-6.1-sol": 70}}):
+            with mock.patch.object(llm.time, "sleep", mock.Mock(side_effect=KeyboardInterrupt)):
+                with self.assertRaises(llm.Interrupted) as caught:
+                    self.run_batch("openai", ["r00", "r01", "r02", "r03", "r04"])
+            self.assertIn("3 request(s) waited for room", str(caught.exception))
+            self.assertEqual(len(self.state()["jobs"]), 1)
+            llm.BATCH_JOBS.clear()
+            _, replies = self.run_batch("openai", ["r00", "r01", "r02", "r03", "r04"])
+        sent = [r["custom_id"] for job in self.fakes["openai"].jobs.values() for r in job]
+        self.assertEqual(len(sent), 5)
+        self.assertEqual(len(set(sent)), 5)                               # each prompt in one job only
+        self.assertEqual(len(replies.of), 5)
+        self.assertEqual([j["how"] for j in llm.BATCH_JOBS], ["resumed", "submitted", "submitted"])
+
+    def test_a_job_refused_for_the_queue_is_sent_again(self):
+        """The maker refuses a job for its queue: when creating it (no job made) or after making it (OpenAI: status
+        failed, token_limit_exceeded). Either way the requests are sent again once the queue has room, nothing is
+        lost or counted twice."""
+        fake = self.fakes.setdefault("openai", FakeBatch("openai"))
+        refusals, real = [self.sdk.APIStatusError("token_limit_exceeded: Enqueued token limit reached", 400)], fake.create
+
+        def create(requests):
+            if refusals:
+                raise refusals.pop()
+            return real(requests)
+        fake.create = create
+        _, replies = self.run_batch("openai", ["r00", "r01"])
+        self.assertEqual((len(fake.jobs), len(replies.of)), (1, 2))
+        self.assertIn(llm.BATCH_POLL_SECONDS, self.sleeps)
+        # after making it: the first job fails for the queue; its requests go again in a second job
+        self.setUp_again()
+        real_poll, failed = llm_batch._poll, []
+
+        def poll(service, job_id):
+            if job_id.endswith("_1") and not failed:
+                failed.append(job_id)
+                return {"ended": True, "state": "failed", "counts": "",
+                        "error": "token_limit_exceeded: Enqueued token limit reached for gpt-6.1-sol"}
+            return real_poll(service, job_id)
+        with mock.patch.object(llm_batch, "_poll", poll):
+            _, replies = self.run_batch("openai", ["r00", "r01"])
+        self.assertEqual(len(self.fakes["openai"].jobs), 2)
+        self.assertEqual(len(replies.of), 2)
+        first, second = self.state()["jobs"]
+        self.assertIn("refused for the batch queue cap", first["state"])
+        self.assertTrue(second["collected"])
+        self.assertEqual(llm.REQUESTS["sent"], 1 + 2)
+        # near-miss: a job failed for another reason is not sent again: its requests fail
+        self.setUp_again()
+
+        def poll_other(service, job_id):
+            return {"ended": True, "state": "failed", "counts": "", "error": "invalid_request: bad file"}
+        with mock.patch.object(llm_batch, "_poll", poll_other), \
+                mock.patch.object(llm_batch, "_results", lambda *a, **k: {}):
+            _, replies = self.run_batch("openai", ["r00"])
+        self.assertEqual((len(self.fakes["openai"].jobs), list(replies.failed)), (1, ["r00"]))
+
+    def test_other_runs_open_jobs_count_against_the_cap(self):
+        """An uncollected job of another run of the same model holds most of the cap: this run's job waits until a
+        check says that job ended."""
+        with mock.patch.dict(llm.BATCH_QUEUE_TOKENS, {"openai": {"gpt-6.1-sol": 1000}}):
+            self.stop_while_waiting("openai", ["r50"])
+            path = self.tmp / "050_annotate" / "cache" / "extract.batch_jobs.json"
+            state = self.state()
+            state["jobs"][0].update(identity={**state["jobs"][0]["identity"], "cache_identity": "x"},
+                                    input_tokens=990)
+            path.write_text(json.dumps(state), encoding="utf-8")
+            fake, at = self.watch_creates("openai")
+            fake.polls, fake.running = 0, 2
+            _, replies = self.run_batch("openai", ["r00"])
+        self.assertEqual(len(replies.of), 1)
+        self.assertGreater(at[0], 0)                                      # sent only after the other job ended
+        # near-miss: a model with no cap doesn't wait for it
+        self.assertEqual(llm_batch.queue_cap("openai", "gpt-6-luna-x"), None)
 
     def test_only_060_has_the_setting(self):
         from common import step

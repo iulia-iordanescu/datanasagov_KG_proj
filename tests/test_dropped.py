@@ -116,16 +116,21 @@ class EveryStepUsesIt(unittest.TestCase):
     def test_steps(self):
         from support import ROOT
         for path in ("040_induce_schema/040_induce_schema_helpers/moves.py", "050_annotate/050_annotate_helpers/moves.py",
-                     "060_extract/060_extract_helpers/moves.py", "070_evaluate/070_evaluate_helpers/moves.py"):
+                     "060_extract/060_extract_helpers/moves.py"):
             text = (ROOT / path).read_text(encoding="utf-8")
             self.assertIn("dropped.section(", text, path)
+        # 070 evaluates a record whose extraction failed (scored as extracting nothing), so its section is its own
+        text = (ROOT / "070_evaluate/070_evaluate_helpers/moves.py").read_text(encoding="utf-8")
+        self.assertIn("lines += failed_section(evaluated)", text)
+        self.assertNotIn("dropped.section(", text)
         for path in ("040_induce_schema/040_induce_schema_helpers/moves.py", "050_annotate/050_annotate_helpers/moves.py",
                      "060_extract/060_extract_helpers/moves.py"):
             self.assertIn('"left_out": dropped.details(', (ROOT / path).read_text(encoding="utf-8"), path)
 
 
 class Step070(unittest.TestCase):
-    """070 says which finished records extraction failed for, and why, apart from those 060 didn't choose."""
+    """070 scores a finished record whose extraction failed as extracting nothing, says which and why, and leaves out
+    only the records 060 didn't choose."""
 
     def test_failed_and_not_chosen(self):
         import importlib.util
@@ -181,26 +186,45 @@ class Step070(unittest.TestCase):
         ev = module.pick_records(inputs, {"confirm_paid_calls": False})
         # each finished record not evaluated is one entry of the record of discarded items, with why
         not_evaluated = {e["record_id"]: e["reason"] for e in dropped.DISCARDS if e["item_type"] == "record"}
-        self.assertEqual(set(not_evaluated), {"r1", "r2", "r3"})
-        self.assertIn("060's model calls failed", not_evaluated["r1"])
-        self.assertIn("not extracted by 060's last run", not_evaluated["r3"])
+        self.assertEqual(set(not_evaluated), {"r3"})                       # r1 and r2 are evaluated, as extracting nothing
+        self.assertIn("not chosen by 060's last run", not_evaluated["r3"])
+        self.assertEqual([(r["id"], r["extraction_failed"], r["extracted"], r["extracted_describes"]) for r in ev.records],
+                         [("r0", None, [], None), ("r1", "refused", [], None), ("r2", "refused", [], None)])
         # near miss: a record left out without its entry stops the run at the accounting check of stage 1
         from unittest import mock
         dropped.reset()
         with mock.patch.object(dropped, "discard", lambda *a, **k: None), self.assertRaises(Stop) as caught:
             module.pick_records(inputs, {"confirm_paid_calls": False})
-        self.assertIn("Accounting check failed in stage 1 (pick_records): 4 records in the ground truth went in, 1 "
+        self.assertIn("Accounting check failed in stage 1 (pick_records): 4 records in the ground truth went in, 3 "
                       "were kept", str(caught.exception))
         self.assertEqual([(e["id"], e["reason"], e["maintainer"]) for e in ev.extraction_failed],
                          [("r1", "refused", "GeneLab Outreach"), ("r2", "refused", "M")])
-        self.assertEqual(ev.left_out["finished, but not extracted by 060's last run"], ["r3"])
-        self.assertEqual(ev.left_out["finished, but 060's model calls failed for them in its last run"], ["r1", "r2"])
+        self.assertEqual(ev.left_out, {"finished, but not chosen by 060's last run": ["r3"]})
+        self.assertEqual(ev.chosen_by_060, 3)
         note = next(n for n in ev.notes if "060's model calls failed" in n)
-        self.assertIn("r1 (refused; maintainer GeneLab Outreach)", note)
+        for words in ("060's model calls failed for 2 of the 3 record(s) evaluated", "scored as extracting nothing",
+                      "refused: 2 (r1, r2)", "Asking again gets the same answer"):
+            self.assertIn(words, note)
         self.assertEqual(len(ev.finished), 4)
-        text = "\n".join(dropped.section(ev.extraction_failed, ev.finished, "this evaluation", "f.json"))
-        self.assertIn("2 of the 4 record(s) chosen were left out of this evaluation", text)
+        from support import use_step
+        use_step("070_evaluate")
+        import moves
+        ev.extraction_made = {"max_answer_tokens": 64000}
+        text = "\n".join(moves.failed_section(ev))
+        self.assertIn("060's model calls failed for 2 of the 3 record(s) evaluated", text)
         self.assertIn("| GeneLab Outreach | 1 | 1 |", text)
+        self.assertIn("| refused: the model or its service declined to answer", text)
+        # the part's heading: records evaluated of the part's finished ones, and how many were scored as nothing
+        self.assertEqual(moves._records_words(ev, "tuning", 3), "3 records evaluated of the 4 finished ground truth "
+                         "records of the part, 2 of them scored as extracting nothing because 060's model calls "
+                         "failed for them")
+        # the few-records advice names what holds the count down: here a record 060 didn't choose, not drafting
+        self.assertIn("1 finished record(s) of the part are not evaluated (r3", moves._more_records(ev, "tuning"))
+        self.assertNotIn("draft", moves._more_records(ev, "tuning"))
+        ev.left_out = {}                                                   # near miss: nothing held back
+        self.assertIn("draft (`py 050_annotate/run.py`)", moves._more_records(ev, "tuning"))
+        ev.extraction_failed = []                                          # near miss: none failed
+        self.assertIn("None: 060's run answered every one of the 3 record(s) evaluated", "\n".join(moves.failed_section(ev)))
 
 
 class ReAsks(unittest.TestCase):
@@ -368,6 +392,78 @@ class Discards(unittest.TestCase):
         # the stopped run wrote no file: the first run's file and manifest stand
         self.assertEqual(json.loads((out / "_manifest.json").read_text(encoding="utf-8"))["run_id"], first)
         self.assertEqual(len((out / dropped.DISCARDS_FILE).read_text(encoding="utf-8").splitlines()), 1)
+
+    def test_unfinished_run_keeps_its_discards_beside_its_log(self):
+        """A run that stops, fails or is interrupted after its stages discarded items writes them to
+        outputs/logs/<run id>_discarded.jsonl, each marked with the run's status, and names the file in its report;
+        the output folder's discarded.jsonl (the last finished run's) and manifest stand. Near misses: an unfinished
+        run that discarded nothing writes no file; a finished run writes none there; a helper (not a pipeline step)
+        writes none."""
+        import json
+        import logging
+        import shutil
+        import tempfile
+        from pathlib import Path
+        from unittest import mock
+        from common import step
+        from common.stop import Stop
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        self.addCleanup(logging.shutdown)
+        patches = [mock.patch.object(step, "RESULTS_DIR", tmp / "results"),
+                   mock.patch.object(step, "REPORTS_DIR", tmp / "reports"),
+                   mock.patch.object(step, "LOGS_DIR", tmp / "logs"),
+                   mock.patch.object(step, "PIPELINE_STEPS", step.PIPELINE_STEPS + ["999_stand_in"])]
+        for p in patches:
+            p.start()
+            self.addCleanup(p.stop)
+
+        def ends(error):
+            def main(inputs, settings, output):
+                dropped.discard("stage 1 (main)", "file", "deleted before the stop", {"file": "old.csv"})
+                raise error
+            return main
+
+        def finished(inputs, settings, output):
+            dropped.discard("stage 1 (main)", "record", "no text", {"id": "b"}, record_id="b")
+            return step.Results(headline={})
+
+        def stops_clean(inputs, settings, output):
+            raise Stop("nothing discarded")
+
+        def logged():
+            return sorted(p.name for p in (tmp / "logs").glob("*_discarded.jsonl"))
+
+        step.run_step("999_stand_in", {}, {}, finished, argv=[])
+        out = tmp / "results" / "999_stand_in"
+        first = json.loads((out / "_manifest.json").read_text(encoding="utf-8"))["run_id"]
+        self.assertEqual(logged(), [])                                       # a finished run: none beside the log
+        for error, status, code in ((Stop("stopped on purpose"), step.STOPPED, 2),
+                                    (RuntimeError("broken"), step.FAILED, 1),
+                                    (KeyboardInterrupt(), step.INTERRUPTED, None)):
+            before = set(logged())
+            with self.assertRaises(SystemExit) as caught:
+                step.run_step("999_stand_in", {}, {}, ends(error), argv=[])
+            self.assertEqual(caught.exception.code, step.EXIT_CODES[status])
+            new = sorted(set(logged()) - before)
+            self.assertEqual(len(new), 1, status)
+            entries = [json.loads(x) for x in (tmp / "logs" / new[0]).read_text(encoding="utf-8").splitlines()]
+            self.assertEqual([(e["reason"], e["run_status"]) for e in entries], [("deleted before the stop", status)])
+            report = max((tmp / "reports").glob("999_stand_in_*.md"), key=lambda p: p.stat().st_mtime_ns)
+            self.assertIn("| Items discarded before the end | [`", report.read_text(encoding="utf-8"))
+            self.assertIn(new[0], report.read_text(encoding="utf-8"))
+            # the output folder still holds the finished run's file, and its manifest is restored
+            self.assertEqual([json.loads(x)["reason"] for x in
+                              (out / dropped.DISCARDS_FILE).read_text(encoding="utf-8").splitlines()], ["no text"])
+            self.assertEqual(json.loads((out / "_manifest.json").read_text(encoding="utf-8"))["run_id"], first)
+        before = set(logged())
+        with self.assertRaises(SystemExit):
+            step.run_step("999_stand_in", {}, {}, stops_clean, argv=[])
+        self.assertEqual(set(logged()), before)                              # nothing discarded: no file
+        with mock.patch.object(step, "PIPELINE_STEPS", [s for s in step.PIPELINE_STEPS if s != "999_stand_in"]), \
+                self.assertRaises(SystemExit):
+            step.run_step("999_stand_in", {}, {}, ends(Stop("a helper")), argv=[])
+        self.assertEqual(set(logged()), before)                              # not a pipeline step: no file
 
     def test_only_pipeline_steps_write_it(self):
         """A helper that runs in run_step's frame (py helpers/second_opinion.py) writes no such file."""

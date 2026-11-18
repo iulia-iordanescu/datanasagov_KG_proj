@@ -347,13 +347,15 @@ class Pairing(unittest.TestCase):
         g = [triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft")]
         e = [triple("MODIS Terra", "Instrument", "ABOARD", "Aqua", "Spacecraft")]
         unreviewed = self.pairs(g, e)
-        self.assertEqual(unreviewed["partial_review"], {"rejected": 0, "unreviewed": 1, "applied": 0, "not_applying": []})
+        self.assertEqual(unreviewed["partial_review"], {"rejected": 0, "unreviewed": 1, "applied": 0, "not_applying": [],
+                                                        "verdicts": []})
         key = pair_key("r1", g[0], unreviewed["translated"][0])
         same = self.pairs(g, e, reviews={key: SAME})
         self.assertEqual((len(same["pairs"]), same["partial_review"]["unreviewed"]), (1, 0))
         rejected = self.pairs(g, e, reviews={key: NOT_SAME})
         self.assertEqual(rejected["pairs"], [])
-        self.assertEqual(rejected["partial_review"], {"rejected": 1, "unreviewed": 0, "applied": 1, "not_applying": []})
+        self.assertEqual(rejected["partial_review"], {"rejected": 1, "unreviewed": 0, "applied": 1, "not_applying": [],
+                                                      "verdicts": [[*key, NOT_SAME]]})
         # a verdict on a pair that no longer pairs (the extracted triple changed): it applies to nothing, and is listed
         other = self.pairs(g, [triple("MODIS Aqua", "Instrument", "ABOARD", "Aqua", "Spacecraft")], reviews={key: NOT_SAME})
         self.assertEqual(len(other["pairs"]), 1)
@@ -1465,7 +1467,10 @@ class EvaluationVersions(unittest.TestCase):
         self.assertIsNone(cr.evaluation_versions_differ([run("A", 3), run("B", 3)]))
         self.assertIn("evaluation_version 2 (`A`) vs 3 (`B`)", cr.evaluation_versions_differ([run("A", 2), run("B", 3)]))
         self.assertIn("(not recorded) (`B`)", cr.evaluation_versions_differ([run("A", 3), {"run_id": "B"}]))
-        self.assertEqual(pairing.EVALUATION_VERSION, 3)
+        self.assertIn("version 4 scores a record whose extraction failed as extracting nothing",
+                      cr.evaluation_versions_differ([run("A", 3), run("B", 4)]))
+        self.assertIsNone(cr.evaluation_versions_differ([run("A", 4), run("B", 4)]))
+        self.assertEqual(pairing.EVALUATION_VERSION, 4)
 
 
 class DecisionRule(unittest.TestCase):
@@ -1844,6 +1849,113 @@ class OrderFree(unittest.TestCase):
                    [{**aqua, "object_class": "Mission"}, {**aqua, "subject_class": "Dataset", "object_class": "Mission"}]):
             c = pairing.compare_record(record([aqua], ex), t)["compared"]["counts"]
             self.assertEqual((c["exact_subject_class_pairs"], c["exact_object_class_pairs"]), (1, 0))
+
+
+class ReviewOf2026_11_17(unittest.TestCase):
+    """The fixes of the code review of 2026-11-17 in py helpers/compare_runs.py and 070's recipe: Holm's adjustment
+    over several changed recipes; two evaluations of one run of 060 refused as repeats; the verdicts on partial pairs
+    in the recipe; the records scored as extracting nothing counted per run."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.cr = CompareRuns.cr if hasattr(CompareRuns, "cr") else None
+        if cls.cr is None:
+            CompareRuns.setUpClass()
+            cls.cr = CompareRuns.cr
+
+    def test_holm(self):
+        """Holm (1979): sorted ascending, adjusted p(i) = max over j <= i of min(1, (m - j + 1) p(j)); worked by hand."""
+        from fractions import Fraction as F
+        holm = self.cr.holm
+        self.assertEqual(holm([F(1, 50), F(1, 25)]), [F(1, 25), F(1, 25)])          # 2 x 0.02 = 0.04; max(0.04, 0.04)
+        self.assertEqual(holm([F(4, 100), F(1, 100), F(3, 100)]), [F(6, 100), F(3, 100), F(6, 100)])   # given order kept
+        self.assertEqual(holm([F(9, 10), F(8, 10)]), [1, 1])                       # 2 x 0.8 capped at 1; then max(1, 0.9)
+        self.assertEqual(holm([None, F(1, 50)]), [None, F(1, 25)])                 # no test: still counts in m
+        self.assertEqual(holm([F(1, 50)]), [F(1, 50)])                             # near miss: one test, unchanged
+
+    def run_main(self, argv, data):
+        import sys
+        import tempfile
+        from pathlib import Path
+        from unittest import mock
+        cr = self.cr
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(cr, "load", lambda r: data[r]), \
+                mock.patch.object(cr, "REPORTS_DIR", Path(tmp)), mock.patch.object(sys, "argv", ["x", *argv]), \
+                mock.patch.object(cr, "FLIPS", 2000):
+            try:
+                code = cr.main()
+            except SystemExit as e:
+                return None, str(e.code)
+            return code, {p.name: p.read_text(encoding="utf-8") for p in Path(tmp).glob("*.md")}
+
+    def test_several_changed_recipes_holm_adjusted(self):
+        kept = CompareRuns.kept
+        data = {r: kept(r, lambda i, r=r: {"A": 2, "B": 3, "C": 2}[r[0]], "m") for r in ("A1", "A2", "B1", "B2", "C1", "C2")}
+        code, reports = self.run_main(["--baseline", "A1", "A2", "--changed", "B1", "B2", "--changed", "C1", "C2"], data)
+        self.assertEqual(code, 0)
+        self.assertEqual(len(reports), 2)
+        one = next(t for n, t in reports.items() if n.endswith("_changed_1.md"))
+        two = next(t for n, t in reports.items() if n.endswith("_changed_2.md"))
+        self.assertIn("Holm-adjusted *p*", one)
+        self.assertIn("as changed recipe 1 of the 2 this command tested against the baseline", one)
+        self.assertIn("**Verdict: helped.**", one)
+        self.assertIn("**Verdict: can't tell apart.**", two)
+        # near miss: one changed recipe, nothing adjusted
+        code, reports = self.run_main(["--baseline", "A1", "A2", "--changed", "B1", "B2"], data)
+        (only,) = reports.values()
+        self.assertNotIn("Holm-adjusted", only)
+        self.assertIn("**Verdict: helped.**", only)
+
+    @staticmethod
+    def of_060(run, run_id, repeat):
+        run["recipe"]["extraction (060)"] = {"run_id": run_id, "settings": {"model": "m", "repeat": repeat}}
+        return run
+
+    def test_one_run_of_060_twice_is_no_repeat(self):
+        kept = CompareRuns.kept
+        data = {"A": self.of_060(kept("A", lambda i: 2, "m"), "060_x", 1),
+                "A2": self.of_060(kept("A2", lambda i: 2, "m"), "060_x", 1),       # 070 run again on the same 060 run
+                "B": self.of_060(kept("B", lambda i: 3, "m"), "060_y", 2)}
+        code, said = self.run_main(["A", "A2", "B"], data)
+        self.assertIsNone(code)
+        self.assertIn("evaluations of the same run of 060", said)
+        self.assertIn("060's run 060_x: 070's runs A, A2", said)
+        code, said = self.run_main(["--baseline", "A", "A2", "--changed", "B"], data)
+        self.assertIn("evaluations of the same run of 060", said)
+        # near misses: one 060 run scored twice is no repeat when nothing else makes the runs repeats (two versions
+        # of 070's scoring compared), and it may stand in two recipes of the decision rule
+        code, _ = self.run_main(["A", "A2"], data)
+        self.assertEqual(code, 0)
+        code, _ = self.run_main(["--baseline", "A", "--changed", "A2"], data)
+        self.assertEqual(code, 0)
+        # held_out_results shares the check
+        self.assertIs(self.cr.same_extraction([data["A"], data["B"]], "x"), None)
+
+    def test_partial_pair_verdicts_in_the_recipe(self):
+        from types import SimpleNamespace
+        import moves
+        rec = lambda verdicts: {"compared": {"partial_review": {"verdicts": verdicts}}}   # noqa: E731
+        before = [rec([])]
+        after = [rec([["r1", "modis", "aboard", "aqua", "modis terra", "aboard", "aqua", "not the same fact"]])]
+        ev = SimpleNamespace(extraction_made={}, schema_used={}, pending=[], records=before)
+        a = moves._recipe(ev, translation(), {}, before)["evaluation (070)"]["partial_pair_verdicts"]
+        b = moves._recipe(ev, translation(), {}, after)["evaluation (070)"]["partial_pair_verdicts"]
+        self.assertEqual((a["applied"], b["applied"]), (0, 1))
+        self.assertNotEqual(a["sha256"], b["sha256"])
+        self.assertEqual(a, moves._recipe(ev, translation(), {})["evaluation (070)"]["partial_pair_verdicts"])  # records default
+        # runs whose recipes differ in the verdicts (and the repeat) aren't repeats of one recipe
+        path = "evaluation (070) / partial_pair_verdicts / sha256"
+        self.assertFalse(self.cr.repeat_only(path))
+        self.assertFalse(self.cr.only_repeats([(path, ["x", "y"]), ("extraction (060) / settings / repeat", ["1", "2"])]))
+
+    def test_records_scored_as_nothing_counted_per_run(self):
+        kept = CompareRuns.kept
+        a, b = kept("A", lambda i: 2, "m"), kept("B", lambda i: 2, "m")
+        for r in b["records"]:
+            r["extraction_failed"] = "cut_off" if r["id"] == "r03" else None
+        self.assertEqual((self.cr.failed_count(a), self.cr.failed_count(b)), ("(not recorded)", "1"))
+        ids, left, notes = self.cr.common_records([a, b])
+        self.assertIn("| B | `B` | `` | 25 | 1 |", self.cr.report([a, b], ids, left, notes))
 
 
 if __name__ == "__main__":

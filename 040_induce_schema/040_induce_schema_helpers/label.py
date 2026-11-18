@@ -27,9 +27,13 @@ Generation with Induced Schemas", arXiv:2604.03496v3), whose prompt for
 entity classes gives the model context for each thing as its "PRIMARY
 evidence for meaning" (TKG_Prompts.py, line 419); there the context is the
 model's own words, here the record's. Predicate instances are sent the same
-way, so both kinds are judged alike. One the model leaves unlabeled is asked
-once more; if it is still unlabeled it is listed, and it counts toward no
-schema entry.
+way, so both kinds are judged alike. A label must have the format the prompt
+asks for (well_formed: one CamelCase word for an entity class, one
+UPPER_SNAKE_CASE word for a predicate); one that doesn't is not taken, and
+recorded. One the model leaves unlabeled, or labels only with such a label,
+is asked once more, the prompt saying under the instances what was wrong with
+each (common/common_helpers/prompt_files.py, again_note); if it is still
+unlabeled it is listed, and it counts toward no schema entry.
 
 A text's title is not sent: its label is the describes_class stage 2 got
 for it, judged from the whole text. Those labels also start the running
@@ -37,7 +41,7 @@ vocabulary of entity class labels (most common first), so other component instan
 
 The running vocabulary shows one spelling of each label: a new label that
 differs from one already in it only in case, spacing or punctuation
-(common/common_helpers/triples_io.component_class_key: "Space craft" and
+(common/common_helpers/triples_io.component_class_key: "SpaceCraft" and
 "Spacecraft") isn't added to it again, so later batches are never shown two
 spellings of one label. The component instances keep the label the model gave;
 stage 4 folds the spellings, by its rule (the most frequent wins), and records
@@ -63,7 +67,7 @@ from pathlib import Path
 from common import dropped
 from common.cache import Cache, ask_cached, ask_split, needs
 from common.audit import log
-from common.prompt_files import fill, load
+from common.prompt_files import again_note, fill, load
 from common.triples_io import component_class_key
 
 #: The two kinds of component instance, by slot: "entity" for subject and
@@ -83,6 +87,23 @@ PROMPTS = {"entity": load(PROMPTS_DIR / "label_entity_instances.txt"),
 LABEL_BATCH = 80
 #: The stage name its discarded items carry (common/common_helpers/dropped.py).
 STAGE = "stage 3 (label_component_instances)"
+#: The format each prompt asks a label to have, checked in code (well_formed): one CamelCase word for an entity class
+#: label ("Spacecraft", "PhysicalQuantity", "Level2Product"), one UPPER_SNAKE_CASE word for a predicate label
+#: ("ABOARD", "MEASURED_BY"): a letter, then letters and digits, and, in a predicate label, single underscores
+#: between them. Spaces, arrows, hyphens and other punctuation are in none, so a label that is a phrase ("Space
+#: craft", "SUBJECT -> OBJECT") is not taken. Case is not checked: a label that differs from another only in case
+#: ("instrument", "Instrument") is the same label spelled otherwise, which stage 4 folds (spelling folds).
+LABEL_SHAPE = {"entity": re.compile(r"[A-Za-z][A-Za-z0-9]*"),
+               "predicate": re.compile(r"[A-Za-z][A-Za-z0-9]*(?:_[A-Za-z0-9]+)*")}
+#: The format in words, for the reasons recorded.
+SHAPE_WORDS = {"entity": "one CamelCase word (letters and digits only)",
+               "predicate": "one UPPER_SNAKE_CASE word (letters, digits and single underscores only)"}
+
+
+def well_formed(kind: str, label) -> bool:
+    """Whether label is text of the format the prompts ask for its kind (LABEL_SHAPE), once spaces at its ends are
+    left out. Shared by stage 3 (labels) and stage 5 (a predicate split's new predicate, split.py)."""
+    return isinstance(label, str) and LABEL_SHAPE[kind].fullmatch(label.strip()) is not None
 
 
 @dataclass
@@ -101,6 +122,8 @@ class Labels:
     final: dict = field(default_factory=dict)       # filled by stage 4: {"entity": {component instance: its label,
                                                     #  folded by spelling, then merged}, "predicate": {...}}
     merge_issues: dict = field(default_factory=dict)
+    merge_fallback: dict = field(default_factory=dict)  # filled by stage 4: {"entity": merge.ask_merges' fallback, or
+                                                    #  None when the merge call was answered, ...}
     calls: int = 0                                  # model calls made by stage 3
     reused: int = 0                                 # stage 3's batches answered from the cache
     merge_calls: int = 0                            # model calls made by stage 4
@@ -149,19 +172,20 @@ def _loose(value: str) -> str:
     return re.sub(r"\s+", " ", str(value).strip().lower())
 
 
-def _match(sent: list, reply) -> tuple:
+def _match(sent: list, reply, kind: str) -> tuple:
     """Labels for the component instances SENT, keyed as sent: exact match
-    first, then a case- and spacing-insensitive one. A label must be
-    non-empty text. Returns (labels, component instances left unlabeled)."""
+    first, then a case- and spacing-insensitive one. A label must be text of
+    the kind's format (well_formed). Returns (labels, component instances left
+    unlabeled)."""
     reply = reply if isinstance(reply, dict) else {}
     loose = {}
     for k, v in reply.items():
-        if isinstance(v, str) and v.strip():
+        if well_formed(kind, v):
             loose.setdefault(_loose(k), v.strip())
     labels, missing = {}, []
     for value in sent:
         v = reply.get(value)
-        if isinstance(v, str) and v.strip():
+        if well_formed(kind, v):
             labels[value] = v.strip()
         elif _loose(value) in loose:
             labels[value] = loose[_loose(value)]
@@ -170,19 +194,32 @@ def _match(sent: list, reply) -> tuple:
     return labels, missing
 
 
-def _unused_answers(sent: list, reply) -> list:
+def _what_was_wrong(value: str, reply, kind: str) -> str:
+    """What was wrong with a labeling reply about a component instance _match left unlabeled, for the second ask:
+    its label isn't of the kind's format (well_formed), or it got none (as _match reads the reply: exact, then
+    case- and spacing-folded)."""
+    reply = reply if isinstance(reply, dict) else {}
+    given = reply.get(value) if value in reply else next((v for k, v in reply.items() if _loose(k) == _loose(value)),
+                                                          None)
+    if isinstance(given, str) and given.strip():
+        return (f"its label, {json.dumps(given.strip(), ensure_ascii=False)}, isn't {SHAPE_WORDS[kind]}, "
+                f"the format asked for")
+    return "it got no label"
+
+
+def _unused_answers(sent: list, reply, kind: str) -> list:
     """[(key, value, why)] for every key of a labeling reply _match took no label from: a component instance that
-    wasn't sent, a label that isn't non-empty text, or a key whose case- and spacing-folded form another key gave
-    first. The same matching as _match."""
+    wasn't sent, a label that isn't non-empty text or not of the kind's format (well_formed), or a key whose case-
+    and spacing-folded form another key gave first. The same matching as _match."""
     reply = reply if isinstance(reply, dict) else {}
     loose_first = {}
     for k, v in reply.items():
-        if isinstance(v, str) and v.strip():
+        if well_formed(kind, v):
             loose_first.setdefault(_loose(k), k)
     used = set()
     for value in sent:
         v = reply.get(value)
-        if isinstance(v, str) and v.strip():
+        if well_formed(kind, v):
             used.add(value)
         elif _loose(value) in loose_first:
             used.add(loose_first[_loose(value)])
@@ -192,6 +229,8 @@ def _unused_answers(sent: list, reply) -> list:
         if k in used:
             continue
         why = ("a label that isn't non-empty text" if not (isinstance(v, str) and v.strip()) else
+               f"a label that isn't {SHAPE_WORDS[kind]}, the format the prompt asks for" if not well_formed(kind, v)
+               else
                "a component instance that wasn't sent in this call" if _loose(k) not in sent_loose else
                "the same component instance once case and spacing are folded as another key, whose label was taken")
         out.append((k, v, why))
@@ -200,7 +239,7 @@ def _unused_answers(sent: list, reply) -> list:
 
 def _record_unused(kind: str, sent: list, reply) -> None:
     """One entry per key of a labeling reply that gave no label (_unused_answers)."""
-    for key, value, why in _unused_answers(sent, reply):
+    for key, value, why in _unused_answers(sent, reply, kind):
         dropped.discard(STAGE, "label", f"in the model's reply, but not taken: {why}",
                         {"kind": BECOMES[kind], "component_instance": key, "label": value})
 
@@ -253,10 +292,14 @@ def label_component_instances(triples, calls) -> Labels:
         order = sorted((v for v in found[kind] if v not in labels),
                        key=lambda v: (-len(found[kind][v][0]), v))
 
-        def ask(items: dict) -> dict:
-            """The labels for one batch: from the cache, else from the model."""
+        def ask(items: dict, notes: dict | None = None) -> dict:
+            """The labels for one batch: from the cache, else from the model. notes: {component instance: what was
+            wrong with the first reply about it}, for the second ask, which says it under the instances
+            (common/common_helpers/prompt_files.py, again_note); None for the first."""
             reply = ask_cached(cache, calls, fill(prompt, vocabulary=json.dumps(vocabulary, ensure_ascii=False),
-                                                  items=json.dumps(items, ensure_ascii=False, indent=0)),
+                                                  items=json.dumps(items, ensure_ascii=False, indent=0))
+                               + again_note([(json.dumps(v, ensure_ascii=False), notes[v]) for v in items
+                                             if notes and v in notes]),
                                f"  040 will ask the model to label component instances, {LABEL_BATCH} per call",
                                check=SHAPE)
             return reply["labels"]
@@ -270,16 +313,19 @@ def label_component_instances(triples, calls) -> Labels:
             answers = {}
             for reply in ask_split(lambda values: ask({v: items[v] for v in values}), batch, refused):
                 answers.update(reply)
-            got, missing = _match(batch, answers)
+            got, missing = _match(batch, answers, kind)
             _record_unused(kind, batch, answers)
             missing = [v for v in missing if v not in {r for r, _ in refused}]
             if missing:
-                # One more try for those left out, with the running vocabulary as it is now.
+                # One more try for those left out, with the same running vocabulary as their batch (the batch's
+                # new labels join it only after this try), the prompt saying under the instances what was wrong with
+                # each (again_note), so it never repeats a prompt the cache would answer with the first reply.
+                notes = {v: _what_was_wrong(v, answers, kind) for v in missing}
                 again = {}
-                for reply in ask_split(lambda values: ask({v: items[v] for v in values}), missing, refused):
+                for reply in ask_split(lambda values: ask({v: items[v] for v in values}, notes), missing, refused):
                     again.update(reply)
                 asked_again = missing
-                more, missing = _match(missing, again)
+                more, missing = _match(missing, again, kind)
                 _record_unused(kind, asked_again, again)
                 got.update(more)
                 missing = [v for v in missing if v not in {r for r, _ in refused}]

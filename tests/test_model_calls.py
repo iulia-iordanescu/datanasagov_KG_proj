@@ -1400,6 +1400,33 @@ class DirectServices(unittest.TestCase):
             with self.subTest(service=service), self.assertRaises(llm.Refused):
                 self.run_on(service, reply)
 
+    def test_anthropic_refusal_keeps_stop_details(self):
+        """A refusal's stop_details (the anthropic SDK's RefusalStopDetails: category, explanation) is kept in the
+        request's record, which the failed-call record copies, and named in the refusal's message; near misses: a
+        refusal without stop_details, and a complete answer, keep None and change no message."""
+        details = {"type": "refusal", "category": "bio", "explanation": "could enable biological harm"}
+        refused = {**ANTHROPIC_REPLY, "stop_reason": "refusal", "content": [], "stop_details": details}
+        with self.assertRaises(llm.Refused) as caught:
+            self.run_on("anthropic", refused)
+        self.assertIn("Anthropic's stop_details: category 'bio', explanation 'could enable biological harm'",
+                      str(caught.exception))
+        kept = {"category": "bio", "explanation": "could enable biological harm"}
+        self.assertEqual(caught.exception.call["stop_details"], kept)      # type: ignore[attr-defined]
+        with tempfile.TemporaryDirectory() as tmp:                         # the failed-call record's line
+            path = Path(tmp) / "logs" / "040_induce_schema_2026-11-17_1200_failed_calls.jsonl"
+            path.parent.mkdir()
+            with mock.patch("common.llm_paid.failed_calls_file", lambda: path):
+                llm.PaidCalls(confirm=False)._record({"stage": "merge"}, "prompt", caught.exception)
+            self.assertEqual(json.loads(path.read_text(encoding="utf-8"))["stop_details"], kept)
+        for reply in ({**refused, "stop_details": None}, {**refused, "stop_details": {"type": "refusal",
+                                                                                      "category": None,
+                                                                                      "explanation": None}}):
+            with self.subTest(stop_details=reply["stop_details"]), self.assertRaises(llm.Refused) as caught:
+                self.run_on("anthropic", reply)
+            self.assertNotIn("stop_details", str(caught.exception))
+        self.run_on("anthropic", ANTHROPIC_REPLY)
+        self.assertIsNone(llm._last.reply["stop_details"])
+
     def test_errors(self):
         sdk = self.sdk
         # a rate limit is asked again, after the retry-after the service sent; the second answer is kept

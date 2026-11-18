@@ -45,6 +45,19 @@ def load(path) -> Prompt:
     return Prompt(read_text(path), path)       # a byte-order mark (Notepad) never reaches the model
 
 
+def again_note(problems: list) -> str:
+    """What a second ask about some items adds under the filled prompt: what was wrong with the first reply about
+    each, one line each ("- <item>: <what was wrong>"), after the instruction to answer for each again; "" when
+    problems is empty. problems: [(item, what was wrong)]. So a second ask never sends the first prompt again word for
+    word, which the answer cache (common/common_helpers/cache.py) would answer with the first reply, and the model
+    learns what to correct, as common/common_helpers/llm_calls.py's call_llm_json says what was wrong with a reply of
+    the wrong shape. Shared by 040's labeling (stage 3) and defining (stage 7)."""
+    if not problems:
+        return ""
+    return ("\n\nYour last reply had a problem with each item listed here. Answer for each again, following the "
+            "instructions above:\n" + "\n".join(f"- {item}: {why}" for item, why in problems))
+
+
 def fill(template: Template, **values) -> str:
     """The prompt with every $name filled in. A $name with no value, or a
     stray "$", stops with an error instead of reaching the model half-filled.

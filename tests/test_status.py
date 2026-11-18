@@ -235,10 +235,6 @@ class Status(unittest.TestCase):
         self.assertEqual(self.texts(self.status(), "Git"), [])
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class Documented(unittest.TestCase):
 
     def test_upkeep_lists_the_codes_values(self):
@@ -253,3 +249,79 @@ class Documented(unittest.TestCase):
         section = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", section)                 # links reduced to their words
         lists = [re.findall(r"^- \*\*([^*]+)\*\*", block, re.M) for block in section.split("\n\n") if block.startswith("- ")]
         self.assertEqual([tuple(x) for x in lists], [status.STEP_STATES, status.LEVELS, status.AREAS])
+
+
+class InputChanged(unittest.TestCase):
+    """status.input_changed: a manifest row's input compared file by file (each file's own hash), and a JSON file that
+    names the run that wrote it (030's splits.json, "drawn") compared without that run id; near misses for each."""
+
+    def setUp(self):
+        import tempfile
+        from pathlib import Path
+        from support import ROOT
+        sys.path.insert(0, str(ROOT))
+        from common import audit, status, step
+        self.audit, self.status, self.step = audit, status, step
+        self.dir = Path(tempfile.mkdtemp())
+
+    def tearDown(self):
+        shutil.rmtree(self.dir)
+
+    def write(self, name: str, text: str):
+        p = self.dir / name
+        p.write_text(text, encoding="utf-8", newline="\n")
+        return p
+
+    def row(self, files: list) -> dict:
+        """A manifest row as step.py writes it, today."""
+        row = {"sha256": self.audit.sha256(files),
+               "file_hashes": {self.audit.ref_path(f): self.audit.sha256([f]) for f in files}}
+        content = self.step.content_sha256(files)
+        if content is not None:
+            row["content_sha256"] = content
+        return row
+
+    def test_several_files_by_each_files_hash(self):
+        a, b = self.write("batch_0.json", "[1]"), self.write("batch_1.json", "[2]")
+        row = self.row([a, b])
+        row["sha256"] = "an older method's hash over both files"
+        self.assertFalse(self.status.input_changed(row, [a, b]))            # every file the same: not changed
+        self.write("batch_1.json", "[3]")
+        self.assertTrue(self.status.input_changed(row, [a, b]))             # near miss: one file's bytes
+        self.write("batch_1.json", "[2]")
+        c = self.write("batch_2.json", "[4]")
+        self.assertTrue(self.status.input_changed(row, [a, b, c]))          # near miss: a file more
+        self.assertTrue(self.status.input_changed(row, [a]))                # near miss: a file fewer
+
+    def test_without_file_hashes_the_hash_over_all(self):
+        a = self.write("x.csv", "id\n1\n")
+        row = {"sha256": self.audit.sha256([a])}
+        self.assertFalse(self.status.input_changed(row, [a]))
+        self.write("x.csv", "id\n2\n")
+        self.assertTrue(self.status.input_changed(row, [a]))
+
+    def test_splits_drawn_again_with_the_same_lists(self):
+        def splits(run_id, seed=7, records=("r1", "r2")):
+            return json.dumps({"ground_truth_candidates": {"records": list(records)},
+                               "drawn": {"run_id": run_id, "settings": {"induction_seed": seed}}}, indent=1)
+        p = self.write("splits.json", splits("030_split_A"))
+        row = self.row([p])
+        self.assertIn("content_sha256", row)
+        self.write("splits.json", splits("030_split_B"))                    # only the run id: not changed
+        self.assertFalse(self.status.input_changed(row, [p]))
+        self.write("splits.json", splits("030_split_B", seed=8))            # near miss: the seed 040 reads
+        self.assertTrue(self.status.input_changed(row, [p]))
+        self.write("splits.json", splits("030_split_A", records=("r1", "r3")))   # near miss: the lists
+        self.assertTrue(self.status.input_changed(row, [p]))
+
+    def test_made_is_content(self):
+        """A "made" run id counts (later steps read it), so such a file has no content hash."""
+        p = self.write("the_schema.json", json.dumps({"made": {"run_id": "040_A"}, "predicates": []}))
+        self.assertIsNone(self.step.content_sha256([p]))
+        row = self.row([p])
+        self.write("the_schema.json", json.dumps({"made": {"run_id": "040_B"}, "predicates": []}))
+        self.assertTrue(self.status.input_changed(row, [p]))
+
+
+if __name__ == "__main__":
+    unittest.main()

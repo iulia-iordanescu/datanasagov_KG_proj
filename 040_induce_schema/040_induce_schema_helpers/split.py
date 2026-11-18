@@ -29,7 +29,9 @@ Every predicate whose triple instances (those with a pattern) have more than one
 subject entity class or more than one object entity class (equivalently, more
 than one pattern) goes to the model, SPLIT_BATCH at a time
 (040_induce_schema_prompts/split_predicates.txt), with each of its patterns, the
-number of texts it was found in, and up to EXAMPLES triple instances, the number
+number of texts it was found in, and up to EXAMPLES triple instances (chosen by
+count.representative: each from another text and, where possible, another
+maintainer, the triple instance found in the most texts first), the number
 of texts of each of its subject entity classes and object entity classes (so the
 three groupings can be read off at once), and the names of every predicate found
 (the final labels of stage 4), which a new predicate may not take: the check
@@ -52,6 +54,8 @@ that fails rejects it, and the reason is listed):
   - it is a JSON object;
   - its predicate is one of the predicates sent;
   - its new predicate is non-empty text;
+  - its new predicate is one UPPER_SNAKE_CASE word, as the prompt asks
+    (label.well_formed, stage 3's check of a predicate label);
   - the new predicate isn't the name of a predicate found (the one split
     included), and no earlier split took the same name (names compared by
     common/common_helpers/triples_io.component_class_key, as spelling folds
@@ -81,8 +85,7 @@ listed. max_new_predicates 0 asks the model nothing.
 Then merging again (merge_again), after the cap: the cap bounds the predicates
 the kept splits add, and a merge can only lower that number, so capping first
 never lets a merge make room for a split the cap left out. Every predicate after
-splitting (old and new, each with the predicate instances that most often got
-it) goes to the model in one call, with stage 4's predicate merge prompt, read
+splitting (old and new) goes to the model in one call, with stage 4's predicate merge prompt, read
 and checked by stage 4's code (merge.ask_merges), each predicate shown as stage 4
 shows one (merge.predicate_examples: example triple instances with their
 entity classes; a new predicate's are the triple instances its split took, so
@@ -138,6 +141,8 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import count
+import label
 import merge
 from common import dropped
 from common.audit import log
@@ -173,6 +178,8 @@ SHAPE = needs(splits=list)
 NOT_AN_OBJECT = "not a JSON object"
 NOT_SENT = "its predicate wasn't sent"
 NO_NAME = "no new predicate named"
+NOT_ONE_WORD = ("its new predicate isn't one UPPER_SNAKE_CASE word (letters, digits and single underscores only), "
+                "the format the prompt asks for")
 NAME_TAKEN = "its new predicate is the name of a predicate found"
 NAME_TWICE = "its new predicate is the name an earlier predicate split took"
 NO_GROUPING = "names no grouping (by must be subject, object or pattern)"
@@ -182,7 +189,7 @@ NOT_ITS_GROUP = "names an entity class or pattern that isn't among the predicate
 GROUP_TWICE = "names an entity class or pattern an earlier predicate split of the predicate took"
 EVERY_GROUP = "takes every group of the predicate (a renaming, not a split)"
 TOO_FEW_TEXTS = "its triple instances were found in fewer texts than min_split_texts"
-REASONS = (NOT_AN_OBJECT, NOT_SENT, NO_NAME, NAME_TAKEN, NAME_TWICE, NO_GROUPING, OTHER_GROUPING, NO_GROUPS,
+REASONS = (NOT_AN_OBJECT, NOT_SENT, NO_NAME, NOT_ONE_WORD, NAME_TAKEN, NAME_TWICE, NO_GROUPING, OTHER_GROUPING, NO_GROUPS,
            NOT_ITS_GROUP, GROUP_TWICE, EVERY_GROUP, TOO_FEW_TEXTS)
 
 @dataclass
@@ -200,6 +207,7 @@ class Splits:
                                                    # "ends_in" (where every part ended), "goes_to" (the predicate now)
     merges: list = field(default_factory=list)     # merging again: {"label", "into", "texts", "component_instances"}
     merge_issues: dict = field(default_factory=dict)  # merging again: the merges set aside, by code (merge.ISSUE_WHY)
+    merge_fallback: dict | None = None             # merging again: merge.ask_merges' fallback, None when answered
     spelling_folds: list = field(default_factory=list)  # merging again: {"kind", "into", "folded"}
     final: dict = field(default_factory=dict)      # {predicate after splitting: its predicate after merging again}
     pinned: dict = field(default_factory=dict)     # {predicate after merging again: [(subject class or "any",
@@ -244,17 +252,20 @@ def pin_of(by: str, group: str) -> tuple:
 
 def patterns_of(triples, labels) -> dict:
     """{predicate: {(subject class, object class): {"texts": ids, "examples": Counter of "subject -- predicate --
-    object"}}} from the verified triple instances whose three component instances have a final label."""
+    object", "candidates": [(pattern, example, text id, maintainer)] for count.representative()}}} from the verified
+    triple instances whose three component instances have a final label."""
     found = collections.defaultdict(lambda: collections.defaultdict(
-        lambda: {"texts": set(), "examples": collections.Counter()}))
+        lambda: {"texts": set(), "examples": collections.Counter(), "candidates": []}))
     for t in triples.texts:
         for ti in t["triple_instances"]:
             p = labels.final["predicate"].get(ti["predicate"])
             sc = labels.final["entity"].get(ti["subject"])
             oc = labels.final["entity"].get(ti["object"])
             if p and sc and oc:
+                shown = f"{ti['subject']} -- {ti['predicate']} -- {ti['object']}"
                 found[p][(sc, oc)]["texts"].add(t["id"])
-                found[p][(sc, oc)]["examples"][f"{ti['subject']} -- {ti['predicate']} -- {ti['object']}"] += 1
+                found[p][(sc, oc)]["examples"][shown] += 1
+                found[p][(sc, oc)]["candidates"].append(((sc, oc), shown, t["id"], t["maintainer"]))
     return found
 
 
@@ -320,6 +331,8 @@ def check(replies: list, found: dict, predicates: set, min_texts: int = 1) -> tu
             why = NOT_SENT
         elif not (isinstance(into, str) and into.strip()):
             why = NO_NAME
+        elif not label.well_formed("predicate", into):
+            why = NOT_ONE_WORD
         elif component_class_key(into) in taken_names:
             why = NAME_TAKEN
         elif component_class_key(into) in {component_class_key(s["into"]) for s in passed}:
@@ -360,7 +373,7 @@ def check(replies: list, found: dict, predicates: set, min_texts: int = 1) -> tu
         own = groups(found[p], by)
         grouping[p] = by
         taken[p] |= set(chosen)
-        passed.append({"predicate": p, "by": by, "into": " ".join(into.split()), "takes": chosen,
+        passed.append({"predicate": p, "by": by, "into": into.strip(), "takes": chosen,
                        "only": [list(pin_of(by, g)) for g in chosen],
                        "texts": len(set().union(*(own[g]["texts"] for g in chosen))),
                        "triple_instances": sum(own[g]["triple_instances"] for g in chosen)})
@@ -398,7 +411,7 @@ def split_predicates(triples, labels, settings: dict, calls) -> Splits:
         result.sent.append({"predicate": p, "texts": len(texts_of(p)),
                             "subject_classes": dict(side["subject"]), "object_classes": dict(side["object"]),
                             "patterns": [{"subject": s, "object": o, "texts": len(e["texts"]),
-                                          "examples": [x for x, _ in e["examples"].most_common(EXAMPLES)]}
+                                          "examples": count.representative(e["candidates"], EXAMPLES)}
                                          for (s, o), e in pats]})
     if result.cap == 0 or not result.sent:
         log.info(f"  splitting: {len(result.sent)} predicate(s) have several subject or object entity classes; "
@@ -420,7 +433,8 @@ def split_predicates(triples, labels, settings: dict, calls) -> Splits:
         # A batch the service refuses is asked in halves; a predicate it still refuses alone isn't split, with the
         # reason (common.cache.ask_split).
         replies += ask_split(lambda part: ask_cached(
-            cache, calls, fill(PROMPT, found=found_names, predicates=json.dumps(part, ensure_ascii=False, indent=0)),
+            cache, calls, fill(PROMPT, found=found_names, predicates=json.dumps(part, ensure_ascii=False, indent=0),
+                               min_split_texts=result.min_texts),
             f"  040 will ask the model which predicates to split by their subject's or object's entity class or "
             f"both, {SPLIT_BATCH} per call", check=SHAPE), batch, refused)
     result.refused = [{"predicate": e["predicate"], "why": why} for e, why in refused]
@@ -479,10 +493,10 @@ def merge_again(triples, labels, result: Splits, calls) -> None:
     shown, _, texts_of = merge.predicate_examples(
         triples, lambda ti: None if (q := after_split(ti)) is None else folded[q], entity)
     listing = [{"label": lbl, "texts": len(texts_of[lbl]),
-                "examples": [v for v, _ in shown[lbl].most_common(merge.EXAMPLES)]} for lbl in sorted(shown)]
+                "examples": count.representative(shown[lbl], merge.EXAMPLES)} for lbl in sorted(shown)]
     cache = Cache(calls.cache_dir, "merge_again")
     made = calls.paid.made
-    mapping, result.merge_issues = merge.ask_merges(
+    mapping, result.merge_issues, result.merge_fallback = merge.ask_merges(
         "predicate", listing, cache, calls, MERGE_AGAIN_STAGE,
         "  040 will ask the model to merge the predicates again after splitting, in one call",
         takes_part=lambda label, into: label in new_of or into in new_of)

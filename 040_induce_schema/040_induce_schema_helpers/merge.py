@@ -2,7 +2,7 @@
 merge.py -- stage 4: one last look at all the labels, to merge synonyms.
 
 First, in code, labels that differ only in case, spacing, or punctuation
-("Space craft", "Spacecraft") are folded into one, the most frequent
+("SpaceCraft", "Spacecraft") are folded into one, the most frequent
 spelling (the one most component instances got; ties alphabetically): a
 spelling fold, the second kind of canonicalization. Digits are kept:
 "Level2" and "Level3" stay apart. Every fold is listed in
@@ -26,7 +26,9 @@ many labels there are.
 
 What code checks in the reply:
   - "into" must be one of the labels sent (the model can't invent a label);
-  - a label that wasn't sent is ignored;
+    anything that isn't text is no label;
+  - a label that wasn't sent, or anything in "labels" that isn't text, is
+    ignored;
   - a label merged into two different labels keeps the first;
   - chains (Sensor -> Detector, Detector -> Instrument) are followed to
     their end, so each label maps straight to its final label.
@@ -37,16 +39,28 @@ be visible.
 
 If a list is too long for one call (over MAX_LABELS_ONE_CALL), the step
 stops and says so, rather than splitting it into groups where synonyms could
-miss each other.
+miss each other. For the same reason, a call the service refuses, cuts off,
+or twice answers with JSON of another shape is not asked again in halves, as
+other stages ask a batch (common/common_helpers/cache.py, ask_split): it is
+asked once more with the examples left out (each label with its number of
+texts only), since the examples, the records' words, are what a content
+filter may object to and most of the call's length. If that fails too, no
+label of the call is merged: each stays a label of its own, the call is
+recorded in the record of discarded items, and the report warns
+(ask_merges, FALLBACK_FAILURES).
 
 Each component instance's final label (stage 3's label, folded by spelling,
 then merged) is what stage 5 (splitting) and stage 6 (counting) read.
 
-How a label is shown to the merge call: an entity class label with the
-subject or object instances that most often got it; a predicate label with
-up to EXAMPLES triple instances that state it, each written "subject instance
-(its entity class) -- predicate instance -- object instance (its entity
-class)" (predicate_examples), the most frequent first. The entity classes are
+How a label is shown to the merge call: with its number of texts and up to
+EXAMPLES examples, chosen as stage 6 chooses a schema entry's examples
+(count.representative: one from each of the label's patterns found in the
+most texts, each from another text and, where possible, another
+maintainer). An entity class label's examples are subject or object
+instances that got it (a title counts, under its describes_class); a
+predicate label's are triple instances that state it, each written "subject
+instance (its entity class) -- predicate instance -- object instance (its
+entity class)" (predicate_examples). The entity classes are
 those after this stage's own entity class merge, which runs first (KINDS),
 so the model sees them as counting will. Two predicate labels can share
 their words ("produced by") and still stand for different relationships
@@ -63,7 +77,8 @@ import collections
 import json
 from pathlib import Path
 
-from common import dropped
+import count
+from common import dropped, llm
 from common.cache import Cache, ask_cached, needs
 from common.audit import log
 from common.prompt_files import fill, load
@@ -82,8 +97,8 @@ MAX_LABELS_ONE_CALL = 800
 #: The stage name its discarded items carry (common/common_helpers/dropped.py).
 STAGE = "stage 4 (merge_labels)"
 #: Why code set a merge of the model's aside, for each of the merge issues' codes.
-ISSUE_WHY = {"into_not_a_label": "it merges into a label that wasn't sent",
-             "not_sent": "it merges a label that wasn't sent",
+ISSUE_WHY = {"into_not_a_label": "it merges into a label that wasn't sent (or into something that isn't text)",
+             "not_sent": "it merges a label that wasn't sent (or something that isn't text)",
              "merged_twice": "it merges a label already merged into another one: the first merge stands",
              "cycle": "it would merge a label into one already merged into it: the first merge stands",
              "not_an_object": "the item isn't a JSON object",
@@ -118,18 +133,26 @@ def merge_labels(labels, triples, calls):
         folded = labels.folded[kind]
         instances_of = collections.defaultdict(collections.Counter)   # {folded label: Counter of component instances}
         texts_with = collections.defaultdict(set)                     # {folded label: text ids}
+        examples = collections.defaultdict(list)    # {folded label: [(group, example, text, maintainer)]}: count.py
+        spelled = {k: (lambda v, k=k: labels.folded[k].get(labels.of[k].get(v))) for k in KINDS}
         for t in triples.texts:
             for ti in t["triple_instances"]:
+                # the group an entity class label's example shows: its triple instance's pattern, in folded labels
+                group = (spelled["entity"](ti["subject"]), spelled["predicate"](ti["predicate"]),
+                         spelled["entity"](ti["object"]))
                 for k2, value in (("entity", ti["subject"]), ("entity", ti["object"]),
                                   ("predicate", ti["predicate"])):
                     if k2 == kind and value in labels.of[kind]:
                         instances_of[folded[labels.of[kind][value]]][value] += 1
                         texts_with[folded[labels.of[kind][value]]].add(t["id"])
+                        examples[folded[labels.of[kind][value]]].append((group, value, t["id"], t["maintainer"]))
             # A text's title is labeled with its describes_class (stage 3): it counts, as in stage 6 (count.py),
             # so a label used only for titles reaches the model with its texts and its titles as examples.
             if kind == "entity" and t.get("describes_class") and t.get("title") in labels.of["entity"]:
                 instances_of[folded[labels.of["entity"][t["title"]]]][t["title"]] += 1
                 texts_with[folded[labels.of["entity"][t["title"]]]].add(t["id"])
+                examples[folded[labels.of["entity"][t["title"]]]].append(
+                    (count.TITLE_GROUP, t["title"], t["id"], t["maintainer"]))
         if kind == "predicate":
             # each predicate label with example triple instances that show its subjects' and objects' entity classes,
             # as merged just above (KINDS: the entity classes first), so the call can apply the verb test
@@ -148,11 +171,11 @@ def merge_labels(labels, triples, calls):
         issues = {"into_not_a_label": [], "not_sent": [], "merged_twice": [], "cycle": []}
         mapping = {label: label for label in sent}
         if len(sent) > 1:
-            shown = examples if kind == "predicate" else instances_of
             listing = [{"label": lbl, "texts": len(texts_with[lbl]),
-                        "examples": [v for v, _ in shown[lbl].most_common(EXAMPLES)]} for lbl in sent]
-            mapping, issues = ask_merges(kind, listing, cache, calls, STAGE,
-                                         "  040 will ask the model to merge synonymous labels, one call per kind")
+                        "examples": count.representative(examples[lbl], EXAMPLES)} for lbl in sent]
+            mapping, issues, labels.merge_fallback[kind] = ask_merges(
+                kind, listing, cache, calls, STAGE, "  040 will ask the model to merge synonymous labels, one call per "
+                "kind")
         for lbl, final in sorted(mapping.items()):
             if final != lbl:
                 labels.merges.append({"kind": BECOMES[kind], "label": lbl, "into": final,
@@ -177,12 +200,13 @@ def example(ti: dict, subject_class, object_class) -> str:
 
 
 def predicate_examples(triples, predicate_of, entity_class_of) -> tuple:
-    """(examples, instances_of, texts_with), each {predicate label: ...}, for a predicate merge call: Counters of
-    example() strings and of predicate instances, and the text ids, over the verified triple instances whose
-    predicate_of(triple instance) is a label (entity_class_of(instance): its entity class, or None). Shared by stage 4
-    and stage 5's merging again (split.py), so both show a predicate the same way; the examples shown are the most
-    frequent, ties in the order the texts were read (Counter.most_common)."""
-    examples = collections.defaultdict(collections.Counter)
+    """(examples, instances_of, texts_with), each {predicate label: ...}, for a predicate merge call: the candidates
+    of count.representative() (group: the pair of entity classes; example: the example() string), Counters of
+    predicate instances, and the text ids, over the verified triple instances whose predicate_of(triple instance) is a
+    label (entity_class_of(instance): its entity class, or None). Shared by stage 4 and stage 5's merging again
+    (split.py), so both show a predicate the same way, with the examples count.representative() chooses: one from
+    each of its patterns found in the most texts, from different texts and, where possible, maintainers."""
+    examples = collections.defaultdict(list)
     instances_of = collections.defaultdict(collections.Counter)
     texts_with = collections.defaultdict(set)
     for t in triples.texts:
@@ -190,38 +214,68 @@ def predicate_examples(triples, predicate_of, entity_class_of) -> tuple:
             p = predicate_of(ti)
             if p is None:
                 continue
-            examples[p][example(ti, entity_class_of(ti["subject"]), entity_class_of(ti["object"]))] += 1
+            sc, oc = entity_class_of(ti["subject"]), entity_class_of(ti["object"])
+            examples[p].append(((sc, oc), example(ti, sc, oc), t["id"], t["maintainer"]))
             instances_of[p][ti["predicate"]] += 1
             texts_with[p].add(t["id"])
     return examples, instances_of, texts_with
 
 
+#: The failures of a merge call that ask_merges answers with its fallback (see above), after asking once more without
+#: examples: a refusal, an answer cut off, and an answer twice not JSON of the shape asked for. Any other failure (a
+#: permission error, a lost connection after the retries, a used-up budget) stops the step, as in every stage.
+FALLBACK_FAILURES = (llm.Refused, llm.CutOff, llm.BadReply)
+
+
 def ask_merges(kind: str, listing: list, cache, calls, stage: str, plan: str, takes_part=None) -> tuple:
-    """(mapping, issues) from one merge call about these labels (listing: [{"label", "texts", "examples"}], every
-    label sent): mapping {label: the label it ends in, chains followed}, issues {code: [labels]}. Code checks every
-    item of the reply (see above) and sets aside, with why, each one that fails, under the stage given; takes_part(
-    label, into), when given, says whether a merge may be kept at all (stage 5's merging again keeps only those with a
-    new predicate in them: "both_seen"). Shared by stage 4 and stage 5's merging again (split.py)."""
+    """(mapping, issues, fallback) from one merge call about these labels (listing: [{"label", "texts", "examples"}],
+    every label sent): mapping {label: the label it ends in, chains followed}, issues {code: [labels]}. Code checks
+    every item of the reply (see above) and sets aside, with why, each one that fails, under the stage given;
+    takes_part(label, into), when given, says whether a merge may be kept at all (stage 5's merging again keeps only
+    those with a new predicate in them: "both_seen"). Shared by stage 4 and stage 5's merging again (split.py).
+    A call that fails with one of FALLBACK_FAILURES is asked once more with the examples left out (each label with
+    its number of texts only); if that fails too, no label of the call is merged, and the call is recorded in the
+    record of discarded items. fallback: None when the first call was answered, else {"kind", "labels", "first": why
+    it failed, "without_examples": "answered", or why it failed}."""
     issues = {"into_not_a_label": [], "not_sent": [], "merged_twice": [], "cycle": []}
     if takes_part is not None:
         issues["both_seen"] = []
     mapping = {e["label"]: e["label"] for e in listing}
-    reply = ask_cached(cache, calls, fill(PROMPTS[kind], labels=json.dumps(listing, ensure_ascii=False, indent=0)),
-                       plan, check=SHAPE)
+
+    def ask(shown: list) -> dict:
+        return ask_cached(cache, calls, fill(PROMPTS[kind], labels=json.dumps(shown, ensure_ascii=False, indent=0),
+                                             examples_per_label=EXAMPLES),
+                          plan, check=SHAPE)
+    fallback = None
+    try:
+        reply = ask(listing)
+    except FALLBACK_FAILURES as first:
+        fallback = {"kind": BECOMES[kind], "labels": len(listing), "first": str(first)}
+        log.warning(f"The model's service didn't answer the call merging {len(listing)} {BECOMES[kind]} labels "
+                    f"({first}); asking once more with the examples left out. Nothing to do.")
+        try:
+            reply = ask([{"label": e["label"], "texts": e["texts"]} for e in listing])
+            fallback["without_examples"] = "answered"
+        except FALLBACK_FAILURES as second:
+            fallback["without_examples"] = str(second)
+            dropped.discard(stage, "merge call", f"not answered, even asked once more with the examples left out, so "
+                            f"no {BECOMES[kind]} label of this call is merged: {first}; asked again: {second}",
+                            {"kind": BECOMES[kind], "labels": sorted(mapping)})
+            return mapping, issues, fallback
     decided = {}
     for m in reply["merges"]:
         if not isinstance(m, dict):
             _set_aside(kind, "not_an_object", m, stage)
             continue
         into = m.get("into")
-        if into not in mapping:
+        if not isinstance(into, str) or into not in mapping:
             issues["into_not_a_label"].append(into)
             _set_aside(kind, "into_not_a_label", m, stage)
             continue
         if not isinstance(m.get("labels"), list):
             _set_aside(kind, "labels_not_a_list", m, stage)
         for lbl in m.get("labels") if isinstance(m.get("labels"), list) else []:
-            if lbl not in mapping:
+            if not isinstance(lbl, str) or lbl not in mapping:
                 issues["not_sent"].append(lbl)
                 _set_aside(kind, "not_sent", {"label": lbl, "into": into}, stage)
             elif lbl == into:
@@ -238,7 +292,7 @@ def ask_merges(kind: str, listing: list, cache, calls, stage: str, plan: str, ta
                 _set_aside(kind, "cycle", {"label": lbl, "into": into}, stage)
             else:
                 decided[lbl] = into
-    return {label: _final(decided, label) for label in mapping}, issues
+    return {label: _final(decided, label) for label in mapping}, issues, fallback
 
 
 def _folding(counted: collections.Counter, kind: str, folds: list) -> dict:

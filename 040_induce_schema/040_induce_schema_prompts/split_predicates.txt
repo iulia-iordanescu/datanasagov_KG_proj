@@ -32,6 +32,8 @@ groups it takes: entity classes of the subject instances ("subject"),
 entity classes of the object instances ("object"), or patterns written
 "subject entity class -> object entity class" ("pattern"). Each group goes to
 at most one new predicate. A group you leave out stays with the predicate.
+The triples a new predicate takes must come from at least $min_split_texts
+different records; a split with fewer is not kept.
 Keep the direction: each new predicate is read from subject instance to
 object instance, as the predicate is. A new predicate's name must differ
 from every name listed under PREDICATES FOUND below, which include the

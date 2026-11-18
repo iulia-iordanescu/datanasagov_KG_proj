@@ -26,8 +26,9 @@ Each item: {"area", "level", "text", "doc", "source"}
     source  the run or file the item comes from
 
 A step is out of date when an input it read has changed since its run: its
-manifest records each input's fingerprint (sha256), compared here with the
-files as they are now. Every input made by an earlier step counts. Of the
+manifest records each input file's fingerprint (sha256), compared here with the
+files as they are now (input_changed: one JSON file that names the run that
+wrote it, 030's splits.json, is compared without that run id). Every input made by an earlier step counts. Of the
 inputs a person makes (annotations/), only those that change the step's
 result count (COUNTED_PERSON_INPUTS): the additions for 060, and for 070
 everything it reads there. Step 050 is never out of date: each run drafts a
@@ -54,7 +55,8 @@ from common.ground_truth import (ANNOTATED, DRAFT_NUMBERED, DRAFT_PATTERN, EVALU
 from common.partial_reviews import PARTIAL_PAIR, REVIEWS_PATH, read_reviews, row_key
 from common.report import named
 from common.schema_io import addition_problem, additions_entries, read_ground_truth_schema, without_held_out_only
-from common.step import ANNOTATIONS_DIR, MANIFEST_NAME, PIPELINE_STEPS, RESULTS_DIR, ROOT, input_files, repo_path
+from common.step import (ANNOTATIONS_DIR, MANIFEST_NAME, PIPELINE_STEPS, RESULTS_DIR, ROOT, content_sha256, input_files,
+                         repo_path)
 from common.triples_io import component_class_key
 
 UPKEEP = "docs/upkeep.md"
@@ -164,9 +166,23 @@ def _changed_inputs(step: str, manifest: dict) -> list:
         # of the input's default (e.g. 060 --schema annotations/ground_truth_schema.txt: the manifest's "given")
         if not made_by_a_step and row.get("name") not in COUNTED_PERSON_INPUTS.get(step, set()) and not row.get("given"):
             continue
-        if audit.sha256(input_files(path)) != row.get("sha256"):
+        if input_changed(row, input_files(path)):
             changed.append(row.get("name"))
     return changed
+
+
+def input_changed(row: dict, files: list) -> bool:
+    """Whether an input's files differ from those a manifest row recorded. Compared, by what the row holds: the hash
+    of what a JSON input holds without the run id it names (content_sha256, common/common_helpers/step.py), else each
+    file's own hash (file_hashes: the same files, each with the same bytes), else, for a manifest that has neither,
+    the hash over all its files. Each file's own hash is the plain sha256 of its bytes, which never changed, whereas
+    the hash over several files changed its method on 2026-11-01, so an input of several files was called changed
+    once though no file was."""
+    if "content_sha256" in row:
+        return content_sha256(files) != row["content_sha256"]
+    if isinstance(row.get("file_hashes"), dict):
+        return {audit.ref_path(f): audit.sha256([f]) for f in files} != row["file_hashes"]
+    return audit.sha256(files) != row.get("sha256")
 
 
 def steps_status() -> list:

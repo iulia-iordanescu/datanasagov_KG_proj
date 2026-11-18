@@ -23,6 +23,9 @@ report and prints where it is.
                                                         induced schema, through the translation table)
     py helpers/compare_runs.py --baseline <run id> ... --changed <run id> ...
                                                         did the change help? (the decision rule)
+    py helpers/compare_runs.py --baseline <run id> ... --changed <run id> ... --changed <run id> ...
+                                                        the same for several changed recipes, each p adjusted
+                                                        by Holm's method
     py helpers/compare_runs.py --across_schemas true --baseline <run id> ... --changed <run id> ...
                                                         the decision rule for two groups translated differently
                                                         (each group's runs translated one way), as a
@@ -66,8 +69,10 @@ UNRECORDED = [
     "invisible.",
     "- **070's model call settings:** of 070's settings, only the service and the model are recorded (not its "
     "thinking cap); its translation is recorded by fingerprint, so a different translation shows anyway.",
-    "- **The partial-pair verdicts** (`annotations/partial_pair_reviews.csv`): review no partial pairs between the "
-    "runs you compare.",
+    "- **The partial-pair verdicts of a run made before 2026-11-17** (`annotations/partial_pair_reviews.csv`): such a "
+    "run records none, so review no partial pairs between it and the runs you compare with it; a later run records the "
+    "verdicts that applied to its records, by count and fingerprint (`partial_pair_verdicts`), so a review between two "
+    "later runs shows in the table below.",
     "- **The model's own variation:** the same recipe can answer differently on another run (no setting makes a "
     "model answer the same every time), and a cached answer is reused, so two runs of one recipe usually agree; "
     "repeats of one recipe (060's setting `repeat`: 2, 3, ...) are asked again, so their *Spread across the runs* "
@@ -215,9 +220,46 @@ def evaluation_versions_differ(runs: list) -> str | None:
         return None
     named = " vs ".join(f"{v} (`{r['run_id']}`)" for v, r in zip(versions, runs))
     return (f"These runs were evaluated under different versions of what 070 counts (evaluation_version {named}), so "
-            f"their numbers aren't comparable: a kept evaluation holds counts, and version 3 subtracts a count "
-            f"(untranslatable extracted triples) that version 2 never recorded. Re-run `py 070_evaluate/run.py` on the same "
-            f"060 output to get a version-{pairing.EVALUATION_VERSION} evaluation, then compare.")
+            f"their numbers aren't comparable: a kept evaluation holds counts made under its version's rules (version "
+            f"3 subtracts a count, untranslatable extracted triples, that version 2 never recorded; version 4 scores a "
+            f"record whose extraction failed as extracting nothing, where version 3 left it out). Re-run "
+            f"`py 070_evaluate/run.py --extraction_run <060 run id>` on each run's 060 output to get a "
+            f"version-{pairing.EVALUATION_VERSION} evaluation, then compare.")
+
+
+def extraction_run_id(run: dict) -> str:
+    """The run of 060 a kept evaluation scored: the run id its held-out look's line records, else its recipe's."""
+    return ((run.get("look") or {}).get("extraction_run_id")
+            or recipe_of(run).get("extraction (060)", {}).get("run_id") or "")
+
+
+def same_extraction(runs: list, command: str) -> str | None:
+    """Why these runs can't be taken as repeats of one recipe, or None: two or more of them are evaluations of the
+    same run of 060 (extraction_run_id), so pooling or averaging them would count that extraction's answers more than
+    once. The one check of helpers/compare_runs.py and helpers/held_out_results.py. command: the helper, for the
+    message."""
+    by_extraction = {}
+    for run in runs:
+        ex = extraction_run_id(run)
+        if ex:
+            by_extraction.setdefault(ex, []).append(run["run_id"])
+    again = {ex: which for ex, which in by_extraction.items() if len(which) > 1}
+    if not again:
+        return None
+    return ("Two or more of the runs given are evaluations of the same run of 060, which would count that "
+            "extraction's answers more than once among the repeats: "
+            + "; ".join(f"060's run {ex}: 070's runs {', '.join(which)}" for ex, which in sorted(again.items()))
+            + f". Give one evaluation per run of 060 (`{command}` lists them, each with its 060 run), then run the "
+              f"command again.")
+
+
+def failed_count(run: dict) -> str:
+    """How many of a run's records were scored as extracting nothing because 060's model calls failed for them
+    (evaluation version 4 on); "(not recorded)" for a run that records none."""
+    records = run.get("records") or []
+    if not any("extraction_failed" in r for r in records):
+        return "(not recorded)"
+    return str(sum(1 for r in records if r.get("extraction_failed")))
 
 
 def translation_of(run: dict) -> str:
@@ -474,8 +516,10 @@ def report(runs: list, ids: list, left: dict, notes: list = (), across_schemas: 
              f"each other run is compared with it. Held-out records are never compared.", ""]
     if across:
         lines += [ACROSS_SCHEMAS, ""]
-    lines += ["## The runs", "", "| Run | 070's run id | Tuning records it evaluated | Translation |", "|---|---|---:|---|"]
-    lines += [f"| {n} | `{r['run_id']}` | {len(r['records'])} | {translation_of(r)} |" for n, r in zip(names, runs)]
+    lines += ["## The runs", "", "| Run | 070's run id | 060's run id | Tuning records it evaluated | Of them, scored as "
+              "extracting nothing (060's calls failed) | Translation |", "|---|---|---|---:|---:|---|"]
+    lines += [f"| {n} | `{r['run_id']}` | `{extraction_run_id(r)}` | {len(r['records'])} | {failed_count(r)} | "
+              f"{translation_of(r)} |" for n, r in zip(names, runs)]
     diffs = differences(runs)
     lines += ["", "## What differs between the runs", "",
               "Every part of each run's recipe that isn't the same in every run: 060's run (its code version, settings, "
@@ -699,6 +743,23 @@ def sign_flip(base: list, changed: list, flips: int | None = None, seed: int = S
     return out
 
 
+def holm(ps: list) -> list:
+    """Holm's step-down adjustment of m p-values (Holm 1979, "A Simple Sequentially Rejective Multiple Test
+    Procedure", Scandinavian Journal of Statistics 6(2): 65-70): with the p-values sorted ascending, p_(1) ≤ … ≤ p_(m),
+    the adjusted p_(i) = max over j ≤ i of min(1, (m − j + 1) × p_(j)). Rejecting where the adjusted p ≤ α keeps the
+    chance of any wrong rejection among the m tests at α or below, whatever their dependence. A p of None (no test)
+    stays None and still counts in m (the cautious side). Returned in the order given, as Fractions when given
+    Fractions."""
+    m = len(ps)
+    order = sorted((i for i in range(m) if ps[i] is not None), key=lambda i: ps[i])
+    out: list = [None] * m
+    running = 0
+    for rank, i in enumerate(order):
+        running = max(running, min(1, (m - rank) * ps[i]))
+        out[i] = running
+    return out
+
+
 def decide(test: dict) -> str:
     """The verdict of the decision rule (DECISIONS): helped when D > 0 and p ≤ ALPHA, worse when D < 0 and p ≤ ALPHA,
     can't tell apart otherwise (no test at all included)."""
@@ -737,12 +798,17 @@ def p_text(v) -> str:
 
 
 def decision_report(baseline: list, changed: list, ids: list, left: dict, notes: list = (),
-                    across_schemas: bool = False) -> str:
+                    across_schemas: bool = False, family: dict | None = None) -> str:
     """The report of the decision rule: the verdict on partial F1 first, then the records one by one, the other numbers
     (shown, not tested), the runs, what differs, the records compared and what this can't see. across_schemas: the
-    two groups may be translated differently; when they are, the title and a label (ACROSS_SCHEMAS_DECISION) say so."""
+    two groups may be translated differently; when they are, the title and a label (ACROSS_SCHEMAS_DECISION) say so.
+    family: when one command tests several changed recipes against the baseline, {"m": how many, "number": this
+    one's, "p_adjusted": its Holm-adjusted p (holm)}; the verdict then rests on the adjusted p."""
     base, other = paired_parts(baseline, changed, ids)
     test = sign_flip(base, other)
+    raw_p = test["p"]
+    if family and family["m"] > 1:
+        test = {**test, "p": family["p_adjusted"]}
     n, k_a, k_b = test["n"], len(baseline), len(changed)
     across = across_schemas and translation_of(baseline[0]) != translation_of(changed[0])
     lines = ["# Did the change help?" + (" A comparison across schemas" if across else ""), "",
@@ -762,9 +828,13 @@ def decision_report(baseline: list, changed: list, ids: list, left: dict, notes:
                f"from {test['assignments']:,} random assignments with seed {SEED}, since the {n} records have more "
                f"than 2^{EXACT_UP_TO} assignments; *p* = ({test['as_far']:,} + 1) ÷ ({test['assignments']:,} + 1), "
                f"so it is never below {p_text(Fraction(1, test['assignments'] + 1))}")
+        p_words = (f"*p* = {p_text(raw_p)} ({how}); Holm-adjusted *p* = {p_text(test['p'])}, as changed recipe "
+                   f"{family['number']} of the {family['m']} this command tested against the baseline (Holm 1979: the "
+                   f"verdict rests on the adjusted *p*, so the chance of any wrong *helped* or *worse* among the "
+                   f"{family['m']} stays at {float(ALPHA)} or below)"
+                   if family and family["m"] > 1 else f"*p* = {p_text(test['p'])} ({how})")
         lines += [f"**Verdict: {decide(test)}.** {DECIDING_LABEL}: baseline {pct(_f(test['base']))}, changed "
-                  f"{pct(_f(test['changed']))}, *D* = {points(_f(test['diff']))}; *p* = {p_text(test['p'])} ({how}), "
-                  f"on {n} records.", ""]
+                  f"{pct(_f(test['changed']))}, *D* = {points(_f(test['diff']))}; {p_words}, on {n} records.", ""]
         smallest = (f"With {n} records, the smallest *p* this test can give is 1 ÷ 2^{n - 1} = "
                     f"{p_text(test['smallest_p'])} (two-sided)")
         if test["smallest_p"] > ALPHA:
@@ -800,10 +870,10 @@ def decision_report(baseline: list, changed: list, ids: list, left: dict, notes:
         va, vb = (_pooled(p) for p in paired_parts(baseline, changed, ids, path))
         lines.append(f"| {label} | {pct(_f(va))} | {pct(_f(vb))} | "
                      f"{points(None if va is None or vb is None else float(vb - va))} |")
-    lines += ["", "## The runs", "", "| Recipe | 070's run id | Tuning records it evaluated | Translation |",
-              "|---|---|---:|---|"]
-    lines += [f"| {g} | `{r['run_id']}` | {len(r['records'])} | {translation_of(r)} |"
-              for g, group in (("baseline", baseline), ("changed", changed)) for r in group]
+    lines += ["", "## The runs", "", "| Recipe | 070's run id | 060's run id | Tuning records it evaluated | Of them, "
+              "scored as extracting nothing (060's calls failed) | Translation |", "|---|---|---|---:|---:|---|"]
+    lines += [f"| {g} | `{r['run_id']}` | `{extraction_run_id(r)}` | {len(r['records'])} | {failed_count(r)} | "
+              f"{translation_of(r)} |" for g, group in (("baseline", baseline), ("changed", changed)) for r in group]
     for g, group in (("baseline", baseline), ("changed", changed)):
         if len(group) > 1 and not only_repeats(differences(group)):
             lines += ["", f"**The {g}'s runs differ in more than the repeat** (060's setting `repeat`): they aren't "
@@ -846,18 +916,26 @@ def groups_mixed(baseline: list, changed: list) -> str | None:
     return None
 
 
-def decide_groups(baseline_ids: list, changed_ids: list, across: bool) -> int:
-    """--baseline … --changed …: check the runs, apply the decision rule, write its report. across (--across_schemas
-    true): the two groups may differ in translation, each group's own runs translated one way."""
-    given = baseline_ids + changed_ids
+def decide_groups(baseline_ids: list, changed_groups: list, across: bool) -> int:
+    """--baseline … --changed … [--changed …]: check the runs, apply the decision rule to each changed recipe against
+    the baseline, write one report per changed recipe. With two or more changed recipes, each p is adjusted by Holm's
+    method over them (holm), on the records evaluated in every run of every recipe. across (--across_schemas true): a
+    changed recipe may differ from the baseline in translation, each group's own runs translated one way."""
+    if changed_groups and not isinstance(changed_groups[0], list):
+        changed_groups = [changed_groups]                       # one changed recipe, given as a plain list
+    given = baseline_ids + [r for g in changed_groups for r in g]
     twice = sorted({r for r in given if given.count(r) > 1})
     if twice:
-        sys.exit(f"A run is given more than once ({', '.join(twice)}), in one recipe or in both, and a run can't be "
-                 f"both the baseline and the change. Give each run once: `py helpers/compare_runs.py` lists them.")
-    baseline, changed = [load(r) for r in baseline_ids], [load(r) for r in changed_ids]
-    runs = baseline + changed
-    problem = evaluation_versions_differ(runs) or (groups_mixed(baseline, changed) if across else
-                                                   translations_mixed(runs, False))
+        sys.exit(f"A run is given more than once ({', '.join(twice)}), in one recipe or in two, and a run can't be "
+                 f"in two recipes. Give each run once: `py helpers/compare_runs.py` lists them.")
+    baseline = [load(r) for r in baseline_ids]
+    groups = [[load(r) for r in g] for g in changed_groups]
+    runs = baseline + [r for g in groups for r in g]
+    problem = (evaluation_versions_differ(runs)
+               or next((p for g in groups for p in [groups_mixed(baseline, g) if across else
+                                                    translations_mixed(baseline + g, False)] if p), None)
+               or next((p for g in [baseline] + groups
+                        for p in [same_extraction(g, "py helpers/compare_runs.py")] if p), None))
     if problem:
         sys.exit(problem)
     ids, left, notes = common_records(runs, across)
@@ -872,12 +950,20 @@ def decide_groups(baseline_ids: list, changed_ids: list, across: bool) -> int:
         sys.exit("No tuning record was evaluated in every one of these runs with the same ground truth, the same facts "
                  "waiting on an expert and the same translation, so there is nothing to compare."
                  + "".join(f"\nLeft out, {why}: {len(which)} ({', '.join(which[:10])})." for why, which in left.items()))
-    path = REPORTS_DIR / f"compare_runs_decision_{dt.datetime.now():%Y-%m-%d_%H%M%S}.md"
-    text = decision_report(baseline, changed, ids, left, notes, across)
-    write_text(path, text)
-    verdict_line = next(line for line in text.splitlines() if line.startswith("**Verdict:"))
-    print(f"{verdict_line.replace('**', '').replace('*', '')}\nReport: {repo_path(path)}"
-          + "".join(f"\n  left out, {why}: {len(which)}" for why, which in left.items()))
+    raw = [sign_flip(*paired_parts(baseline, g, ids))["p"] for g in groups]
+    adjusted = holm(raw)
+    stamp = f"{dt.datetime.now():%Y-%m-%d_%H%M%S}"
+    for k, (changed, p_adjusted) in enumerate(zip(groups, adjusted), 1):
+        path = REPORTS_DIR / (f"compare_runs_decision_{stamp}.md" if len(groups) == 1 else
+                              f"compare_runs_decision_{stamp}_changed_{k}.md")
+        family = {"m": len(groups), "number": k, "p_adjusted": p_adjusted}
+        text = decision_report(baseline, changed, ids, left, notes, across, family)
+        write_text(path, text)
+        verdict_line = next(line for line in text.splitlines() if line.startswith("**Verdict:"))
+        print((f"Changed recipe {k} of {len(groups)}: " if len(groups) > 1 else "")
+              + f"{verdict_line.replace('**', '').replace('*', '')}\nReport: {repo_path(path)}")
+    if left:
+        print("\n".join(f"  left out, {why}: {len(which)}" for why, which in left.items()))
     return 0
 
 
@@ -891,8 +977,9 @@ def main() -> int:
                          "another schema), labelled as a comparison across schemas")
     ap.add_argument("--baseline", nargs="+", metavar="RUN_ID",
                     help="the baseline's runs (its repeats), with --changed: apply the decision rule")
-    ap.add_argument("--changed", nargs="+", metavar="RUN_ID",
-                    help="the changed recipe's runs (its repeats), with --baseline: apply the decision rule")
+    ap.add_argument("--changed", nargs="+", action="append", metavar="RUN_ID",
+                    help="the changed recipe's runs (its repeats), with --baseline: apply the decision rule; given "
+                         "again for each further changed recipe, whose p-values are then adjusted by Holm's method")
     args = ap.parse_args()
     across = args.across_schemas == "true"
     if args.baseline or args.changed:
@@ -923,7 +1010,8 @@ def main() -> int:
     if twice:
         sys.exit(f"The same run is given more than once ({', '.join(twice)}), and a run compared with itself shows "
                  f"nothing (every row would be \"the same\"). Give each run once: `py helpers/compare_runs.py` lists them.")
-    problem = evaluation_versions_differ(runs) or translations_mixed(runs, across)
+    problem = (evaluation_versions_differ(runs) or translations_mixed(runs, across)
+               or (same_extraction(runs, "py helpers/compare_runs.py") if only_repeats(differences(runs)) else None))
     if problem:
         sys.exit(problem)
     ids, left, notes = common_records(runs, across)

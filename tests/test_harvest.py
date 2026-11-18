@@ -85,6 +85,24 @@ class Harvest(unittest.TestCase):
         self.harvest(new_harvest=True)                      # a second replacement: its own folder
         self.assertEqual(len(list(self.out.glob("replaced_*"))), 2)
 
+    def test_new_harvest_unreachable_catalog_keeps_the_saved_harvest(self):
+        """--new_harvest true when the catalog can't give page 0 (an error, or a page that isn't JSON): the saved
+        harvest stays where it was, untouched, and nothing is set aside. Near miss: page 0 answers but a later page
+        fails, after the saved harvest was set aside (the catalog answered, so the new harvest goes ahead)."""
+        self.harvest()
+        before = {p.name: p.read_bytes() for p in batches.all_batches(self.out)}
+        for broken in ("fail_starts", "not_json_starts"):
+            getattr(self.cat, broken).add(0)
+            with self.assertRaises((requests.RequestException, RuntimeError)):
+                self.harvest(new_harvest=True)
+            getattr(self.cat, broken).clear()
+            self.assertEqual({p.name: p.read_bytes() for p in batches.all_batches(self.out)}, before, broken)
+            self.assertEqual(list(self.out.glob("replaced_*")), [], broken)
+        self.cat.fail_starts.add(10)
+        with self.assertRaises((requests.RequestException, RuntimeError)):
+            self.harvest(new_harvest=True)
+        self.assertEqual(len(list(self.out.glob("replaced_*"))), 1)
+
     def test_no_request_block_in_a_kept_harvest(self):
         """A complete harvest is kept even when a batch file lost its request block, so the warning's advice is
         --new_harvest true (a plain rerun would keep it again); in a harvest that isn't complete, such a file is

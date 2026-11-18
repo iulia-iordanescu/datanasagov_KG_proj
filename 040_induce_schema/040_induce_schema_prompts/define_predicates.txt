@@ -1,7 +1,8 @@
 $words
 
 Below are predicates found in records of a catalog of NASA datasets, each
-read from subject instance to object instance, with examples (triples from
+read from subject instance to object instance and given as a component
+class ("component_class"), with examples (triples from
 records that state it, written "subject instance -- predicate instance --
 object instance"), its patterns (the entity classes of the subject instances
 and object instances it joins, each pair with the number of records it was

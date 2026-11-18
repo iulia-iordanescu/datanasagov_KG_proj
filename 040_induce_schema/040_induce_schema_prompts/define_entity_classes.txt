@@ -1,8 +1,9 @@
 $words
 
 Below are entity classes found in records of a catalog of NASA datasets,
-each with examples (instances that have it) and the number of records it was
-found in ("texts"). For each entity class, write ONE sentence defining it,
+each given as a component class ("component_class"), with examples
+(instances that have it) and the number of records it was found in
+("texts"). For each entity class, write ONE sentence defining it,
 general enough to cover its examples.
 
 A definition may name another entity class, when that makes it clearer (e.g.

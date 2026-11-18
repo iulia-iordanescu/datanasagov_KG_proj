@@ -27,7 +27,7 @@
 @@ preamble | - | The model needs to know that the rules' predicate and entity class words describe meanings, since the names it must use come from the schema its task names (040 none, 050 the ground truth schema, 060 the current schema).
 The rules are numbered as in the annotation guidelines that a person follows. The words for predicates and entity
 classes in these rules and their examples ("computed from", "aboard", "an instrument") say what a fact means; in
-your answer, use the predicate names and entity class names that the task above says to use.
+your answer, use the predicate names and entity class names that the task below says to use.
 
 @@ map | everywhere | The person writes ground truth triples, and the model writes triples (classed triples, in the guidelines' words): one definition, "triple", in the model's words section.
 Ground truth triple => Triple
@@ -71,7 +71,7 @@ The reference, its entry, its address and the date it was checked go in a note o
 @@ replace | rule 2 | Each step's task says which facts to write: 040 and 050 every fact, 060 only those its schema can express.
 Every fact the record states, unless a rule leaves it out:
 =>
-Every fact the record states (the task above says which), unless a rule leaves it out:
+Every fact the record states (the task below says which), unless a rule leaves it out:
 
 @@ replace | rule 2 | Waiting on an expert is the person's state of a fact (annotations/questions_for_experts.md); the model has no experts to wait on.
 , or it waits on an expert's answer (annotations/questions_for_experts.md)
@@ -94,7 +94,7 @@ An instrument
 @@ replace | rule 2 / A fact inside a name | As for rule 2: each step's task says which facts to write, and only the person coins (rule 14).
 is a ground truth triple whether or not the ground truth schema has a predicate for it (rule 14, entity classes and predicates, coins one when none fits).
 =>
-is a triple like any other fact (the task above says which facts to write).
+is a triple like any other fact (the task below says which facts to write).
 
 @@ replace | rule 3 | The code fills in the record's own text fields ($field_names), which differ by step setting.
 (title:, notes:, …)
@@ -108,7 +108,7 @@ The ground truth schema defines each predicate in this direction (annotations/gr
 @@ replace | rule 14 | 050 may coin, 060 uses only its schema, 040 has none; each step's task says which, and coining is the person's (Coining an entity class or predicate).
 Entity classes and predicates: the ground truth schema's, when one fits, so that every record uses the same entity class or predicate for the same meaning. When none fits, coin one: see Coining an entity class or predicate, below.
 =>
-Entity classes and predicates: use them as the task above says.
+Entity classes and predicates: use them as the task below says.
 
 @@ replace | rule 16 | Step 070's stop on a repeated classed triple concerns the person's file; the model's repeats are removed by step 060's checks.
 Two ground truth triples that are the same classed triple in one record stop step 070 until one is deleted (annotations/README.md, What the pipeline checks).

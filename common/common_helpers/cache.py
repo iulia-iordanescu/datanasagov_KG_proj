@@ -138,8 +138,11 @@ class Cache:
         return (stored[CUT_OFF].get("usage") or {}) if _is_cut_off(stored) else {}
 
     def put_cut_off(self, k: str, error) -> None:
-        """Keep that the answer under k was cut off (llm.CutOff), so a rerun with the same limit doesn't pay again."""
-        self.put(k, {CUT_OFF: {"why": str(error), "max_answer_tokens": llm.max_tokens_sent(),
+        """Keep that the answer under k was cut off (llm.CutOff), so a rerun with the same limit doesn't pay again. The
+        limit kept is the one the answer was cut off at: the error's max_answer_tokens when it carries one (an answer
+        of a batch job sent at another limit: common/common_helpers/llm_batch.py, _with_job_limit), else this run's."""
+        limit = error.max_answer_tokens if hasattr(error, "max_answer_tokens") else llm.max_tokens_sent()
+        self.put(k, {CUT_OFF: {"why": str(error), "max_answer_tokens": limit,
                                "thinking": llm.THINKING, "usage": getattr(error, "usage", None) or {}}})
 
     def put(self, k: str, answer) -> None:

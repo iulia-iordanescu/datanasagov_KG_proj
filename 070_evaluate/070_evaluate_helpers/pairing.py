@@ -100,10 +100,12 @@ STAGE = "stage 3 (compare)"
 MISMATCH_WARN = 2                 # a component class mismatch seen this often is a warning: a row to look at
 #: Bump when what step 070 counts changes (what is evaluated, how rows are tidied and keyed, how pairs are chosen),
 #: so its recipe says so and py helpers/compare_runs.py shows two runs as different (its *What differs*).
+#: 4 (2026-11-17): a finished record whose extraction failed in 060's run (cut off, refused, a failed call) is
+#: evaluated, scored as extracting nothing, instead of left out and ending the fair sample (records.py);
 #: 3 (2026-11-01): occurrences whose predicate translates to (none) leave precision's denominator and are reported as
 #: schema fit; 2 (2026-10-31): the evaluability gate, the keys and the row tidying of the edge-case audit, and ties
 #: broken by the triples' contents, not their order; 1: before.
-EVALUATION_VERSION = 3
+EVALUATION_VERSION = 4
 
 
 def _words(s) -> list:
@@ -607,7 +609,10 @@ def compare_record(record: dict, translation, reviews: dict | None = None) -> di
                                             zip(gt, provenance["drafted_by"]) if gk == k})
                                  for k in set(provenance["drafted_by"])},
         "partial_review": {"rejected": rejected, "unreviewed": unreviewed, "applied": len(applied),
-                           "not_applying": stale_reviews},
+                           "not_applying": stale_reviews,
+                           # the verdicts that apply, each [its pair_key's parts..., verdict]: fingerprinted in the
+                           # recipe (moves.py, _recipe), so runs before and after a review aren't pooled unseen
+                           "verdicts": [[*k, reviews[k]] for k in applied]},
         "describes": {"truth": truth, "said": said,
                       "right": bool(truth and said and component_class_key(truth) == component_class_key(said))},
     }

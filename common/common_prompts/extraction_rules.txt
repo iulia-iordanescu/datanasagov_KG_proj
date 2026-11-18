@@ -2,7 +2,7 @@ The rules are numbered as in the annotation guidelines that a person
 follows. The words for predicates and entity classes in these rules and
 their examples ("computed from", "aboard", "an instrument") say what a fact
 means; in your answer, use the predicate names and entity class names that
-the task above says to use.
+the task below says to use.
 
 HOW THE RULES USE THEIR WORDS
 
@@ -142,7 +142,7 @@ WHAT COUNTS AS A FACT
        data products are Release 4 files" and "TERN observations cover
        either the north or the south basin" gives the record's dataset the
        version "Release 4", and no triple for the basins.
-2. Every fact the record states (the task above says which), unless a rule
+2. Every fact the record states (the task below says which), unless a rule
    leaves it out: rule 1 (only what the record states), this rule's part A
    fact inside a name, rules 3 to 10, and rules 16, 20, 21, 22, 23 and 24
    (rule 22 for an item of a list that names no specific entity and for the
@@ -182,7 +182,7 @@ WHAT COUNTS AS A FACT
      predicate, or none, the name's words give no triple, since choosing one
      would add what the record does not state. The test decides only the
      facts that are read from a name's words. A fact that a sentence states
-     with words of its own is a triple like any other fact (the task above
+     with words of its own is a triple like any other fact (the task below
      says which facts to write).
      - Example: "The index is made from brightness data" gives "brightness
        data" holding measurements of "brightness", with the source text
@@ -328,7 +328,7 @@ WRITING A TRIPLE
     instance is the record's dataset, whose predicate is "collected by", and
     whose object instance is "Kestrel" says that the dataset was collected
     by Kestrel, not that Kestrel was collected by the dataset.
-14. Entity classes and predicates: use them as the task above says.
+14. Entity classes and predicates: use them as the task below says.
 15. One fact per triple. A sentence that states two facts gives two triples.
     - Example: "The data were collected by Kestrel aboard Halden" gives two
       triples: the record's dataset collected by Kestrel, and Kestrel aboard

@@ -138,6 +138,11 @@ def write_step_report(path: Path, run: dict, settings: dict, input_rows: list,
         f = run["failed_calls"]
         lines.append(f"| Failed model calls | {_link(f['file'], path)}: {f['entries']:,} (one line each: why it "
                      f"failed, the service's token counts, the answer if any, and what to change) |")
+    if run.get("discarded_unfinished"):
+        lines.append(f"| Items discarded before the end | {_link(run['discarded_unfinished'], path)}: "
+                     f"what this run's stages discarded, folded or replaced before it ended {run['status']} (one line "
+                     f"each, as in `discarded.jsonl`, marked `run_status`); the output folder's `discarded.jsonl` is "
+                     f"still the last finished run's |")
     lines += ["",
               "The run's full recipe: the Git commit above (the code), its Settings (the model among them), "
               "its Prompts and its Inputs (each with the run that made it), below.", ""]

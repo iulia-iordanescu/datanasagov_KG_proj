@@ -16,7 +16,8 @@ The pool is not drawn here: it was drawn once, on 2026-09-21, and is kept in
 annotations/. The induction candidates are ordered here. Both are written to
 splits.json once, and kept after that.
 
-Reads:   records.jsonl (020), annotations/ground_truth_candidates.csv
+Reads:   records.jsonl (020), annotations/ground_truth_candidates.csv, and, for the report's count of
+         finished held-out records that are twins of a tuning record, annotations/ground_truth/
 Writes:  splits.json
 Details: 030_split/030_split.md
 """
@@ -30,7 +31,10 @@ from common.step import load_moves, run_step
 INPUTS = {
     "records":    "020_clean/records.jsonl",
     "candidates": "./annotations/ground_truth_candidates.csv",
+    "ground_truth": "./annotations/ground_truth/batch_*.csv",
 }
+#: Inputs that may have no file yet: no record annotated (its finished held-out records are then none).
+MAY_BE_EMPTY = ("ground_truth",)
 
 SETTINGS = {
     "induction_seed": 7,   # fixes the random order of the induction candidates
@@ -49,4 +53,4 @@ def main(inputs, settings, output):
 
 
 if __name__ == "__main__":
-    run_step("030_split", INPUTS, SETTINGS, main, specs=split.SPECS)
+    run_step("030_split", INPUTS, SETTINGS, main, may_be_empty=MAY_BE_EMPTY, specs=split.SPECS)
