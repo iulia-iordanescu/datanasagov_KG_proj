@@ -247,7 +247,7 @@ In cases 1, 2, and 4 the wrong pair is a partial pair, so your review of partial
 
 - Both state the same fact, but neither pair level pairs them: neither subject instance contains the other.
 - So its occurrence is extracted only, lowering precision, and the ground truth triple is ground truth only, lowering recall, though extraction got the fact right.
-- With LLMs this is common. In one study, people judged about half of the extracted triples that exact matching counted wrong to be derivable from the text after all (51.67% and 50.27%, on two datasets; Wadhwa et al., 2023). That half has two causes: the same fact in different words, as here, and facts the ground truth lacked.
+- With LLMs this is common. In one study, people judged about half of the extracted triples that exact matching counted wrong to be derivable from the text after all, on each of two datasets (Wadhwa et al., 2023). That half has two causes: the same fact in different words, as here, and facts the ground truth lacked.
 
 There are two ways to catch it:
 

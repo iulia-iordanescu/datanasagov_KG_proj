@@ -13,7 +13,7 @@ py helpers/second_opinion.py --ids <id>,<id>       only these finished records
 py helpers/second_opinion.py --model <name>        another model (the default: gemini-4-argon)
 ```
 
-The ground truth is never changed: the second opinion writes no [drafted batch](../docs/terminology.md#4-ground-truth-and-samples), and nothing in `annotations/` unless `--apply true`, which writes only `annotations/second_opinion.csv` and `annotations/second_opinion_candidates.csv` (below). Decided on 2026-11-01; the entry in [`docs/improvements.md`](../docs/improvements.md), section *050_annotate*, says why, and why 3 repeats.
+The ground truth is never changed: the second opinion writes no [drafted batch](../docs/terminology.md#4-ground-truth-and-samples), and nothing in `annotations/` unless `--apply true`, which writes only `annotations/second_opinion.csv` and `annotations/second_opinion_candidates.csv` (below). The entry in [`docs/improvements.md`](../docs/improvements.md), section *050_annotate*, says why, and why 3 repeats.
 
 ## Drafting pays, applying is free
 
@@ -111,6 +111,6 @@ Step 070 reads the file and gives, for each part, under *Metrics*, the subsectio
 - **A fact both annotators missed** is still invisible: the second opinion lowers the number of such facts, it doesn't count them.
 - **The same mistakes.** Two models of one maker, or two trained on similar data, miss similar facts; the default model is from another maker than 060's, but from the same maker as 050's, so on the rows a Gemini model drafted, found means partly agreement within one maker: the second opinion is less independent of those rows than of the rows `claude-opus-5.5` drafted. The report notes every ground truth triple whose `drafted_by` is the very model asked, and step 070 gives every number by who drafted each ground truth triple next to *By the second opinion*. Every pairing of [shared-model bias](../docs/terminology.md#7-evaluating-extraction-step-070): `070_evaluate/070_evaluate.md`, [*Shared-model bias*](../070_evaluate/070_evaluate.md#shared-model-bias).
 - **Words the pairing can't match**: a fact stated in different words on the two sides counts as not found (`pairs.md`, *Assumes and can't see*).
-- **The schema view includes the record's own coined component classes**: the model sees, as 050 does, the component classes the finished tuning records coined, these records among them; not their triples, and no pattern (since 2026-11-15 no prompt shows one).
+- **The schema view includes the record's own coined component classes**: the model sees, as 050 does, the component classes the finished tuning records coined, these records among them; not their triples, and no pattern (no prompt shows one).
 - **Drafts as they were drafted.** Applying matches the saved drafts: a record whose text, or the ground truth schema view, changed since drafting is matched on drafts the model wrote from the earlier ones, until it is drafted again (paid). The report names the drafting runs and their settings.
 - **Repeats of one model aren't independent annotators**: they share its blind spots, so a fact found in none of 3 repeats is one this model misses on 3 answers, not one 3 annotators miss; and with LiteLLM's answer cache not bypassed, the repeats may be copies of one.
