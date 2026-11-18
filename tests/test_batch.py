@@ -25,6 +25,7 @@ ask) through tests/test_model_calls.py's FakeSDK. For each maker (anthropic, ope
 """
 import json
 import sys
+import threading
 import unittest
 from pathlib import Path
 from types import SimpleNamespace as NS
@@ -193,6 +194,34 @@ def google_client(fake: FakeBatch):
     return client
 
 
+class _ReAsk(tuple):
+    """A reply the fake gives to a re-ask (the test call's reply is a plain one)."""
+
+
+class _Overlap(list):
+    """FakeSDK's replies, counting how many re-asks (_ReAsk replies) are being answered at the same time (most). Each
+    re-ask waits, up to 5 seconds, until `expected` of them are under way at once, so requests made at the same time
+    are seen to overlap; requests made one after another (expected 1) never wait."""
+
+    def __init__(self, expected: int):
+        super().__init__()
+        self.expected, self.now, self.most = expected, 0, 0
+        self.lock = threading.Condition()
+
+    def pop(self, index=-1):
+        got = super().pop(index)
+        if not isinstance(got, _ReAsk):
+            return got
+        with self.lock:
+            self.now += 1
+            self.most = max(self.most, self.now)
+            self.lock.notify_all()
+            self.lock.wait_for(lambda: self.now >= self.expected, timeout=5)
+        with self.lock:
+            self.now -= 1
+        return got
+
+
 SYNC_TEST_REPLY = {"anthropic": tmc.ANTHROPIC_REPLY, "openai": tmc.OPENAI_REPLY, "google": tmc.GOOGLE_REPLY}
 #: Each answer's token counts in OpenAI's shape (tests/test_model_calls.py's replies): input not from the cache,
 #: read from the cache, written to the cache, received, thinking.
@@ -227,8 +256,9 @@ class Batch(unittest.TestCase):
             self.clients[service] = make(self.fakes[service])
         return self.clients[service]
 
-    def run_batch(self, service, ids, outcome=None, test_call=True, running=2, cache_until=None):
-        """One 060-like run with batch true: ids' records, one text piece each; the test call answered by FakeSDK."""
+    def run_batch(self, service, ids, outcome=None, test_call=True, running=2, cache_until=None, workers=4):
+        """One 060-like run with batch true: ids' records, one text piece each; the test call answered by FakeSDK;
+        workers: the step's setting workers (the single requests made at the same time)."""
         fake = self.fakes.setdefault(service, FakeBatch(service, running))
         fake.outcome = outcome or {}
         calls = self.calls(service=service, model=tmc.BASELINE[service], thinking="high", batch=True)
@@ -236,7 +266,8 @@ class Batch(unittest.TestCase):
             self.sdk.replies.append(SYNC_TEST_REPLY[service])
         items = [{"id": i, "pieces": ["text"]} for i in ids]
         replies = extraction.ask_model(items, lambda item, piece: f"RULES\n----- BEGIN RECORD -----\n#{item['id']}#",
-                                       calls, 4, "extract", "060 will extract", "extracting", cache_until=cache_until)
+                                       calls, workers, "extract", "060 will extract", "extracting",
+                                       cache_until=cache_until)
         return calls, replies
 
     def state(self, service="anthropic"):
@@ -477,6 +508,38 @@ class Batch(unittest.TestCase):
         (job,) = self.state("google")["jobs"]
         self.assertEqual((job["answered"], job["failed"], job["asked_again_singly"][0]["outcome"]), (2, 1, "cut off"))
         self.assertIn("asked again: cut off", llm.batch_note())
+
+    def test_google_cut_offs_asked_again_at_the_same_time(self):
+        """Three Google batch answers cut off at 32,768 are asked again as single requests workers (4) at a time: the
+        three requests overlap; each answer is cached under its prompt's key; the token counts, the job's counts and
+        its asked_again_singly list (in the records' order) are those of the same run with workers 1. Near miss:
+        workers 1 asks them one after another, in the records' order."""
+        ids, cut = ["r00", "r01", "r02", "r03", "r04"], ["r01", "r02", "r03"]
+        seen = {}
+        for workers in (4, 1):
+            self.setUp_again()
+            tracker = _Overlap(expected=len(cut) if workers > 1 else 1)
+            self.sdk.replies = tracker
+            tracker += [SYNC_TEST_REPLY["google"]] + [_ReAsk((tmc.GOOGLE_REPLY[0], ANSWER)) for _ in cut]
+            calls, replies = self.run_batch("google", ids, {r: "cut" for r in cut}, test_call=False, workers=workers)
+            self.assertEqual((sorted(replies.of), replies.failed), (ids, {}))
+            self.assertEqual(tracker.most, len(cut) if workers > 1 else 1)          # overlap, or none at all
+            reasks = [r[1]["contents"] for r in self.sdk.requests[1:]]
+            self.assertEqual(len(reasks), len(cut))
+            if workers == 1:                                                    # one after another, in order
+                self.assertEqual([c.rsplit("#", 2)[1] for c in reasks], cut)
+            stored = self.cached()
+            self.assertEqual(len(stored), len(ids))
+            self.assertFalse(any("_pipeline_cut_off" in v for v in stored.values()))
+            (job,) = self.state("google")["jobs"]
+            self.assertEqual([a["records"] for a in job["asked_again_singly"]], [[r] for r in cut])
+            for again in job["asked_again_singly"]:
+                self.assertEqual(stored[again["custom_id"]], json.loads(ANSWER))
+            self.assertEqual(llm.REQUESTS["sent"], 1 + len(ids) + len(cut))
+            seen[workers] = (dict(llm.REQUESTS), job["answered"], job["failed"], job["asked_again_singly"],
+                             calls.paid.made, dict(llm.OUTCOMES), replies.calls)
+        self.assertEqual(seen[4], seen[1])
+        self.assertEqual(seen[4][1:3], (len(ids), 0))
 
     def test_google_batch_without_cut_offs_and_single_requests(self):
         """Near misses: a Google batch run with no cut-off asks nothing again, and its report says so; a run of single

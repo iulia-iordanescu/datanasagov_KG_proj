@@ -68,7 +68,7 @@ from common.llm_litellm import _chat_payload, _read_chat_reply
 from common.llm_makers import (
     _anthropic_params, _as_dict, _google_config, _google_typed_config, _read_anthropic_reply, _read_google_reply,
     _sdk_client, _sdk_send)
-from common.llm_paid import EarlyStop, Interrupted, advice
+from common.llm_paid import EarlyStop, Interrupted, advice, run_parallel
 from common.llm_replies import find_json
 
 
@@ -612,7 +612,7 @@ def jobs_holding(cache_dir: Path, stage: str, keys) -> list:
             if not j.get("collected") and wanted & set(j.get("keys", []))]
 
 
-def ask_batch(todo: dict, cache, check, cache_until, start, handle, paid, stage: str) -> int:
+def ask_batch(todo: dict, cache, check, cache_until, start, handle, paid, stage: str, workers: int) -> int:
     """Ask every prompt of todo, {where: (cache key, prompt)}, through the maker's batch API (llm.SERVICE, llm.MODEL),
     and call handle(n, where, (cache key, answer) or None, error or None) in this thread for each, as
     common/common_helpers/llm_paid.py's run_parallel does for single requests. Prompts with one cache key are sent
@@ -620,8 +620,9 @@ def ask_batch(todo: dict, cache, check, cache_until, start, handle, paid, stage:
     question, then the test call). A job of an earlier run with the same model and settings that wasn't collected is
     collected instead of sending its prompts again, whatever answer limit it was sent with (_is_ours); an answer it
     holds for a prompt this run doesn't ask, and that isn't in the cache yet, is stored too (it was paid for), a
-    cut-off as a cut-off. cache: the stage's Cache; check: the stage's shape check.
-    The number of answers handed to the stage."""
+    cut-off as a cut-off. cache: the stage's Cache; check: the stage's shape check. workers: how many single requests
+    (the re-asks of answers cut off at the batch API's lower answer limit, _ask_again_singly) are made at the same time,
+    the step's setting workers. The number of answers handed to the stage."""
     service, model = llm.SERVICE, llm.MODEL
     refusal = batch_refusal(service)
     if refusal:
@@ -713,7 +714,8 @@ def ask_batch(todo: dict, cache, check, cache_until, start, handle, paid, stage:
                           f"{SERVICES[service]} keeps a job's results for {RESULTS_KEPT[service]}. A job being created "
                           f"at the moment of Ctrl+C may exist at {SERVICES[service]} without its id kept; its "
                           f"prompts would be sent again.") from None
-    return _hand_over(service, results, by_key, prompt_of, cache, check, cache_until, handle, paid, jobs, path)
+    return _hand_over(service, results, by_key, prompt_of, cache, check, cache_until, handle, paid, jobs, path,
+                      workers)
 
 
 def _create_with_retries(service: str, model: str, chunk: list, label: str, sent: list, path: Path) -> str:
@@ -872,7 +874,8 @@ def _tokens(usage) -> tuple:
     return usage.get("completion_tokens"), llm.reasoning_tokens(usage)
 
 
-def _hand_over(service, results, by_key, prompt_of, cache, check, cache_until, handle, paid, jobs, path) -> int:
+def _hand_over(service, results, by_key, prompt_of, cache, check, cache_until, handle, paid, jobs, path,
+               workers: int) -> int:
     """Judge every result as a single request's answer, hand each to the stage (handle), store answers to prompts
     this run didn't ask, mark the jobs collected, and stop early when too many failed. The number handed over."""
     judged, counts = {}, {j["id"]: {"answered": 0, "failed": 0} for j in jobs}
@@ -943,7 +946,8 @@ def _hand_over(service, results, by_key, prompt_of, cache, check, cache_until, h
             n += 1
             handle(n, where, (k, data) if error is None else None, error)
     if short and not early:
-        n = _ask_again_singly(short, judged, by_key, prompt_of, check, cache_until, handle, paid, job_of, counts, n)
+        n = _ask_again_singly(short, judged, by_key, prompt_of, check, cache_until, handle, paid, job_of, counts, n,
+                              workers)
     for job in jobs:
         job["collected"] = _now()
         job.update(counts[job["id"]])
@@ -965,35 +969,51 @@ def _hand_over(service, results, by_key, prompt_of, cache, check, cache_until, h
     return n
 
 
-def _ask_again_singly(short, judged, by_key, prompt_of, check, cache_until, handle, paid, job_of, counts, n) -> int:
+def _ask_again_singly(short, judged, by_key, prompt_of, check, cache_until, handle, paid, job_of, counts, n,
+                      workers: int) -> int:
     """Ask each prompt whose batch answer was cut off at the batch API's lower answer limit (short: _cut_below_limit)
     again, as a single request at the run's limit (max_tokens_sent), billed at the full price, and hand its answer or
     its error to the stage, as a batch answer is handed (a cut-off at the run's limit is kept as one, at that limit).
+    The requests are made workers at a time, as single requests are (common/common_helpers/llm_paid.py, run_parallel),
+    and each answer is handed over in this thread as it arrives, so the stage caches it at once.
     Each is listed in its job's counts (asked_again_singly: the records, the cut answer's tokens and the new
-    answer's), for the batch state file, the run's record and the report (batch_note). The number handed over so far."""
+    answer's, in the order of short), for the batch state file, the run's record and the report (batch_note). The
+    number handed over so far."""
     service = llm.SERVICE
     log.info(f"  {len(short):,} answer(s) of the batch job(s) were cut off at {batch_tokens_sent():,} tokens, the most "
              f"{BATCH_API[service]} takes, so each is asked again now as a single request at {max_tokens_sent():,} "
-             f"tokens, billed at the full price")
-    for k in short:
-        cut_tokens, cut_thinking = _tokens(getattr(judged[k][1], "usage", None))
+             f"tokens, billed at the full price, {workers:,} at a time")
+    entries = {}
+
+    def ask(k):                                             # in a worker thread: _last is the thread's own
         _last.reply, _last.timing = {}, {}
-        try:
-            data, error = llm.call_llm_json(prompt_of[k], cache_until=cache_until, check=check), None
+        data = llm.call_llm_json(prompt_of[k], cache_until=cache_until, check=check)
+        return data, (getattr(_last, "reply", None) or {}).get("usage")
+
+    def handed(_, k, result, error):                        # in this thread, as each request ends
+        nonlocal n
+        if error is None:
+            data, usage = result
             paid.made_call()
             counts[job_of[k]]["answered"] += 1
-            usage = (getattr(_last, "reply", None) or {}).get("usage")
-        except Exception as e:                              # noqa: BLE001  (a cut-off at the run's limit among them)
-            data, error = None, e
+        else:
+            data, usage = None, getattr(error, "usage", None) or (getattr(error, "call", None) or {}).get("usage")
             counts[job_of[k]]["failed"] += 1
-            usage = getattr(e, "usage", None) or (getattr(e, "call", None) or {}).get("usage")
+        cut_tokens, cut_thinking = _tokens(getattr(judged[k][1], "usage", None))
         tokens, thinking = _tokens(usage)
-        counts[job_of[k]].setdefault("asked_again_singly", []).append({
+        entries[k] = {
             "records": sorted({str(w[0] if isinstance(w, tuple) else w) for w in by_key[k]}), "custom_id": k,
             "cut_at": batch_tokens_sent(), "cut_tokens": cut_tokens, "cut_thinking_tokens": cut_thinking,
             "asked_at": max_tokens_sent(), "outcome": "answered" if error is None else
-            "cut off" if isinstance(error, llm.CutOff) else "failed", "tokens": tokens, "thinking_tokens": thinking})
+            "cut off" if isinstance(error, llm.CutOff) else "failed", "tokens": tokens, "thinking_tokens": thinking}
         for where in by_key[k]:
             n += 1
             handle(n, where, (k, data) if error is None else None, error)
+
+    run_parallel(ask, {k: (k,) for k in short}, workers, handed,
+                 "Every answer already received is kept in the cache, so it isn't paid for again. The batch job(s) "
+                 "stay uncollected: run the same command again and it collects them and asks again only what isn't in "
+                 "the cache.")
+    for k in short:                                         # in the order of short, whatever order they ended in
+        counts[job_of[k]].setdefault("asked_again_singly", []).append(entries[k])
     return n

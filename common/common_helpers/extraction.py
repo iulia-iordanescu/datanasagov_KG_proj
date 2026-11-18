@@ -435,7 +435,7 @@ def ask_model(items: list, prompt_for, calls, workers: int, stage: str, plan: st
 
         if batch:                                   # the setting batch: one batch job to the maker's batch API
             llm.ask_batch(dict(todo), cache, shape_error, cache_until,
-                          lambda n: calls.paid.start(plan_line, to_pay=n), handle, calls.paid, stage)
+                          lambda n: calls.paid.start(plan_line, to_pay=n), handle, calls.paid, stage, workers)
         else:
             llm.run_parallel(ask, dict(todo), workers, handle,
                              "Answers already received are kept in the cache; nothing else was written. Run the step "
