@@ -26,7 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))                                                  # the repository folder, for common/
 
 from common import console, llm                                                # noqa: E402
-from common.files import read_json, write_csv, write_text                     # noqa: E402
+from common.files import read_json, read_text, write_csv, write_text          # noqa: E402
 from common.report import _duration, cell                                      # noqa: E402
 from common.step import REPORTS_DIR, RESULTS_DIR, repo_path                    # noqa: E402
 
@@ -70,7 +70,7 @@ def report_numbers(report: Path) -> dict:
     table, the one-line test calls, and the replies asked again; {} when the report is missing."""
     if not report.exists():
         return {}
-    text = report.read_text(encoding="utf-8")
+    text = read_text(report)
     out = {}
     for count, words in REPORT_TOKEN_ROWS.items():
         m = re.search(r"^\| " + re.escape(words) + r"[^|]*\| ([\d,]+) \|", text, re.M)
