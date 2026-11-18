@@ -877,7 +877,7 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None, may_
                         f"{repo_path(output)} aside before the next run, and check the disk has space.")
             previous = (None, [])
         log.debug(f"output folder: {repo_path(output)}")
-        audit.begin_run(run_id, chosen_inputs)
+        audit.begin_run(run_id, chosen_inputs, run["started"], clock)
         _RUN_INPUTS.update(inputs=chosen_inputs, rows=input_rows)      # for inputs_still_the_same, during main
         prompt_files.reset_prompts()
         dropped.reset()                  # the items this run's stages discard (dropped.discard), written below

@@ -432,6 +432,7 @@ def paid_calls(settings: dict, output, notes: list = (), session_id: str | None 
     SERVED.clear()
     for k in REQUESTS:
         REQUESTS[k] = 0
+    llm.TOKENS_BY_PRICE.clear()
     for k in REASKS:
         REASKS[k] = 0
     OUTCOMES.update(failed=0, cut_off=0, not_sent=0, file=None)

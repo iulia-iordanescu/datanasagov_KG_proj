@@ -184,17 +184,25 @@ def _http_reply(resp) -> None:
 
 
 def _count_tokens(usage: dict) -> None:
-    """Add a reply's token counts to REQUESTS, for the report's Model calls."""
+    """Add a reply's token counts to REQUESTS, for the report's Model calls, and to llm.TOKENS_BY_PRICE, by the price
+    they are billed at (llm_costs.count_priced). Cache writes: Anthropic's cache_creation_input_tokens, or OpenAI's
+    prompt_tokens_details.cache_write_tokens (openai's CompletionUsage: "The unadjusted number of prompt tokens written
+    to cache"; OpenAI's prompt caching guide: "`cached_tokens` counts billed reads and excludes tokens charged as
+    writes", https://developers.openai.com/api/docs/guides/prompt-caching, read 2026-11-18), so a write is counted
+    once, not also as input."""
     if not isinstance(usage, dict):
         return
-    read = usage.get("cache_read_input_tokens") or (usage.get("prompt_tokens_details") or {}).get("cached_tokens") or 0
-    write = usage.get("cache_creation_input_tokens") or 0
+    details = usage.get("prompt_tokens_details") if isinstance(usage.get("prompt_tokens_details"), dict) else {}
+    read = usage.get("cache_read_input_tokens") or details.get("cached_tokens") or 0
+    write = usage.get("cache_creation_input_tokens") or details.get("cache_write_tokens") or 0
+    output, thinking = usage.get("completion_tokens") or 0, reasoning_tokens(usage)
     with _requests_lock:
         REQUESTS["input_tokens"] += (usage.get("prompt_tokens") or 0) - read - write
         REQUESTS["cache_read_tokens"] += read
         REQUESTS["cache_write_tokens"] += write
-        REQUESTS["output_tokens"] += usage.get("completion_tokens") or 0
-        REQUESTS["reasoning_tokens"] += reasoning_tokens(usage)
+        REQUESTS["output_tokens"] += output
+        REQUESTS["reasoning_tokens"] += thinking
+    llm.count_priced(usage, read, write, output, thinking)
 
 
 def _note_request(params: dict, words: tuple) -> None:

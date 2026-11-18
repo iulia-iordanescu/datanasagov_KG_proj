@@ -1020,7 +1020,8 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
     write_text(per_record_path, _per_record(shown, len(evaluated.records) - len(shown)))
     write_csv(compared_path, COMPARED_COLUMNS, compared_rows)
     write_json(metrics_path, {
-        "made": {"run_id": audit.current_run_id(), **llm.describe(), "schema": schema_file, "settings": settings,
+        "made": {"run_id": audit.current_run_id(), **llm.describe(), "spent": llm.spent(), "schema": schema_file,
+                 "settings": settings,
                  "translation": translation.how,
                  "interval_method": "clustered Wilson", "few_records_caveat_below": stats.FEW_RECORDS},
         "evaluated": {p: [r["id"] for r in evaluated.records if r["part"] == p] for p in PARTS},

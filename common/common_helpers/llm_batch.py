@@ -39,6 +39,9 @@ What a batch run does that a run of single requests doesn't:
                    "tokens consumed from any completed requests" of an expired job; Google's batch page says nothing
                    on it. A malformed answer is asked once more as a single request, as llm.call_llm_json does with
                    any answer
+    maker times    each time the run reads a job's state, the times the maker reports for it (its creation and end,
+                   under the maker's own field names: llm.maker_times) are kept with the job, in the state file and the
+                   run's record, with its processing time at the maker (llm.job_processing)
     single requests  a run with the setting batch false stops before any model call when an uncollected job holds
                    a prompt it would ask, at any answer limit (jobs_holding, called by
                    common/common_helpers/extraction.py, ask_model): asking it again as a single request would pay
@@ -449,7 +452,9 @@ def _state_name(state) -> str:
 
 
 def _poll(service: str, job_id: str) -> dict:
-    """{"ended": bool, "state": the maker's word, "counts": in words, or ""}: the job's state, asked once (free)."""
+    """{"ended": bool, "state": the maker's word, "counts": in words, or "", "times": the times the maker reports
+    for the job, under its own field names (llm.maker_times)}: the job's state, asked once (free: a metadata request,
+    Anthropic's retrieve, OpenAI's retrieve, Google's get; never the results)."""
     client = _sdk_client(service, BATCH_API_TIMEOUT)
     if service == "anthropic":
         job = _as_dict(_sdk_send(service, lambda: client.messages.batches.retrieve(job_id)))
@@ -457,7 +462,7 @@ def _poll(service: str, job_id: str) -> dict:
         failed = sum(c.get(k) or 0 for k in ("errored", "canceled", "expired"))
         return {"ended": job.get("processing_status") == "ended", "state": str(job.get("processing_status")),
                 "counts": f"{c.get('succeeded') or 0:,} answered, {failed:,} failed, {c.get('processing') or 0:,} "
-                          f"still being processed"}
+                          f"still being processed", "times": llm.maker_times(service, job)}
     if service == "openai":
         job = _as_dict(_sdk_send(service, lambda: client.batches.retrieve(job_id)))
         c = job.get("request_counts") or {}
@@ -465,15 +470,28 @@ def _poll(service: str, job_id: str) -> dict:
         return {"ended": job.get("status") in _ENDED["openai"], "state": str(job.get("status")),
                 "counts": f"{c.get('completed') or 0:,} of {c.get('total') or 0:,} answered, {c.get('failed') or 0:,} "
                           f"failed" if c else "",
-                "error": "; ".join(f"{e.get('code') or ''}: {e.get('message') or ''}".strip(": ") for e in errors)}
+                "error": "; ".join(f"{e.get('code') or ''}: {e.get('message') or ''}".strip(": ") for e in errors),
+                "times": llm.maker_times(service, job)}
     job = _sdk_send(service, lambda: client.batches.get(name=job_id))
     state = _state_name(getattr(job, "state", None))
     stats = _as_dict(getattr(job, "completion_stats", None)) if getattr(job, "completion_stats", None) else {}
     error = getattr(job, "error", None)
+    times = llm.maker_times(service, job)
+    if state not in _ENDED["google"]:
+        times.pop("update_time", None)                      # the job's end only once it has ended (job_processing)
     return {"ended": state in _ENDED["google"], "state": state,
             "error": str(getattr(error, "message", None) or error or ""),
             "counts": (f"{stats.get('successful_count') or 0:,} answered, {stats.get('failed_count') or 0:,} failed"
-                       if stats else "")}
+                       if stats else ""), "times": times}
+
+
+def job_times(service: str, job_id: str) -> dict:
+    """The times the maker reports for one batch job, by its id (_poll's "times"), and its state: {"state", "ended",
+    "times"}. A free metadata request (Anthropic: GET /v1/messages/batches/{id}; OpenAI: GET /v1/batches/{id};
+    Google: batches.get), never the job's results; for py helpers/run_costs.py --fetch_times, for jobs recorded before
+    their times were kept."""
+    status = _poll(service, job_id)
+    return {"state": status["state"], "ended": status["ended"], "times": status.get("times") or {}}
 
 
 def _job_error(service: str, job_id: str, said: str) -> ApiError:
@@ -818,6 +836,8 @@ def _wait(service: str, jobs: list, path: Path, queue=None) -> None:
                          f"keeps coming, see {BATCH_DOCS[service]}.")
             not_found.pop(job["id"], None)
             job["state"] = status["state"]
+            if status.get("times"):                         # the maker's times, kept with the job (llm.maker_times)
+                job["maker_times"] = {**(job.get("maker_times") or {}), **status["times"]}
             words = f"{status['state']}" + (f", {status['counts']}" if status["counts"] else "")
             if said.get(job["id"]) != words:
                 said[job["id"]] = words
@@ -883,7 +903,8 @@ def _hand_over(service, results, by_key, prompt_of, cache, check, cache_until, h
     for k, (kind, payload, job) in results.items():
         if k not in by_key and k in cache.answers:
             continue                                        # stored by an earlier run that collected this job
-        _last.reply = {"settings_sent": job.get("settings_sent"), "batch_job": job["id"], "custom_id": k}
+        _last.reply = {"settings_sent": job.get("settings_sent"), "batch_job": job["id"], "custom_id": k,
+                       "batch_created": job.get("created")}     # the day its tokens are priced at (llm.count_priced)
         _last.timing = {"attempts": 1, "seconds": 0}
         if kind == "error":
             payload.call = dict(_last.reply)
@@ -952,10 +973,15 @@ def _hand_over(service, results, by_key, prompt_of, cache, check, cache_until, h
     for job in jobs:
         job["collected"] = _now()
         job.update(counts[job["id"]])
+        processing = llm.job_processing(service, job.get("maker_times"))     # its end minus its creation, at the maker
+        if processing:
+            job["processing"] = processing
         _save_job(path, job)
         for j in BATCH_JOBS:
             if j["id"] == job["id"]:
-                j.update(state=job.get("state"), **counts[job["id"]])
+                j.update(state=job.get("state"), **counts[job["id"]],
+                         **({"maker_times": dict(job["maker_times"])} if job.get("maker_times") else {}),
+                         **({"processing": processing} if processing else {}))
     if early:
         first = judged[failed[0]][1]
         raise EarlyStop(

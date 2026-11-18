@@ -132,7 +132,7 @@ def results(chosen, schema, replies, rows, calls, settings, output) -> Results:
     write_csv(paths[REMOVED_NAME], REMOVED_COLUMNS, removed)
     write_json(paths[SCHEMA_NAME], _schema_used(schema))
     write_json(paths[DETAILS_NAME], {
-        "made": {"run_id": audit.current_run_id(), **llm.describe(), "settings": settings},
+        "made": {"run_id": audit.current_run_id(), **llm.describe(), "spent": llm.spent(), "settings": settings},
         "chosen": chosen.how,
         "records": [{"id": i["id"], "pieces": len(i["pieces"]),
                      "status": "extracted" if i["id"] in rows.kept else "failed",

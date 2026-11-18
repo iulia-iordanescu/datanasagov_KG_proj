@@ -110,7 +110,7 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
         inputs_still_the_same()
         write_csv(batch_path, COLUMNS, csv_rows, new=True)       # a drafted batch is never overwritten
         write_json(details_path, {
-            "made": {"run_id": audit.current_run_id(), **llm.describe(), "settings": settings},
+            "made": {"run_id": audit.current_run_id(), **llm.describe(), "spent": llm.spent(), "settings": settings},
             "batch": n, "chosen": chosen.how,
             "records": [{"id": i["id"], "pool_position": i["position"], "title": i["title"],
                          "pieces": len(i["pieces"]),

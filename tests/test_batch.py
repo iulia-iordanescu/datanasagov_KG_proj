@@ -22,7 +22,10 @@ ask) through tests/test_model_calls.py's FakeSDK. For each maker (anthropic, ope
                         a job refused for the queue (at creation or after) is sent again; other runs' open
                         jobs count against the cap
     answer limits       a job sent at another answer limit is collected; its cut-offs are kept at its own limit
+    cost and time       each maker's times for a job kept with it, with its processing time; the batch answers'
+                        tokens kept apart from the single requests', each priced at its own price
 """
+import datetime as dt
 import json
 import sys
 import threading
@@ -113,7 +116,8 @@ def anthropic_client(fake: FakeBatch):
         done = fake.ended()
         return {"id": job_id, "processing_status": "ended" if done else "in_progress",
                 "request_counts": {"processing": 0 if done else len(fake.jobs[job_id]), "succeeded": 0, "errored": 0,
-                                   "canceled": 0, "expired": 0}}
+                                   "canceled": 0, "expired": 0},
+                "created_at": "2026-11-18T15:00:00Z", "ended_at": "2026-11-18T15:12:30Z" if done else None}
     batches = NS(create=lambda requests: NS(id=fake.create(requests)), retrieve=retrieve,
                  results=lambda job_id: iter([result(*x) for x in fake.results(job_id)]))
     return NS(messages=NS(batches=batches))
@@ -136,6 +140,8 @@ def openai_client(fake: FakeBatch):
         done = fake.ended()
         return {"id": job_id, "status": "completed" if done else "in_progress",
                 "request_counts": {"completed": 0, "failed": 0, "total": len(fake.jobs[job_id])},
+                "created_at": 1_795_014_000, "in_progress_at": 1_795_014_060,       # 2026-11-18T15:00:00Z, +1 min
+                "completed_at": 1_795_014_750 if done else None,                     # +12 min 30 s
                 "output_file_id": f"out-{job_id}" if done else None, "error_file_id": f"err-{job_id}" if done else None}
 
     def content(file_id):
@@ -166,6 +172,12 @@ def google_client(fake: FakeBatch):
         return NS(name=fake.create([dict(r) for r in src]))
 
     def get(name):
+        job = _google_get(name)
+        job.create_time = dt.datetime(2026, 11, 18, 15, 0, 0, tzinfo=dt.timezone.utc)
+        job.update_time = dt.datetime(2026, 11, 18, 15, 12, 30, tzinfo=dt.timezone.utc)
+        return job
+
+    def _google_get(name):
         done = fake.ended()
         if not done:
             return NS(state=NS(value="JOB_STATE_RUNNING"), completion_stats=None, dest=None, error=None)
@@ -398,6 +410,74 @@ class Batch(unittest.TestCase):
                 self.assertEqual(self.state()["jobs"][0]["identity"]["cache_identity"], llm.cache_identity())
 
     # ---------------------------------------------------------------- resume, cache
+
+    # ---------------------------------------------------------------- cost and time
+
+    def test_maker_times_and_tokens_by_price(self):
+        """Each maker's times for a job are kept with it (its own field names, ISO times), with its processing time
+        (end minus creation: 12 min 30 s in each fake); the batch answers' tokens are kept apart from the test call's
+        (a single request), and the run's cost prices each at its own price: by hand, from tests/test_model_calls.py's
+        replies (TOKENS) and llm.PRICES' rows for the three baseline models."""
+        fields = {"anthropic": {"created_at", "ended_at"}, "openai": {"created_at", "in_progress_at", "completed_at"},
+                  "google": {"create_time", "update_time"}}
+        ends = {"anthropic": "ended_at", "openai": "completed_at", "google": "update_time"}
+        # US dollars per million tokens, by hand: (single request at the standard price, one batch answer)
+        by_hand = {"anthropic": (10 * 4 + 100 * 0.20 + 20 * 5 + 50 * 20, 10 * 2 + 100 * 0.10 + 20 * 4 + 50 * 10),
+                   "openai": (20 * 2 + 10 * 0.10 + 25 * 10, 20 * 1 + 10 * 0.05 + 25 * 5),
+                   "google": (25 * 2 + 15 * 0.10 + 65 * 10, 25 * 1 + 15 * 0.05 + 65 * 5)}
+        day = "2026-11-18"
+        for service in SERVICES:
+            with self.subTest(service=service), \
+                    mock.patch.object(llm_batch, "_now", lambda: f"{day}T10:00:00-05:00"), \
+                    mock.patch("common.llm_costs._today", lambda: day):
+                self.setUp_again()
+                calls, replies = self.run_batch(service, ["r00", "r01"])
+                (job,) = self.state()["jobs"]
+                self.assertEqual(set(job["maker_times"]), fields[service])
+                self.assertEqual(job["maker_times"][ends[service]], "2026-11-18T15:12:30+00:00")
+                self.assertEqual(job["processing"], {"seconds": 750.0, "from": "create_time" if service == "google"
+                                                     else "created_at", "to": ends[service]})
+                recorded = llm.describe()["batch_jobs"][0]
+                self.assertEqual((recorded["maker_times"], recorded["processing"]),
+                                 (job["maker_times"], job["processing"]))
+                # tokens by price: two batch answers, one single request (the test call)
+                rows = {r["kind"]: r for r in llm.by_price_rows()}
+                self.assertEqual(set(rows), {"batch", "single"})
+                self.assertEqual((rows["batch"]["answers"], rows["single"]["answers"]), (2, 1))
+                self.assertEqual({r["day"] for r in rows.values()}, {day})
+                i, r, w, o, t = TOKENS[service]
+                self.assertEqual(rows["batch"]["output_tokens"], 2 * o)
+                self.assertEqual(rows["single"]["reasoning_tokens"], t)
+                if service == "anthropic":             # the batch request's 1-hour cache, the single request's 5-minute
+                    self.assertEqual((rows["batch"]["cache_write_1h_tokens"], rows["batch"]["cache_write_tokens"]),
+                                     (2 * w, 0))
+                    self.assertEqual((rows["single"]["cache_write_tokens"], rows["single"]["cache_write_1h_tokens"]),
+                                     (w, 0))
+                single, each = by_hand[service]
+                cost = llm.run_cost(llm.by_price_rows())
+                self.assertIsNone(cost["unknown"])
+                self.assertAlmostEqual(cost["usd"], (single + 2 * each) / 1_000_000, places=9)
+                spent = llm.spent()
+                self.assertEqual(spent["cost"]["usd"], cost["usd"])
+                self.assertEqual(spent["tokens"]["output_tokens"], 3 * o)
+                # the report: the cost table and line, each job's processing time with the maker's fields
+                section = "\n".join(report.model_calls([("extract", replies.calls, replies.reused)], 1, "m"))
+                self.assertIn("not read from the maker's invoice", section)
+                self.assertIn(llm.money(cost["usd"]), section)
+                self.assertIn("12 min 30 s", section)
+                self.assertIn(ends[service], section)
+
+    def test_anthropic_cache_write_split_from_the_reply(self):
+        """When Anthropic's reply splits its cache writes by lifetime (usage.cache_creation), the split is kept as the
+        reply gives it, not as the request was sent (near miss: without the split, a batch answer's writes are the
+        1-hour cache's)."""
+        split = {**tmc.ANTHROPIC_REPLY["usage"], "cache_creation": {"ephemeral_5m_input_tokens": 15,
+                                                                     "ephemeral_1h_input_tokens": 5}}
+        with mock.patch.dict(tmc.ANTHROPIC_REPLY, {"usage": split}):
+            self.run_batch("anthropic", ["r00"])
+        rows = {r["kind"]: r for r in llm.by_price_rows()}
+        self.assertEqual((rows["batch"]["cache_write_tokens"], rows["batch"]["cache_write_1h_tokens"]), (15, 5))
+        self.assertEqual((rows["single"]["cache_write_tokens"], rows["single"]["cache_write_1h_tokens"]), (15, 5))
 
     def test_resume_from_the_saved_job_id(self):
         for service in SERVICES:

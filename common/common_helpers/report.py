@@ -227,9 +227,10 @@ def write_step_report(path: Path, run: dict, settings: dict, input_rows: list,
 
 def model_calls(stages: list, test_calls: int, model: str) -> list:
     """The "### Model calls" section every step that calls the model ends its
-    report details with, worded the same everywhere. stages: [(what the
-    calls did, calls made, text pieces or batches answered from the cache
-    or None)]."""
+    report details with, worded the same everywhere: the calls, their tokens,
+    their cost (llm.cost_lines) and time (llm.time_lines), the calls that failed.
+    stages: [(what the calls did, calls made, text pieces or batches answered
+    from the cache or None)]."""
     lines = ["### Model calls", "", "| Calls to | Made | Answered from the cache |", "|---|---:|---:|"]
     lines += [f"| {what} | {made:,} | {'–' if reused is None else f'{reused:,}'} |" for what, made, reused in stages]
     from common import llm
@@ -244,6 +245,7 @@ def model_calls(stages: list, test_calls: int, model: str) -> list:
               f"| received | {llm.REQUESTS['output_tokens']:,} |",
               f"| received as thinking (reasoning tokens, where the service reports them) | "
               f"{llm.REQUESTS['reasoning_tokens']:,} |", "",
+              *llm.cost_lines(), *llm.time_lines(),
               "| Calls that failed | |", "|---|---:|",
               f"| failed (after the model client's own retries), cut-offs included | {llm.OUTCOMES['failed']:,} |",
               (f"| cut off at the answer length limit ({llm.max_tokens_sent():,} tokens) | {llm.OUTCOMES['cut_off']:,} |"

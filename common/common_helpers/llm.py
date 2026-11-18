@@ -42,6 +42,10 @@ does (`from common import llm`, `from common.llm import confirm`):
                       batch API (Anthropic's, OpenAI's, Google's), at half the price of single requests; each request
                       built and each answer judged by the same code as a single request's; the job ids kept in the
                       step's cache folder, so a stopped run collects its jobs instead of paying again (ask_batch)
+    llm_costs.py      WHAT A RUN COST AND HOW LONG IT TOOK: each reply's tokens kept apart by the price they are billed
+                      at (count_priced: batch or single request, prompt-length tier, date), the run's cost at the
+                      makers' list prices (run_cost, with PRICES), a batch job's processing time from its maker's
+                      times (job_processing), and what the run's record keeps of them (spent)
 
 The parts are loaded at the end of this file and need it loaded first, so they are imported only through it. A part
 reads the settings set at run time (MODEL, SERVICE, THINKING, REPEAT, SESSION_ID, MAX_ANSWER_TOKENS) and calls the
@@ -348,6 +352,149 @@ DEFAULT_EFFORT = {"claude-opus-5.5": "medium", "claude-opus-5-5": "medium",
 #: the service bills requests (reset by paid_calls; shown in each report's Model calls).
 REQUESTS = {"sent": 0, "input_tokens": 0, "cache_read_tokens": 0, "cache_write_tokens": 0, "output_tokens": 0,
             "reasoning_tokens": 0}
+
+
+#: This run's token counts by the price they are billed at, as the service counted them (llm_costs.count_priced, called
+#: for every reply that carries token counts, where REQUESTS is counted): {(kind, tier, day): counts}. kind: "batch"
+#: for an answer of a batch job (billed at the batch price), "single" for every other request (the test call, a second
+#: ask, an answer cut off at a batch API's lower limit and asked again: billed at the standard price); tier: "long" for
+#: a request whose prompt is longer than the model's PRICES "long_above", else "base"; day: the local date the request
+#: was made (a batch job's creation, a single request's answer), which picks the price period. counts: "answers",
+#: "input_tokens" (not from the cache), "cache_read_tokens", "cache_write_tokens" (at the default lifetime: Anthropic's
+#: 5 minutes, OpenAI's 30 minutes), "cache_write_1h_tokens" (Anthropic's 1-hour cache), "output_tokens" (thinking
+#: included), "reasoning_tokens" (of the output, the thinking). Reset by paid_calls.
+TOKENS_BY_PRICE = {}
+
+
+#: The price pages the prices in PRICES were read from, by service (all read 2026-11-18).
+PRICE_PAGES = {"anthropic": "https://platform.claude.com/docs/en/about-claude/pricing",
+               "openai": "https://developers.openai.com/api/docs/pricing",
+               "google": "https://aistudio.google.com/docs/pricing"}
+
+
+#: The fields of a price, each in US dollars per million tokens: input (not from the cache), cache read, cache write at
+#: the default lifetime (Anthropic's 5 minutes, OpenAI's 30 minutes), Anthropic's 1-hour cache write, output (thinking
+#: included). None: no price listed for that field (a cost that needs it is unknown, llm_costs.run_cost).
+PRICE_FIELDS = ("input", "cache_read", "cache_write", "cache_write_1h", "output")
+
+
+def _price(input_, cache_read, cache_write, cache_write_1h, output) -> dict:
+    return dict(zip(PRICE_FIELDS, (input_, cache_read, cache_write, cache_write_1h, output)))
+
+
+#: Each model's list price through its maker's own API (DIRECT_SERVICES), by the model's name (compared as
+#: model_name_key compares names, as LOWEST_THINKING is): {"service", "long_above": the prompt length in tokens above
+#: which a request pays the "long" prices (None: one price at every length), "periods": the prices by date, each
+#: {"from", "through": the first and last local date it applies to (None: open), "standard", "batch" and, where
+#: long_above is set, "standard_long", "batch_long": a _price each}}. A model not listed, or a date no period covers,
+#: has no price, and the cost of its run is unknown (llm_costs.run_cost), never estimated. Text input only: every
+#: prompt of this pipeline is text. The pages, all read 2026-11-18 (PRICE_PAGES):
+#:   Anthropic: "| Claude Opus 5.5 | $4 / MTok | $5 / MTok | $8 / MTok | $0.20 / MTok | $20 / MTok |", "| Claude Sonnet
+#:     5.5 | $2 / MTok | $2.50 / MTok | $4 / MTok | $0.10 / MTok | $10 / MTok |", "| Claude Haiku 5.5 (for prompts up to
+#:     100,000 tokens) | $0.10 / MTok | $0.125 / MTok | $0.20 / MTok | $0.01 / MTok | $0.50 / MTok |" and "(for prompts
+#:     over 100,000 tokens) | $0.50 / MTok | $0.625 / MTok | $1 / MTok | $0.05 / MTok | $2.50 / MTok |" (columns: Base
+#:     input tokens, 5m cache writes, 1h cache writes, Cache hits and refreshes, Output tokens); "A request's prompt
+#:     length counts all of its input tokens, including cache reads and cache writes". Batch: "The Batch API allows
+#:     asynchronous processing of large volumes of requests with a 50 percent discount on both input and output
+#:     tokens" ("| Claude Opus 5.5 | $2 / MTok | $10 / MTok |", "| Claude Sonnet 5.5 | $1 / MTok | $5 / MTok |",
+#:     "| Claude Haiku 5.5 (for prompts up to 100,000 tokens) | $0.05 / MTok | $0.25 / MTok |", "(for prompts over
+#:     100,000 tokens) | $0.25 / MTok | $1.25 / MTok |"), and the cache multipliers "stack with other pricing modifiers,
+#:     including the Batch API discount", so a batch request's cache prices are half the standard ones. No request
+#:     sends `inference_geo`, so "Global routing (the default) uses standard pricing".
+#:   OpenAI (columns: Short context input, Short context output, Short context cached input, Short context 30m write,
+#:     Short context 12h write, then the same for Long context; "Short context: ≤272K input tokens. Long context: >272K
+#:     input tokens", read here as 272,000): Standard "| gpt-5.6-sol | $4.00 | $20.00 | $0.40 | $5.00 | $10.00 | $8.00 |
+#:     $30.00 | $0.80 | $10.00 | $20.00 |", Batch "| gpt-5.6-sol | $2.00 | $10.00 | $0.20 | $2.50 | $5.00 | $4.00 |
+#:     $15.00 | $0.40 | $5.00 | $10.00 |", with "GPT-5.6 Sol's promotional pricing is available until November 30, 2026"
+#:     (the page doesn't say the price after it, so GPT-5.6 Sol has none from 2026-12-01); Standard "| gpt-5.6-terra |
+#:     $2.00 | $12.00 | $0.20 | $2.50 | $5.00 | $4.00 | $18.00 | $0.40 | $5.00 | $10.00 |", Batch "| gpt-5.6-terra |
+#:     $1.00 | $6.00 | $0.10 | $1.25 | $2.50 | $2.00 | $9.00 | $0.20 | $2.50 | $5.00 |"; Standard "| gpt-5.6-luna |
+#:     $0.20 | $1.20 | $0.02 | $0.25 | $0.50 | $0.40 | $1.80 | $0.04 | $0.50 | $1.00 |", Batch "| gpt-5.6-luna | $0.10 |
+#:     $0.60 | $0.01 | $0.125 | $0.25 | $0.20 | $0.90 | $0.02 | $0.25 | $0.50 |"; Standard "| gpt-6.1-sol | $2.00 |
+#:     $10.00 | $0.10 | $2.50 | $5.00 | $4.00 | $15.00 | $0.20 | $5.00 | $10.00 |", Batch "| gpt-6.1-sol | $1.00 | $5.00 |
+#:     $0.05 | $1.25 | $2.50 | $2.00 | $7.50 | $0.10 | $2.50 | $5.00 |"; Standard "| gpt-6.1-terra | $1.00 | $5.00 |
+#:     $0.05 | $1.25 | $2.50 | $2.00 | $7.50 | $0.10 | $2.50 | $5.00 |", Batch "| gpt-6.1-terra | $0.50 | $2.50 | $0.025
+#:     | $0.625 | $1.25 | $1.00 | $3.75 | $0.05 | $1.25 | $2.50 |"; Standard "| gpt-6-luna | $0.10 | $0.50 | $0.01 |
+#:     $0.125 | $0.25 | $0.20 | $0.75 | $0.02 | $0.25 | $0.50 |", Batch "| gpt-6-luna | $0.05 | $0.25 | $0.005 | $0.0625
+#:     | $0.125 | $0.10 | $0.375 | $0.01 | $0.125 | $0.25 |". A cache write is priced at the 30m column: OpenAI's prompt
+#:     caching guide (https://developers.openai.com/api/docs/guides/prompt-caching, read 2026-11-18): "For GPT-5.6 and
+#:     later, cache writes cost 1.25× the standard, uncached input-token rate for the default 30-minute lifetime", the
+#:     12-hour lifetime is chosen only "In the Responses API" (this pipeline uses Chat Completions and sends no
+#:     retention), and "`cached_tokens` counts billed reads and excludes tokens charged as writes". That the GPT-6
+#:     models count as "later" than GPT-5.6 is read from their version numbers; the guide doesn't list them.
+#:   Google ("Paid Tier, per 1M tokens in USD"; "Output price (including thinking tokens)"; text input): gemini-3.1-pro-
+#:     preview Standard input "$2.00, prompts <= 200k tokens" / "$4.00, prompts > 200k tokens", output "$12.00" /
+#:     "$18.00", context caching "$0.20" / "$0.40"; Batch input "$1.00" / "$2.00", output "$6.00" / "$9.00", context
+#:     caching "Same as Standard" ("$0.20" / "$0.40"), 200k read as 200,000. gemini-3.8-flash Standard input "$0.75
+#:     through December 31, 2026." / "$1.50 starting January 1, 2027.", output "$3.75" / "$7.50", context caching
+#:     "$0.075" / "$0.15"; Batch input "$0.375" / "$0.75", output "$1.875" / "$3.75", context caching "$0.0375" /
+#:     "$0.075". gemini-3.1-flash-lite Standard input "$0.25 (text / image / video)", output "$1.50", context caching
+#:     "$0.025"; Batch "$0.125", "$0.75", "$0.0125". gemini-4-argon Standard input "$2.00 through November 30, 2026." /
+#:     "$4.00 starting December 1, 2026.", output "$10.00" / "$20.00", context caching "$0.10" / "$0.20"; Batch "$1.00"
+#:     / "$2.00", "$5.00" / "$10.00", "$0.05" / "$0.10". gemini-3.5-flash-lite Standard "$0.30", "$2.50", "$0.03";
+#:     Batch "$0.15", "$1.25", "$0.015". gemini-3-flash-preview Standard "$0.50 (text / image / video)", "$3.00",
+#:     "$0.05"; Batch "$0.25", "$1.50", context caching "Same as Standard" ("$0.05"). The "Context caching price" is
+#:     taken as the price of a token read from the cache (Google's usage: cached_content_token_count). This pipeline
+#:     makes no explicit cache, so it pays no storage price; Google's usage reports no cache writes and the page lists
+#:     no write price, so a cache write has no price here.
+PRICES = {
+    "claude-opus-5-5": {"service": "anthropic", "long_above": None, "periods": (
+        {"from": None, "through": None, "standard": _price(4, 0.20, 5, 8, 20), "batch": _price(2, 0.10, 2.5, 4, 10)},)},
+    "claude-sonnet-5-5": {"service": "anthropic", "long_above": None, "periods": (
+        {"from": None, "through": None, "standard": _price(2, 0.10, 2.5, 4, 10),
+         "batch": _price(1, 0.05, 1.25, 2, 5)},)},
+    "claude-haiku-5-5": {"service": "anthropic", "long_above": 100_000, "periods": (
+        {"from": None, "through": None, "standard": _price(0.10, 0.01, 0.125, 0.20, 0.50),
+         "batch": _price(0.05, 0.005, 0.0625, 0.10, 0.25), "standard_long": _price(0.50, 0.05, 0.625, 1, 2.50),
+         "batch_long": _price(0.25, 0.025, 0.3125, 0.5, 1.25)},)},
+    "gpt-5.6-sol": {"service": "openai", "long_above": 272_000, "periods": (
+        {"from": None, "through": "2026-11-30", "standard": _price(4.00, 0.40, 5.00, None, 20.00),
+         "batch": _price(2.00, 0.20, 2.50, None, 10.00), "standard_long": _price(8.00, 0.80, 10.00, None, 30.00),
+         "batch_long": _price(4.00, 0.40, 5.00, None, 15.00)},)},
+    "gpt-5.6-terra": {"service": "openai", "long_above": 272_000, "periods": (
+        {"from": None, "through": None, "standard": _price(2.00, 0.20, 2.50, None, 12.00),
+         "batch": _price(1.00, 0.10, 1.25, None, 6.00), "standard_long": _price(4.00, 0.40, 5.00, None, 18.00),
+         "batch_long": _price(2.00, 0.20, 2.50, None, 9.00)},)},
+    "gpt-5.6-luna": {"service": "openai", "long_above": 272_000, "periods": (
+        {"from": None, "through": None, "standard": _price(0.20, 0.02, 0.25, None, 1.20),
+         "batch": _price(0.10, 0.01, 0.125, None, 0.60), "standard_long": _price(0.40, 0.04, 0.50, None, 1.80),
+         "batch_long": _price(0.20, 0.02, 0.25, None, 0.90)},)},
+    "gpt-6.1-sol": {"service": "openai", "long_above": 272_000, "periods": (
+        {"from": None, "through": None, "standard": _price(2.00, 0.10, 2.50, None, 10.00),
+         "batch": _price(1.00, 0.05, 1.25, None, 5.00), "standard_long": _price(4.00, 0.20, 5.00, None, 15.00),
+         "batch_long": _price(2.00, 0.10, 2.50, None, 7.50)},)},
+    "gpt-6.1-terra": {"service": "openai", "long_above": 272_000, "periods": (
+        {"from": None, "through": None, "standard": _price(1.00, 0.05, 1.25, None, 5.00),
+         "batch": _price(0.50, 0.025, 0.625, None, 2.50), "standard_long": _price(2.00, 0.10, 2.50, None, 7.50),
+         "batch_long": _price(1.00, 0.05, 1.25, None, 3.75)},)},
+    "gpt-6-luna": {"service": "openai", "long_above": 272_000, "periods": (
+        {"from": None, "through": None, "standard": _price(0.10, 0.01, 0.125, None, 0.50),
+         "batch": _price(0.05, 0.005, 0.0625, None, 0.25), "standard_long": _price(0.20, 0.02, 0.25, None, 0.75),
+         "batch_long": _price(0.10, 0.01, 0.125, None, 0.375)},)},
+    "gemini-3.1-pro-preview": {"service": "google", "long_above": 200_000, "periods": (
+        {"from": None, "through": None, "standard": _price(2.00, 0.20, None, None, 12.00),
+         "batch": _price(1.00, 0.20, None, None, 6.00), "standard_long": _price(4.00, 0.40, None, None, 18.00),
+         "batch_long": _price(2.00, 0.40, None, None, 9.00)},)},
+    "gemini-3.8-flash": {"service": "google", "long_above": None, "periods": (
+        {"from": None, "through": "2026-12-31", "standard": _price(0.75, 0.075, None, None, 3.75),
+         "batch": _price(0.375, 0.0375, None, None, 1.875)},
+        {"from": "2027-01-01", "through": None, "standard": _price(1.50, 0.15, None, None, 7.50),
+         "batch": _price(0.75, 0.075, None, None, 3.75)})},
+    "gemini-3.1-flash-lite": {"service": "google", "long_above": None, "periods": (
+        {"from": None, "through": None, "standard": _price(0.25, 0.025, None, None, 1.50),
+         "batch": _price(0.125, 0.0125, None, None, 0.75)},)},
+    "gemini-4-argon": {"service": "google", "long_above": None, "periods": (
+        {"from": None, "through": "2026-11-30", "standard": _price(2.00, 0.10, None, None, 10.00),
+         "batch": _price(1.00, 0.05, None, None, 5.00)},
+        {"from": "2026-12-01", "through": None, "standard": _price(4.00, 0.20, None, None, 20.00),
+         "batch": _price(2.00, 0.10, None, None, 10.00)})},
+    "gemini-3.5-flash-lite": {"service": "google", "long_above": None, "periods": (
+        {"from": None, "through": None, "standard": _price(0.30, 0.03, None, None, 2.50),
+         "batch": _price(0.15, 0.015, None, None, 1.25)},)},
+    "gemini-3-flash-preview": {"service": "google", "long_above": None, "periods": (
+        {"from": None, "through": None, "standard": _price(0.50, 0.05, None, None, 3.00),
+         "batch": _price(0.25, 0.05, None, None, 1.50)},)},
+}
 
 
 #: Replies asked once more by call_llm_json because they weren't usable, this run: not_json and wrong_shape count
@@ -813,4 +960,8 @@ from common.llm_paid import (
     show_warnings, Interrupted as Interrupted, confirm as confirm)
 from common.llm_batch import (
     BATCH_API as BATCH_API, BATCH_DOCS as BATCH_DOCS, batch_refusal as batch_refusal, batch_note as batch_note, ask_batch as ask_batch, batch_state_file as
-    batch_state_file, jobs_holding as jobs_holding)
+    batch_state_file, jobs_holding as jobs_holding, job_times as job_times)
+from common.llm_costs import (
+    COUNTS as COUNTS, count_priced as count_priced, by_price_rows as by_price_rows, price_entry as price_entry,
+    run_cost as run_cost, money as money, maker_times as maker_times, job_processing as job_processing,
+    iso_time as iso_time, wall_time as wall_time, spent as spent, cost_lines as cost_lines, time_lines as time_lines)

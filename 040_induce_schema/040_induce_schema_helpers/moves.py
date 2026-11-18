@@ -161,7 +161,7 @@ def results(texts, triples, labels, splits, counts, definitions, schema, compari
             output) -> Results:
     ground_truth_problems = comparison.pop("ground_truth_problems", [])
     strata = [r["stratum"] for r in texts.strata]
-    made = {"run_id": audit.current_run_id(), **llm.describe(), "settings": settings,
+    made = {"run_id": audit.current_run_id(), **llm.describe(), "spent": llm.spent(), "settings": settings,
             "texts": len(texts.items), "strata": strata, "maintainers": texts.maintainers}
     schema_path, evidence_path = output / SCHEMA_NAME, output / EVIDENCE_NAME
     write_json(schema_path, {"entity_classes": schema.entity_classes, "predicates": schema.predicates,

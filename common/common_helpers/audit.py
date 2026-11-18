@@ -51,7 +51,7 @@ ORIGIN_FIELD = "_origin"        # in JSON output
 ORIGIN_COLUMN = "origin"        # in CSV output
 
 log = logging.getLogger("pipeline")
-_run = {"run_id": None, "inputs": {}}       # the run in progress, set by run_step
+_run = {"run_id": None, "inputs": {}, "started": None}       # the run in progress, set by run_step
 
 
 # --------------------------------------------------------------------------
@@ -189,14 +189,21 @@ class TimedMoves:
 # the run in progress
 # --------------------------------------------------------------------------
 
-def begin_run(run_id: str, inputs: dict) -> None:
+def begin_run(run_id: str, inputs: dict, started: str | None = None, clock: float | None = None) -> None:
     """Called by run_step before main(): the run id, and the step's inputs
-    as {name: path}, so helpers can write origin("records", key)."""
+    as {name: path}, so helpers can write origin("records", key); started and clock: when the run started (its
+    ISO time, and time.monotonic() then), for the run's wall time (run_started)."""
     _run["run_id"], _run["inputs"] = run_id, dict(inputs)
+    _run["started"] = (started, clock) if started and clock is not None else None
 
 
 def end_run() -> None:
-    _run["run_id"], _run["inputs"] = None, {}
+    _run["run_id"], _run["inputs"], _run["started"] = None, {}, None
+
+
+def run_started() -> tuple | None:
+    """(the run's start as an ISO time, time.monotonic() at that moment), or None outside a run."""
+    return _run.get("started")
 
 
 def current_run_id() -> str | None:

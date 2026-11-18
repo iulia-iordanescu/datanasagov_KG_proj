@@ -2,8 +2,8 @@
 tests/doc_guard.py -- proves that the docs changed only as agreed.
 
 Every agreed edit to a doc is recorded in a ledger (file, old text, new text),
-kept in .git/doc_guard_ledger.json: never committed, never published. The
-check then takes each changed doc as of the last commit, applies the recorded
+kept in .git/doc_guard_ledger.json (in a worktree, its own Git folder):
+never committed, never published. The check then takes each changed doc as of the last commit, applies the recorded
 edits to its text, and compares the result with the doc as it is now. Both are
 compared as plain text (links reduced to their words), because the link fixer
 may add or remove link markup on its own. Anything no recorded edit explains,
@@ -29,7 +29,20 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-LEDGER = ROOT / ".git" / "doc_guard_ledger.json"
+
+
+def _git_dir(root: Path) -> Path:
+    """The repository's Git folder: root/.git, or, in a worktree made by `git worktree add` (where .git is a file
+    saying "gitdir: <path>"), the worktree's own Git folder, so each worktree keeps a ledger of its own."""
+    dot = root / ".git"
+    if dot.is_file():
+        line = dot.read_text(encoding="utf-8").strip()
+        if line.startswith("gitdir:"):
+            return Path(line.split(":", 1)[1].strip())
+    return dot
+
+
+LEDGER = _git_dir(ROOT) / "doc_guard_ledger.json"
 #: Folders whose docs are never checked: old material kept as it was written (their own README is checked).
 EXCLUDED_DIRS = ("archive/",)
 KEPT = ("archive/README.md",)
