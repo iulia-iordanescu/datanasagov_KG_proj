@@ -206,6 +206,7 @@ class Batch(unittest.TestCase):
 
     def setUp(self):
         tmc.DirectServices.setUp(self)
+        llm.MAX_ANSWER_TOKENS = 64000       # the real limit, above Google's batch limit (32,768); tearDown restores it
         self.sdk.modules["google.genai.types"].InlinedRequest = type("InlinedRequest", (dict,), {})
         self.fakes, self.clients, self.sleeps = {}, {}, []
         self.more = [mock.patch.object(llm_batch, "_sdk_client", self._client),
@@ -322,13 +323,22 @@ class Batch(unittest.TestCase):
                     self.assertEqual(self.clients["openai"].made["args"],
                                      ("/v1/chat/completions", "24h",
                                       {"anchor": "created_at", "seconds": 7 * 24 * 3600}))
-                else:
-                    self.assertEqual(dict(request["config"]), {"max_output_tokens": llm.MAX_ANSWER_TOKENS,
+                else:                                   # the one difference: Google's batch API takes at most 32,768
+                    self.assertEqual(dict(request["config"]), {"max_output_tokens": 32768,
                                                                "thinking_config": {"thinking_level": "HIGH"}})
+                    self.assertEqual(llm._google_config("gemini-4-argon")["max_output_tokens"], 64000)
                     self.assertEqual(type(request["config"]["thinking_config"]).__name__, "ThinkingConfig")
                     self.assertEqual(self.clients["google"].made["model"], "gemini-4-argon")
                 for body in (request.get("params"), request.get("body"), request.get("config")):
                     self.assertFalse({"temperature", "top_p", "top_k"} & set(body or {}))
+                # the answer limit: the run's 64,000 to Anthropic and OpenAI (near misses), 32,768 to Google; the job
+                # keeps the limit its requests were sent
+                sent = {"anthropic": lambda: request["params"]["max_tokens"],
+                        "openai": lambda: request["body"]["max_completion_tokens"],
+                        "google": lambda: request["config"]["max_output_tokens"]}[service]()
+                self.assertEqual(sent, 32768 if service == "google" else 64000)
+                self.assertEqual(self.state()["jobs"][0]["identity"]["max_answer_tokens"], sent)
+                self.assertEqual(llm.describe()["max_answer_tokens"], 64000)        # the run's recipe: its own limit
 
     # ---------------------------------------------------------------- resume, cache
 
@@ -392,7 +402,8 @@ class Batch(unittest.TestCase):
     # ---------------------------------------------------------------- failures
 
     def test_cut_off_kept_and_second_ask_as_a_single_request(self):
-        for service in SERVICES:
+        # Google's batch cut-offs are asked again singly: test_google_cut_off_asked_again_as_a_single_request
+        for service in ("anthropic", "openai"):
             with self.subTest(service=service):
                 self.setUp_again()
                 fix = {"anthropic": {**tmc.ANTHROPIC_REPLY, "content": [{"type": "text", "text": ANSWER}]},
@@ -410,6 +421,94 @@ class Batch(unittest.TestCase):
                 self.assertEqual(llm.REASKS["fixed"], 1)
                 stored = self.cached()
                 self.assertEqual(sum(1 for v in stored.values() if "_pipeline_cut_off" in v), 1)
+                self.assertNotIn("asked again in this run as a single request", llm.batch_note())
+
+    # ---------------------------------------------------------------- Google's lower batch answer limit
+
+    def google_run_with_cut(self, again):
+        """A Google batch run of r00, r01 and r02 whose job cuts r01 off at 32,768 tokens, its single re-ask answered
+        with again; r02's answer is not JSON, so it is asked once more first, and fixed."""
+        self.sdk.replies += [SYNC_TEST_REPLY["google"], (tmc.GOOGLE_REPLY[0], ANSWER), again]
+        return self.run_batch("google", ["r00", "r01", "r02"], {"r01": "cut", "r02": "bad"}, test_call=False)
+
+    def test_google_cut_off_asked_again_as_a_single_request(self):
+        """A Google batch answer cut off at 32,768 is asked again in the same run as a single request at 64,000; its
+        answer is cached under the prompt's key, with no cut-off marker; the report and the job say so. Near misses:
+        the complete batch answers (r00, r02 after its second ask) are not asked again."""
+        calls, replies = self.google_run_with_cut((tmc.GOOGLE_REPLY[0], ANSWER))
+        self.assertEqual((sorted(replies.of), replies.failed), (["r00", "r01", "r02"], {}))
+        self.assertEqual(len(self.sdk.requests), 3)                     # the test call, r02's second ask, r01's re-ask
+        reask = self.sdk.requests[2][1]
+        self.assertEqual(reask["config"]["max_output_tokens"], 64000)
+        self.assertIn("#r01#", reask["contents"])
+        self.assertNotIn("Your last reply", reask["contents"])          # the same prompt, asked again as it was
+        stored = self.cached()
+        (job,) = self.state("google")["jobs"]
+        (again,) = job["asked_again_singly"]
+        self.assertEqual(stored[again["custom_id"]], json.loads(ANSWER))
+        self.assertFalse(any("_pipeline_cut_off" in v for v in stored.values()))
+        self.assertEqual((job["answered"], job["failed"]), (3, 0))
+        self.assertEqual((again["records"], again["cut_at"], again["asked_at"], again["outcome"]),
+                         (["r01"], 32768, 64000, "answered"))
+        self.assertEqual((again["cut_tokens"], again["tokens"]), (65, 65))     # both from the fakes' usage
+        self.assertEqual((llm.OUTCOMES["failed"], llm.OUTCOMES["cut_off"], calls.paid.made), (0, 0, 3))
+        self.assertEqual(llm.describe()["batch_jobs"][0]["asked_again_singly"][0]["records"], ["r01"])
+        note = llm.batch_note()
+        for words in ("1 answer(s) were cut off at 32,768 tokens and asked again as single requests",
+                      "at the full price", "r01: cut off at 65 tokens received (60 thinking), asked again: answered"):
+            self.assertIn(words, note)
+        # a rerun asks nothing: the answer is in the cache
+        self.sdk.requests.clear()
+        _, replies = self.run_batch("google", ["r00", "r01", "r02"], test_call=False)
+        self.assertEqual((replies.reused, replies.calls, self.sdk.requests), (3, 0, []))
+
+    def test_google_re_ask_cut_off_at_the_run_limit(self):
+        """Near miss: the single re-ask is cut off too, at 64,000: a cut-off at the run's limit, as now (recorded,
+        kept in the cache at 64,000, so a rerun at that limit doesn't pay for it again)."""
+        from common.cache import Cache
+        cut = ({**tmc.GOOGLE_REPLY[0], "candidates": [{"finish_reason": "MAX_TOKENS"}]}, '{"tri')
+        _, replies = self.google_run_with_cut(cut)
+        self.assertEqual((sorted(replies.of), replies.kinds), (["r00", "r02"], {"r01": "cut_off"}))
+        (marker_key,) = [k for k, v in self.cached().items() if "_pipeline_cut_off" in v]
+        self.assertEqual(self.cached()[marker_key]["_pipeline_cut_off"]["max_answer_tokens"], 64000)
+        self.assertTrue(Cache(self.tmp / "050_annotate" / "cache", "extract").cut_off(marker_key))
+        self.assertEqual([e["outcome"] for e in self.entries()], ["cut_off"])
+        self.assertEqual(llm.OUTCOMES["cut_off"], 1)
+        (job,) = self.state("google")["jobs"]
+        self.assertEqual((job["answered"], job["failed"], job["asked_again_singly"][0]["outcome"]), (2, 1, "cut off"))
+        self.assertIn("asked again: cut off", llm.batch_note())
+
+    def test_google_batch_without_cut_offs_and_single_requests(self):
+        """Near misses: a Google batch run with no cut-off asks nothing again, and its report says so; a run of single
+        requests to Google sends the run's limit, 64,000; the question before paying a Google batch says that a
+        cut-off may be asked again at the full price, and an Anthropic batch's question doesn't."""
+        asked = []
+        self.fakes.setdefault("google", FakeBatch("google"))
+        with mock.patch.object(llm, "confirm", asked.append):
+            calls = self.calls(service="google", model="gemini-4-argon", thinking="high", batch=True)
+            calls.paid.confirm = True
+            self.sdk.replies.append(SYNC_TEST_REPLY["google"])
+            items = [{"id": i, "pieces": ["text"]} for i in ("r00", "r01")]
+            extraction.ask_model(items, lambda item, piece: f"RULES\n----- BEGIN RECORD -----\n#{item['id']}#",
+                                 calls, 4, "extract", "060", "extracting")
+        self.assertEqual(len(self.sdk.requests), 1)                     # the test call only
+        self.assertIn("No answer of this run's batch jobs was cut off at 32,768 tokens", llm.batch_note())
+        self.assertIn("asked again as a single request at 64,000, at the full price", asked[0])
+        self.sdk.requests.clear()
+        self.sdk.replies += [SYNC_TEST_REPLY["google"], (tmc.GOOGLE_REPLY[0], ANSWER)]
+        self.single_run("google", ["r05"])
+        self.assertEqual([r[1]["config"]["max_output_tokens"] for r in self.sdk.requests], [64000, 64000])
+        self.setUp_again()
+        asked.clear()
+        self.fakes.setdefault("anthropic", FakeBatch("anthropic"))
+        with mock.patch.object(llm, "confirm", asked.append):
+            calls = self.calls(service="anthropic", model="claude-opus-5-5", thinking="high", batch=True)
+            calls.paid.confirm = True
+            self.sdk.replies.append(SYNC_TEST_REPLY["anthropic"])
+            extraction.ask_model([{"id": "r00", "pieces": ["text"]}], lambda item, piece: "#r00#", calls, 4,
+                                 "extract", "060", "extracting")
+        self.assertNotIn("full price", asked[0])
+        self.assertNotIn("asked again in this run as a single request", llm.batch_note())
 
     def test_early_stop_when_most_requests_fail(self):
         for service in SERVICES:

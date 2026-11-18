@@ -1,6 +1,6 @@
 # Recall by guideline rule
 
-Preliminary, computed on 2026-11-13 by scripts that Claude Fable 5.2 wrote and Claude Opus 5.5 ran, still to be reviewed by a person.
+Preliminary, computed on 2026-11-13, still to be reviewed by a person.
 
 ## What this is
 

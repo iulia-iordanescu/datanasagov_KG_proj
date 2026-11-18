@@ -246,9 +246,25 @@ BATCH_JOBS = []
 #: (https://developers.openai.com/api/docs/models/gpt-6.1-sol, .../gpt-6.1-terra, .../gpt-6-luna); Gemini 4 Argon
 #: 65,536 ("default synchronous"), Gemini 3.8 Flash and Gemini 3.5 Flash-Lite 65,536 each
 #: (https://aistudio.google.com/docs/models/gemini-4-argon, .../gemini-3.8-flash, .../gemini-3.5-flash-lite).
-#: Part of a batch job's identity (llm_batch._identity): a job sent with another limit is not collected by a run
-#: with this one.
+#: A batch job keeps the limit its requests were sent at (llm_batch._identity: batch_tokens_sent), so that a cut-off
+#: in it is kept with that limit (common/common_helpers/cache.py, Cache.put_cut_off).
 MAX_ANSWER_TOKENS = 64000
+
+
+#: The highest answer limit a maker's batch API takes, by service, where it is below MAX_ANSWER_TOKENS: a batch request
+#: to that service is sent this limit instead (batch_tokens_sent), and a single request still MAX_ANSWER_TOKENS.
+#:   google  Google's Gemini Batch API refused a job of step 060 sent at 64,000 with "HTTP 400: Error on line 1:
+#:           Decoding continuation is not supported for batch requests, so max_output_tokens cannot exceed 32768"
+#:           (its answer of 2026-11-17, in outputs/reports/060_extract_2026-11-17_2020.md); its batch page,
+#:           https://aistudio.google.com/docs/batch-api, gives the batch API's limits. A single request to Google takes
+#:           65,536 (MAX_ANSWER_TOKENS).
+#: An answer that ends within this limit is kept as it is: the limit is where the service stops an answer. That a
+#: lower limit changes nothing else in how the model answers (its thinking included) is assumed; no maker's page
+#: says so. An answer a batch job cuts off at this limit is asked again in the same run, as a single request at
+#: MAX_ANSWER_TOKENS, billed at the full price (common/common_helpers/llm_batch.py, _hand_over); the run keeps that
+#: answer, and the report says how many were asked again (llm_batch.batch_note). The new answer is a second answer to
+#: the prompt, not the cut one continued.
+BATCH_MAX_ANSWER_TOKENS = {"google": 32768}
 
 
 #: How long a call waits for its answer, in seconds, every call alike: long enough for an answer of
@@ -398,6 +414,14 @@ def max_tokens_sent(service: str | None = None) -> int | None:
     """The answer limit a call sends (MAX_ANSWER_TOKENS), or None when it sends none: LiteLLM and the makers' own APIs
     take it (answer_limit_name); Ask Sage's query has no such parameter (_ask_asksage)."""
     return None if (service or SERVICE) == "asksage" else MAX_ANSWER_TOKENS
+
+
+def batch_tokens_sent(service: str | None = None) -> int | None:
+    """The answer limit a batch request sends: max_tokens_sent, lowered to the service's BATCH_MAX_ANSWER_TOKENS where
+    it has one (Google's Gemini Batch API: 32,768)."""
+    service = service or SERVICE
+    limit, cap = max_tokens_sent(service), BATCH_MAX_ANSWER_TOKENS.get(service)
+    return min(limit, cap) if limit is not None and cap is not None else limit
 
 
 def effort_note(model: str | None = None, service: str | None = None) -> str | None:

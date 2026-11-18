@@ -723,9 +723,18 @@ class DocsNameTheCodesNumbers(unittest.TestCase):
             for m in re.finditer(pattern, line):
                 if applies(line[:m.start()]) and not re.search(r"\b(?:was|earlier|before|until 2026|from \d)",
                                                                line[:m.start()][-60:]) \
-                        and m.group(1).replace(",", "") != value.replace(",", ""):
+                        and m.group(1).replace(",", "") != value.replace(",", "") \
+                        and not (name == "MAX_ANSWER_TOKENS" and self.batch_limit(line[:m.start()], m.group(1))):
                     found.append((m.group(0), name, value))
         return found
+
+    @staticmethod
+    def batch_limit(before: str, said: str) -> bool:
+        """Whether a number of tokens is a maker's batch answer limit (llm.BATCH_MAX_ANSWER_TOKENS, e.g. Google's
+        32,768) on a line that names batch requests before it: not the run's limit, so not checked against it."""
+        from common import llm
+        return (int(said.replace(",", "")) in llm.BATCH_MAX_ANSWER_TOKENS.values()
+                and bool(re.search(r"batch", before, re.I)))
 
     def test_the_numbers(self):
         for rel, text in self.docs():
@@ -744,6 +753,11 @@ class DocsNameTheCodesNumbers(unittest.TestCase):
                          ["MAX_ANSWER_TOKENS"])
         self.assertEqual(self.stale(f"the answer limit ({limit} tokens; a thinking budget of 1,024 tokens)"), [])
         self.assertEqual(self.stale(f"`MAX_ANSWER_TOKENS`, {limit} tokens since 2026-10-30, 16,000 tokens before"), [])
+        # a maker's batch answer limit, on a line about batch requests, isn't the run's limit; elsewhere it is stale
+        self.assertEqual(self.stale("Google's batch API takes an answer limit of at most 32,768 tokens"), [])
+        self.assertEqual([n for _, n, _ in self.stale("the answer limit (32,768 tokens)")], ["MAX_ANSWER_TOKENS"])
+        self.assertEqual([n for _, n, _ in self.stale("a batch request, the answer limit (32,000 tokens)")],
+                         ["MAX_ANSWER_TOKENS"])
         self.assertEqual([n for _, n, _ in self.stale("no answer within 600 s")], ["READ_TIMEOUT"])
         self.assertEqual([n for _, n, _ in self.stale("a model call is tried up to 9 times")], ["call_llm's attempts"])
 

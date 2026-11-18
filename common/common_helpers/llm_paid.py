@@ -198,6 +198,10 @@ class PaidCalls:
         if llm.BATCH and to_pay is not None:
             count = (f"{to_pay:,} model call(s) to pay for, sent as batch job(s) to {llm.BATCH_API[llm.SERVICE]} at "
                      f"half the price of single requests, and 1 single test call first")
+            short, full = llm.batch_tokens_sent(), llm.max_tokens_sent()
+            if short is not None and full is not None and short < full:
+                count += (f"; {llm.BATCH_API[llm.SERVICE]} takes answers of at most {short:,} tokens, so an answer "
+                          f"cut off there is asked again as a single request at {full:,}, at the full price")
         if self.confirm:
             llm.confirm(f"Press Enter to start ({count}), or anything else to cancel."
                     if not self.notes else

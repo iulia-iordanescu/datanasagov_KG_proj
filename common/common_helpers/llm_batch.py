@@ -14,8 +14,10 @@ What makes a batch answer the same as a single request's:
     the request    built by the code that builds a single request (llm_makers.py: _anthropic_params; llm_litellm.py:
                    _chat_payload, OpenAI's; llm_makers.py: _google_config and _google_typed_config): the whole prompt
                    in each request, the same model, answer limit and thinking level, no temperature where none is sent.
-                   One change, which changes no word the model gets: Anthropic's cached prompt start is marked for
-                   the 1-hour cache (ANTHROPIC_CACHE_TTL)
+                   Two changes, which change no word the model gets: Anthropic's cached prompt start is marked for
+                   the 1-hour cache (ANTHROPIC_CACHE_TTL); the answer limit is lowered where a maker's batch API takes
+                   less (llm.BATCH_MAX_ANSWER_TOKENS: Google's, 32,768), and an answer cut off at that lower limit is
+                   asked again in the same run as a single request at the run's limit, at the full price (_hand_over)
     the answer     judged by the code that judges a single request's (_read_anthropic_reply, _read_chat_reply,
                    _read_google_reply, then llm.call_llm_json): the finish reason (a cut-off, a refusal), the token
                    counts (llm.REQUESTS), the served model (llm.SERVED), the JSON object and its shape
@@ -60,7 +62,7 @@ from common.audit import log
 from common.files import locked, read_json, write_json
 from common.llm import (
     BATCH_JOBS, BATCH_LIMITS, DIRECT_SERVICES, EARLY_STOP_FAILURES, EARLY_STOP_WINDOW, REQUESTS, RUN_WARNINGS, SERVICES,
-    _last, _requests_lock, cache_identity, max_tokens_sent)
+    _last, _requests_lock, batch_tokens_sent, cache_identity, max_tokens_sent)
 from common.llm_errors import ApiError, NoAnswerInTime, RetryLater
 from common.llm_litellm import _chat_payload, _read_chat_reply
 from common.llm_makers import (
@@ -153,7 +155,32 @@ def batch_note() -> str | None:
             f"true; {BATCH_DOCS.get(service, '')}), billed at half the price of single requests, as batch job(s) "
             f"{jobs}. A job \"resumed\" was submitted by an earlier run and collected by this one; its requests were "
             f"counted as sent by that run. The one-line test call, and a second ask of an answer that wasn't a JSON "
-            f"object of the shape asked for, went as single requests, at the full price.")
+            f"object of the shape asked for, went as single requests, at the full price.{_asked_again_note()}")
+
+
+def _asked_again_note() -> str:
+    """The report's words on the answers cut off at the batch API's lower answer limit and asked again as single
+    requests (_ask_again_singly), with their token counts; "" when the service's batch requests carry the run's own
+    limit."""
+    short, full = batch_tokens_sent(), max_tokens_sent()
+    if short is None or full is None or short >= full:
+        return ""
+    service = llm.SERVICE
+    again = [a for j in BATCH_JOBS for a in j.get("asked_again_singly", [])]
+    head = (f" {BATCH_API.get(service, service)} takes an answer limit of at most {short:,} tokens "
+            f"(BATCH_MAX_ANSWER_TOKENS in common/common_helpers/llm.py), so its batch requests were sent {short:,}, "
+            f"not this run's {full:,}; an answer cut off at {short:,} was asked again in this run as a single request "
+            f"at {full:,}, billed at the full price, and that answer is the one kept.")
+    if not again:
+        return head + f" No answer of this run's batch jobs was cut off at {short:,} tokens, so none was asked again."
+
+    def count(n):
+        return "not reported" if n is None else f"{n:,}"
+    each = "; ".join(f"{', '.join(a['records'])}: cut off at {count(a['cut_tokens'])} tokens received "
+                     f"({count(a['cut_thinking_tokens'])} thinking), asked again: {a['outcome']}, "
+                     f"{count(a['tokens'])} tokens received ({count(a['thinking_tokens'])} thinking)" for a in again)
+    return head + (f" {len(again):,} answer(s) were cut off at {short:,} tokens and asked again as single requests, "
+                   f"at the full price: {each}.")
 
 
 # ------------------------------ the state file ----------------------------------
@@ -187,9 +214,11 @@ def _now() -> str:
 
 def _request(service: str, custom_id: str, prompt: str, model: str, cache_until: str | None) -> tuple:
     """(one request of the batch, in the maker's shape; the settings it carries but the prompt's words, for the
-    failed-call record)."""
+    failed-call record). Its answer limit is batch_tokens_sent: a single request's, lowered where the maker's batch
+    API takes less (llm.BATCH_MAX_ANSWER_TOKENS)."""
+    limit_name, limit = DIRECT_SERVICES[service]["answer_limit"], batch_tokens_sent(service)
     if service == "anthropic":
-        params = _anthropic_params(prompt, model, cache_until)
+        params = {**_anthropic_params(prompt, model, cache_until), limit_name: limit}
         if "system" in params:
             params["system"][0]["cache_control"] = {"type": "ephemeral", "ttl": ANTHROPIC_CACHE_TTL}
         sent = {k: v for k, v in params.items() if k not in ("messages", "system")}
@@ -197,10 +226,10 @@ def _request(service: str, custom_id: str, prompt: str, model: str, cache_until:
             sent["system"] = f"the prompt's start, marked cache_control ephemeral, ttl {ANTHROPIC_CACHE_TTL}"
         return {"custom_id": custom_id, "params": params}, sent
     if service == "openai":
-        body = _chat_payload(prompt, model, cache_until, "openai")
+        body = {**_chat_payload(prompt, model, cache_until, "openai"), limit_name: limit}
         return ({"custom_id": custom_id, "method": "POST", "url": "/v1/chat/completions", "body": body},
                 {k: v for k, v in body.items() if k != "messages"})
-    config = _google_config(model)
+    config = {**_google_config(model), limit_name: limit}
     return {"contents": prompt, "metadata": {"key": custom_id}, "config": config}, {"model": model, **config}
 
 
@@ -542,9 +571,10 @@ def _read(service: str, reply) -> str:
 
 def _identity() -> dict:
     """What a job's answers depend on besides the prompt, kept with the job: the service, the model, the cache identity
-    (llm.cache_identity: the service, the model, the thinking level sent and the repeat) and the answer limit sent."""
+    (llm.cache_identity: the service, the model, the thinking level sent and the repeat) and the answer limit its
+    requests were sent (batch_tokens_sent: 32,768 to Google's Gemini Batch API)."""
     return {"service": llm.SERVICE, "model": llm.MODEL, "cache_identity": cache_identity(),
-            "max_answer_tokens": max_tokens_sent()}
+            "max_answer_tokens": batch_tokens_sent()}
 
 
 #: The parts of a job's identity that make its answers this run's answers. The answer limit isn't one of them: an
@@ -562,9 +592,10 @@ def _is_ours(job: dict, identity: dict, keys) -> bool:
 
 
 def _job_limit(job: dict):
-    """The answer limit a job was sent with (its identity's max_answer_tokens); this run's when the job doesn't say."""
+    """The answer limit a job was sent with (its identity's max_answer_tokens); the limit this run's batch requests are
+    sent (batch_tokens_sent) when the job doesn't say."""
     identity = job.get("identity") or {}
-    return identity["max_answer_tokens"] if "max_answer_tokens" in identity else max_tokens_sent()
+    return identity["max_answer_tokens"] if "max_answer_tokens" in identity else batch_tokens_sent()
 
 
 def jobs_holding(cache_dir: Path, stage: str, keys) -> list:
@@ -618,9 +649,9 @@ def ask_batch(todo: dict, cache, check, cache_until, start, handle, paid, stage:
     new_keys = [k for k in by_key if k not in covered]
     jobs = []
     for j in resumed:
-        other_limit = (f", at the answer limit {_job_limit(j)} (this run's is {max_tokens_sent()}: an answer it cut off "
-                       f"is asked again by the next run, at this run's limit)"
-                       if _job_limit(j) != max_tokens_sent() else "")
+        other_limit = (f", at the answer limit {_job_limit(j)} (this run's batch requests are sent {batch_tokens_sent()}: "
+                       f"an answer it cut off is asked again by the next run, at that limit)"
+                       if _job_limit(j) != batch_tokens_sent() else "")
         log.info(f"  collecting batch job {j['id']} at {SERVICES[service]}, sent by an earlier run on {j.get('created')} "
                  f"({j.get('requests', len(j.get('keys', []))):,} request(s){other_limit}): its answers are not paid "
                  f"for again")
@@ -813,15 +844,32 @@ def _not_found(error: ApiError) -> bool:
 def _with_job_limit(error, job: dict):
     """A cut-off (llm.CutOff) of a job's answer, carrying the answer limit the job was sent with (max_answer_tokens,
     which common/common_helpers/cache.py, Cache.put_cut_off, keeps with the cut-off), so a run at another limit asks
-    the prompt again; when that limit isn't this run's, the error's words say so. Any other error as it is."""
+    the prompt again; when that limit isn't the one this run's batch requests are sent (batch_tokens_sent), the error's
+    words say so. Any other error as it is."""
     if not isinstance(error, llm.CutOff):
         return error
     limit = _job_limit(job)
     error.max_answer_tokens = limit
-    if limit != max_tokens_sent():
+    if limit != batch_tokens_sent():
         error.args = (f"{error} (in batch job {job['id']}, sent at the answer limit {limit}; this run's limit is "
-                      f"{max_tokens_sent()}, so the next run asks it again at that limit)",)
+                      f"{batch_tokens_sent()}, so the next run asks it again at that limit)",)
     return error
+
+
+def _cut_below_limit(error) -> bool:
+    """Whether error is a cut-off at the lower answer limit of this service's batch requests
+    (llm.BATCH_MAX_ANSWER_TOKENS), below the run's own limit (max_tokens_sent): such an answer is asked again in the
+    same run, as a single request at the run's limit (_ask_again_singly)."""
+    short, full = batch_tokens_sent(), max_tokens_sent()
+    return (isinstance(error, llm.CutOff) and short is not None and full is not None and short < full
+            and getattr(error, "max_answer_tokens", None) == short)
+
+
+def _tokens(usage) -> tuple:
+    """(tokens received, of them thinking) from a usage in OpenAI's shape; (None, None) when it has none."""
+    if not isinstance(usage, dict) or not usage:
+        return None, None
+    return usage.get("completion_tokens"), llm.reasoning_tokens(usage)
 
 
 def _hand_over(service, results, by_key, prompt_of, cache, check, cache_until, handle, paid, jobs, path) -> int:
@@ -845,12 +893,15 @@ def _hand_over(service, results, by_key, prompt_of, cache, check, cache_until, h
             e.call = {**dict(_last.reply), **(getattr(e, "call", None) or {})}
             judged[k] = (None, _with_job_limit(e, job), None)
     asked = [k for k in judged if k in by_key]
-    failed = [k for k in asked if judged[k][1] is not None]
+    short = [k for k in asked if _cut_below_limit(judged[k][1])]       # asked again singly below: no failures yet
+    failed = [k for k in asked if judged[k][1] is not None and k not in short]
     early = len(failed) >= EARLY_STOP_FAILURES and len(failed) * EARLY_STOP_WINDOW >= EARLY_STOP_FAILURES * len(asked)
     n, later = 0, []
     job_of = {k: results[k][2]["id"] for k in results}
     for k in asked:                                         # first every answer that needs no second ask: none lost
         text, error, _ = judged[k]
+        if k in short and not early:                        # asked again singly, after the second asks
+            continue
         if error is None:
             data, state = find_json(text)
             if state == "object" and isinstance(data, dict) and not (check and check(data)):
@@ -891,6 +942,8 @@ def _hand_over(service, results, by_key, prompt_of, cache, check, cache_until, h
         for where in by_key[k]:
             n += 1
             handle(n, where, (k, data) if error is None else None, error)
+    if short and not early:
+        n = _ask_again_singly(short, judged, by_key, prompt_of, check, cache_until, handle, paid, job_of, counts, n)
     for job in jobs:
         job["collected"] = _now()
         job.update(counts[job["id"]])
@@ -909,4 +962,38 @@ def _hand_over(service, results, by_key, prompt_of, cache, check, cache_until, h
                                    if llm.OUTCOMES["file"] else "")
             + f" Every answer received is kept in the cache, so the next run sends only the rest: run "
               f"`{paid.command}` again once that is changed.", paid)
+    return n
+
+
+def _ask_again_singly(short, judged, by_key, prompt_of, check, cache_until, handle, paid, job_of, counts, n) -> int:
+    """Ask each prompt whose batch answer was cut off at the batch API's lower answer limit (short: _cut_below_limit)
+    again, as a single request at the run's limit (max_tokens_sent), billed at the full price, and hand its answer or
+    its error to the stage, as a batch answer is handed (a cut-off at the run's limit is kept as one, at that limit).
+    Each is listed in its job's counts (asked_again_singly: the records, the cut answer's tokens and the new
+    answer's), for the batch state file, the run's record and the report (batch_note). The number handed over so far."""
+    service = llm.SERVICE
+    log.info(f"  {len(short):,} answer(s) of the batch job(s) were cut off at {batch_tokens_sent():,} tokens, the most "
+             f"{BATCH_API[service]} takes, so each is asked again now as a single request at {max_tokens_sent():,} "
+             f"tokens, billed at the full price")
+    for k in short:
+        cut_tokens, cut_thinking = _tokens(getattr(judged[k][1], "usage", None))
+        _last.reply, _last.timing = {}, {}
+        try:
+            data, error = llm.call_llm_json(prompt_of[k], cache_until=cache_until, check=check), None
+            paid.made_call()
+            counts[job_of[k]]["answered"] += 1
+            usage = (getattr(_last, "reply", None) or {}).get("usage")
+        except Exception as e:                              # noqa: BLE001  (a cut-off at the run's limit among them)
+            data, error = None, e
+            counts[job_of[k]]["failed"] += 1
+            usage = getattr(e, "usage", None) or (getattr(e, "call", None) or {}).get("usage")
+        tokens, thinking = _tokens(usage)
+        counts[job_of[k]].setdefault("asked_again_singly", []).append({
+            "records": sorted({str(w[0] if isinstance(w, tuple) else w) for w in by_key[k]}), "custom_id": k,
+            "cut_at": batch_tokens_sent(), "cut_tokens": cut_tokens, "cut_thinking_tokens": cut_thinking,
+            "asked_at": max_tokens_sent(), "outcome": "answered" if error is None else
+            "cut off" if isinstance(error, llm.CutOff) else "failed", "tokens": tokens, "thinking_tokens": thinking})
+        for where in by_key[k]:
+            n += 1
+            handle(n, where, (k, data) if error is None else None, error)
     return n

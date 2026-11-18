@@ -9,8 +9,8 @@ and from them rough token counts and costs with and without prompt caching.
 No model call: it reads outputs/analysis/prompt_sizes.json and the six reported runs' extracted_triples.csv
 (outputs/intermediate_results/060_extract/previous_runs/). Characters are measured; a token is taken as 4 characters
 (060_extract/060_extract.md's own rough rule), not counted by the service. Prices: Claude Opus 5.5 list prices per
-million tokens (sent 4.00, received 20.00, read from the prompt cache 0.20, written to it 5.00 US dollars; the
-reference table of Claude Code's claude-api skill, cached 2026-11-03); what NASA's LiteLLM charges is not in the
+million tokens (sent 4.00, received 20.00, read from the prompt cache 0.20, written to it 5.00 US dollars; Anthropic's
+published prices, platform.claude.com/docs/en/about-claude/pricing, checked 2026-11-17); what NASA's LiteLLM charges is not in the
 repository.
 """
 import json, statistics, sys

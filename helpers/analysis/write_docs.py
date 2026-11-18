@@ -36,7 +36,7 @@ ids = [made[n] for n in ("1816", "1816-2", "1816-3", "1817", "1817-2", "1817-3")
 ids_text = (", ".join(f"`{i}`" for i in ids[:3]) + " (induced schema) and " + ", ".join(f"`{i}`" for i in ids[3:])
             + " (ground truth schema)")
 SCRATCH = "helpers/analysis"
-LABEL = "Preliminary, computed on 2026-11-13 by scripts that Claude Fable 5.2 wrote and Claude Opus 5.5 ran, still to be reviewed by a person."
+LABEL = "Preliminary, computed on 2026-11-13, still to be reviewed by a person."
 p1 = lambda v: f"{100 * v:.1f}"
 old, new = r["old"], r["new"]
 
@@ -246,7 +246,7 @@ Assumptions, each a source of error:
 
 1. One token is about 4 characters. This is the rough rule of `060_extract/060_extract.md` (*The schema in the prompt*), "not counted exactly".
 2. The answer is as long as its kept rows written as JSON. The answer as the model wrote it is not kept. Thinking tokens, which are billed as received tokens, are not known and are left out, so the received tokens are understated.
-3. Prices are Anthropic's list prices for Claude Opus 5.5 per million tokens: $4.00 sent, $20.00 received, $0.20 read from the prompt cache, and $5.00 written to it (1.25 times the sent price). They come from the reference table of Claude Code's `claude-api` skill, cached on 2026-11-03, and not from the repository. The read and write ratios agree with those in `060_extract/060_extract.md` (*Prompt caching, for cost*). What NASA's LiteLLM charges may differ.
+3. Prices are Anthropic's list prices for Claude Opus 5.5 per million tokens: $4.00 sent, $20.00 received, $0.20 read from the prompt cache, and $5.00 written to it (1.25 times the sent price). They are Anthropic's published prices (https://platform.claude.com/docs/en/about-claude/pricing, checked on 2026-11-17), not stored in the repository. The read and write ratios agree with those in `060_extract/060_extract.md` (*Prompt caching, for cost*). What NASA's LiteLLM charges may differ.
 
 | Estimate per record, 20 evaluated records | Induced schema | Ground truth schema |
 |---|---:|---:|
