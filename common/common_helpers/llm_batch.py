@@ -13,7 +13,8 @@ What makes a batch answer the same as a single request's:
 
     the request    built by the code that builds a single request (llm_makers.py: _anthropic_params; llm_litellm.py:
                    _chat_payload, OpenAI's; llm_makers.py: _google_config and _google_typed_config): the whole prompt
-                   in each request, the same model, answer limit and thinking level, no temperature where none is sent.
+                   in each request, the same model, answer limit and thinking level (with Anthropic's `thinking` field
+                   where one is sent: llm.thinking_field), no temperature where none is sent.
                    Two changes, which change no word the model gets: Anthropic's cached prompt start is marked for
                    the 1-hour cache (ANTHROPIC_CACHE_TTL); the answer limit is lowered where a maker's batch API takes
                    less (llm.BATCH_MAX_ANSWER_TOKENS: Google's, 32,768), and an answer cut off at that lower limit is

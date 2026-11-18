@@ -60,7 +60,7 @@ SETTINGS = {
     "extraction_run":     "",     # the run id of a kept run of 060 to score; empty: 060's latest run (or the files given)
     "service":            SERVICE, # the service that reaches the model: asksage, litellm, anthropic, openai, google
     "model":              MODEL,  # the AI model to ask (py helpers/models.py lists them)
-    "thinking":           THINKING, # how much a model that thinks may think: low, medium, high, or model_default
+    "thinking":           THINKING, # how much a model that thinks may think: lowest, low, medium, high, or model_default
     "repeat":             1,      # which repeat of this recipe: 1 reuses saved answers; 2, 3, ... ask again, each into answers of its own
     "confirm_paid_calls": True,   # stop and ask before evaluating with warnings, and before the first model call; false for unattended runs
     "suggest":            True,   # ask the model to suggest counterparts for (none), broader and overlap rows; false: no model call (re-scoring with no budget)

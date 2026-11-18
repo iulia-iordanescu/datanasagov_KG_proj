@@ -123,7 +123,16 @@ SERVICES = {"asksage": "Ask Sage", "litellm": "LiteLLM", "anthropic": "Anthropic
 #: GPT-6.1 Sol, ...): "When reasoning effort is not `none`, remove `temperature`, `top_p`, and `top_logprobs`", and
 #: "GPT-6 Astra and GPT-6.1 Sol do not support the `none` reasoning effort"
 #: (https://developers.openai.com/api/docs/guides/latest-model, read 2026-11-02), so they are sent none either.
-#: Not part of the cache key.
+#: OpenAI's GPT-5 models are sent none either: OpenAI documents the temperature for GPT-5.1 to GPT-5.4 only at the
+#: reasoning effort none ("The following parameters are only supported when using GPT-5.4 with reasoning effort set to
+#: `none`" (temperature, top_p, logprobs), and "Requests that include these fields will raise an error for GPT-5.4 or
+#: GPT-5.2 with any other reasoning effort setting, or for older GPT-5 models such as `gpt-5`, `gpt-5-mini`, or
+#: `gpt-5-nano`": https://developers.openai.com/api/docs/guides/latest-model?model=gpt-5.4; ?model=gpt-5.2 says the
+#: same of GPT-5.2 and GPT-5.1; both read 2026-11-18), and its pages for GPT-5.6
+#: (https://developers.openai.com/api/docs/guides/latest-model?model=gpt-5.6 and the model pages, e.g.
+#: https://developers.openai.com/api/docs/models/gpt-5.6-sol, read 2026-11-18) say nothing of it. Leaving it out is
+#: accepted at every reasoning effort, so no GPT-5 model's request depends on an undocumented rule. Not part of the
+#: cache key.
 TEMPERATURE = 0
 
 
@@ -141,11 +150,57 @@ TEMPERATURE = 0
 #: supports "`low`, `medium`, `high`, `xhigh`, and `max`" (https://developers.openai.com/api/docs/models/gpt-6-astra),
 #: GPT-6.1 Sol low, medium (its default), high, xhigh and max; LiteLLM passes it on for gpt-6-astra
 #: (https://docs.litellm.ai/blog/gpt_6_astra; all read 2026-11-02). "model_default" sends nothing, so the model
-#: thinks as it would by default.
+#: thinks as it would by default. "lowest" sends each model the lowest reasoning setting its maker's API allows
+#: (LOWEST_THINKING), only through a maker's own API.
 THINKING = "low"
 
 
-THINKING_LEVELS = ("low", "medium", "high", "model_default")
+THINKING_LEVELS = ("lowest", "low", "medium", "high", "model_default")
+
+
+#: The setting thinking's value "lowest": each model at the lowest reasoning setting its maker's API allows, by the
+#: model's name (compared as model_name_key compares names), sent only through the model's maker's own API
+#: (DIRECT_SERVICES): (the value of the maker's thinking parameter, thinking_parameter; the `thinking` field a request
+#: to Anthropic's API sends beside the effort, or None for no such field). A model not listed here, or a service other
+#: than a maker's own API, stops the step before any call (lowest_refusal).
+#:   Anthropic (https://platform.claude.com/docs/en/build-with-claude/effort, read 2026-11-18): effort takes the levels
+#:     low to max on Claude Opus 5.5, Sonnet 5.5 and Haiku 5.5, so the lowest effort is low on each. Claude Opus 5.5:
+#:     "Adaptive thinking is always on and can't be turned off ... Requests that set `thinking: {"type": "disabled"}`
+#:     return a 400 error at every effort level", so no `thinking` field is sent. Claude Sonnet 5.5: "To have the model
+#:     respond without thinking first, send `thinking: {"type": "between_tools"}`, not `"disabled"`. It works at `low`,
+#:     `medium`, and `high` effort." Claude Haiku 5.5: "You can also send `thinking: {"type": "disabled"}` at `high`
+#:     effort or below."
+#:   OpenAI: GPT-6.1 Sol: "`reasoning.effort` supports `low`, `medium` (default), `high`, `xhigh`, and `max`"
+#:     (https://developers.openai.com/api/docs/models/gpt-6.1-sol); GPT-6.1 Terra and GPT-6 Luna: "`reasoning.effort`
+#:     supports `none`, `low`, `medium` (default), `high`, `xhigh`, and `max`"
+#:     (https://developers.openai.com/api/docs/models/gpt-6.1-terra,
+#:     https://developers.openai.com/api/docs/models/gpt-6-luna); GPT-5.6 Sol, GPT-5.6 Terra and GPT-5.6 Luna:
+#:     "Reasoning.effort supports: none, low, medium (default), high, xhigh, and max."
+#:     (https://developers.openai.com/api/docs/models/gpt-5.6-sol, .../gpt-5.6-terra, .../gpt-5.6-luna; all read
+#:     2026-11-18).
+#:   Google (https://aistudio.google.com/docs/thinking, read 2026-11-18): the levels each model takes, "gemini-4-argon |
+#:     On (medium) | low, medium, high", "gemini-3.8-flash | On (medium) | low, medium, high", "gemini-3.5-flash-lite |
+#:     On (minimal) | minimal, low, medium, high"; minimal is "Near-off thinking, lowest latency", and "Not supported on
+#:     Gemini 4 models or `gemini-3.8-flash`"; also "gemini-3.1-pro-preview | On (high) | low, medium, high",
+#:     "gemini-3-flash-preview | On (high) | minimal, low, medium, high" and "gemini-3.1-flash-lite | On (minimal) |
+#:     minimal, low, medium, high". Sent in ThinkingLevel's spelling (_google_config: LOW, MINIMAL).
+LOWEST_THINKING = {
+    "claude-opus-5-5": ("low", None),
+    "claude-sonnet-5-5": ("low", {"type": "between_tools"}),
+    "claude-haiku-5-5": ("low", {"type": "disabled"}),
+    "gpt-6.1-sol": ("low", None),
+    "gpt-6.1-terra": ("none", None),
+    "gpt-6-luna": ("none", None),
+    "gpt-5.6-sol": ("none", None),
+    "gpt-5.6-terra": ("none", None),
+    "gpt-5.6-luna": ("none", None),
+    "gemini-4-argon": ("low", None),
+    "gemini-3.8-flash": ("low", None),
+    "gemini-3.5-flash-lite": ("minimal", None),
+    "gemini-3.1-pro-preview": ("low", None),
+    "gemini-3-flash-preview": ("minimal", None),
+    "gemini-3.1-flash-lite": ("minimal", None),
+}
 
 
 #: Which repeat of the same recipe a run is (the setting `repeat` of every step that calls a model): 1, the default,
@@ -198,11 +253,13 @@ BATCH_LIMITS = {"anthropic": (100_000, 240_000_000), "openai": (50_000, 190_000_
 #:   google  "Enqueued tokens per model": "the maximum number of tokens that can be enqueued for batch processing
 #:           across all your active batch jobs for a given model" (https://aistudio.google.com/docs/rate-limits, read
 #:           2026-11-17). Tier 1: gemini-4-argon 5,000,000, gemini-3.8-flash 3,000,000, gemini-3.5-flash-lite
-#:           10,000,000
+#:           10,000,000; gemini-3.1-pro-preview 5,000,000 and gemini-3.1-flash-lite 10,000,000 (the same page, read
+#:           2026-11-18; it lists no cap for gemini-3-flash-preview)
 #: Anthropic's batch pages state no token cap (BATCH_QUEUE_REQUESTS has its cap on requests).
 BATCH_QUEUE_TOKENS = {"openai": {"gpt-6.1-sol": 1_200_000, "gpt-6.1-terra": 1_200_000, "gpt-6-luna": 18_000_000},
                       "google": {"gemini-4-argon": 4_500_000, "gemini-3.8-flash": 2_700_000,
-                                 "gemini-3.5-flash-lite": 9_000_000}}
+                                 "gemini-3.5-flash-lite": 9_000_000, "gemini-3.1-pro-preview": 4_500_000,
+                                 "gemini-3.1-flash-lite": 9_000_000}}
 
 
 #: The most requests this pipeline lets wait or run in a maker's batch queue at one time, by service, counted over
@@ -246,6 +303,11 @@ BATCH_JOBS = []
 #: (https://developers.openai.com/api/docs/models/gpt-6.1-sol, .../gpt-6.1-terra, .../gpt-6-luna); Gemini 4 Argon
 #: 65,536 ("default synchronous"), Gemini 3.8 Flash and Gemini 3.5 Flash-Lite 65,536 each
 #: (https://aistudio.google.com/docs/models/gemini-4-argon, .../gemini-3.8-flash, .../gemini-3.5-flash-lite).
+#: Read 2026-11-18: GPT-5.6 Sol, GPT-5.6 Terra and GPT-5.6 Luna, "128,000 max output tokens" each
+#: (https://developers.openai.com/api/docs/models/gpt-5.6-sol, .../gpt-5.6-terra, .../gpt-5.6-luna); Gemini 3.1 Pro
+#: Preview, Gemini 3 Flash Preview and Gemini 3.1 Flash-Lite, an "Output token limit" of 65,536 each
+#: (https://aistudio.google.com/docs/models/gemini-3.1-pro-preview, .../gemini-3-flash-preview,
+#: .../gemini-3.1-flash-lite).
 #: A batch job keeps the limit its requests were sent at (llm_batch._identity: batch_tokens_sent), so that a cut-off
 #: in it is kept with that limit (common/common_helpers/cache.py, Cache.put_cut_off).
 MAX_ANSWER_TOKENS = 64000
@@ -370,6 +432,7 @@ def call_settings(model: str | None = None, service: str | None = None) -> dict:
     that isn't sent says so, and why, so the record never states a setting the model didn't get."""
     model = model or MODEL
     sent = thinking_sent(model, service)
+    field = thinking_field(model, service)
     if sent:
         thinking = THINKING
     elif takes_thinking_cap(model, service):
@@ -380,7 +443,8 @@ def call_settings(model: str | None = None, service: str | None = None) -> dict:
             "not sent (the model does not accept it, or its maker advises against changing it)",
             "max_answer_tokens": max_tokens_sent(service) or
             "not sent (Ask Sage takes no answer limit, and gives no reason an answer ended, so a cut-off can't be "
-            "detected)", "thinking": thinking, "thinking_sent": sent, "effort": effort_note(model, service)}
+            "detected)", "thinking": thinking, "thinking_sent": sent, **({"thinking_field": field} if field else {}),
+            "effort": effort_note(model, service)}
 
 
 def answer_limit_name(model: str | None = None, service: str | None = None) -> str:
@@ -432,7 +496,9 @@ def effort_note(model: str | None = None, service: str | None = None) -> str | N
         return None
     sent = thinking_sent(model, service)
     if sent:
-        return f"sent as {thinking_parameter(model, service)} {sent}"
+        field = thinking_field(model, service)
+        return (f"sent as {thinking_parameter(model, service)} {sent}"
+                + (f", with thinking {json.dumps(field)}" if field else ""))
     default = DEFAULT_EFFORT.get(model.lower().removeprefix("google-"))
     return f"not sent (model default, {default})" if default else "not sent (model default)"
 
@@ -441,9 +507,11 @@ def temperature_sent(model: str | None = None, service: str | None = None) -> bo
     """Whether calls to this model are sent TEMPERATURE: not to Anthropic's Claude models, which take no sampling
     parameters, nor to Google's Gemini 3 and later (Gemini 4 Argon ignores it; Gemini 3's maker advises keeping the
     default), nor to OpenAI's GPT-6 models (their maker says to remove it when reasoning, which they always do:
-    TEMPERATURE cites all three); to every other model, Gemini 2.5 among them. The same through either service."""
+    TEMPERATURE cites all three), nor to its GPT-5 models (TEMPERATURE says why); to every other model, Gemini 2.5
+    among them. The same through every service."""
     model = model or MODEL
-    if maker(model) == "Anthropic" or _gpt_version(model) >= 6:
+    gpt = _gpt_version(model)
+    if maker(model) == "Anthropic" or gpt >= 5:
         return False
     version = re.search(r"gemini-(\d+(?:\.\d+)?)", model.lower())
     return not (maker(model) == "Google" and version and float(version.group(1)) >= 3)
@@ -461,8 +529,66 @@ def thinking_sent(model: str | None = None, service: str | None = None) -> str |
     LiteLLM passes Claude's effort on"). Not to other models either, which might refuse a parameter they don't take.
     Through a maker's own API, as the maker's own setting (takes_thinking_cap says to which models): Anthropic's
     `output_config.effort`, OpenAI's `reasoning_effort`, Google's `thinking_config.thinking_level` (DIRECT_SERVICES
-    cites each). Ask Sage's query takes no such parameter."""
+    cites each). Ask Sage's query takes no such parameter.
+    At the setting thinking "lowest", the value LOWEST_THINKING gives the model ("none" to GPT-6.1 Terra, "minimal" to
+    Gemini 3.5 Flash-Lite); a model or service it gives none for raises, though paid_calls stops the step before that
+    (lowest_refusal)."""
+    if THINKING == "lowest":
+        lowest = lowest_thinking(model, service)
+        if lowest is None:
+            raise RuntimeError(lowest_refusal(model, service))
+        return lowest[0]
     return None if THINKING == "model_default" or not takes_thinking_cap(model, service) else THINKING
+
+
+def lowest_thinking(model: str | None = None, service: str | None = None) -> tuple | None:
+    """The entry of LOWEST_THINKING for this model through this service: (the level sent, Anthropic's `thinking` field
+    or None); None through a service other than the model's maker's own API, or for a model the table doesn't list."""
+    model, service = model or MODEL, service or SERVICE
+    if service not in DIRECT_SERVICES or maker(model) != DIRECT_SERVICES[service]["maker"]:
+        return None
+    return {model_name_key(k): v for k, v in LOWEST_THINKING.items()}.get(model_name_key(model))
+
+
+def lowest_refusal(model: str | None = None, service: str | None = None) -> str | None:
+    """Why the setting thinking can't be "lowest" for this model through this service, as the message that stops the
+    step before any call (paid_calls); None when it can (lowest_thinking)."""
+    model, service = model or MODEL, service or SERVICE
+    if lowest_thinking(model, service) is not None:
+        return None
+    meaning = ("The setting thinking is lowest, which sends each model the lowest reasoning setting its maker's API "
+               "allows (LOWEST_THINKING in common/common_helpers/llm.py)")
+    if service not in DIRECT_SERVICES:
+        return (f"{meaning}, but the setting service is {service} ({SERVICES.get(service, service)}), and lowest is sent "
+                f"only through a maker's own API (the services anthropic, openai and google). Through another service "
+                f"the pipeline can't make sure that the setting reaches the model as its maker documents it, so the "
+                f"step can't run, and no model call was made. Give a maker's own API (`--service anthropic`, `openai` "
+                f"or `google`) or another level (e.g. `--thinking low`), then run the step again.")
+    return (f"{meaning}, but the table doesn't list the model {model} (through {SERVICES[service]}), so the pipeline "
+            f"doesn't know that model's lowest setting, the step can't run, and no model call was made. Add the "
+            f"model's lowest setting to LOWEST_THINKING as its maker's documentation states it, with that page cited "
+            f"beside it, or give another level (e.g. `--thinking low`), then run the step again.")
+
+
+def thinking_field(model: str | None = None, service: str | None = None) -> dict | None:
+    """The `thinking` field a request to Anthropic's own API sends beside the effort: only at the setting thinking
+    "lowest", where LOWEST_THINKING gives one (Claude Sonnet 5.5's between_tools, Claude Haiku 5.5's disabled); None for
+    every other request."""
+    if THINKING != "lowest" or (service or SERVICE) != "anthropic":
+        return None
+    lowest = lowest_thinking(model, service)
+    return dict(lowest[1]) if lowest and lowest[1] else None
+
+
+def thinking_sent_words(model: str | None = None, service: str | None = None) -> str | None:
+    """What a call sends for the setting thinking, in the report's words ("`reasoning_effort` `low`", with Anthropic's
+    `thinking` field where one is sent: thinking_field); None when nothing is sent."""
+    sent = thinking_sent(model, service)
+    if not sent:
+        return None
+    field = thinking_field(model, service)
+    return (f"`{thinking_parameter(model, service)}` `{sent}`"
+            + (f" and `thinking` `{json.dumps(field)}`" if field else ""))
 
 
 def thinking_parameter(model: str | None = None, service: str | None = None) -> str:
@@ -475,7 +601,9 @@ def takes_thinking_cap(model: str | None = None, service: str | None = None) -> 
     """Whether the thinking cap is sent to this model through this service, whatever `thinking` is (thinking_sent
     says where, and why). Through a maker's own API: to Anthropic's Claude models (effort: every current Claude model
     takes it, https://platform.claude.com/docs/en/build-with-claude/effort; an older one that doesn't refuses the test
-    call, whose message says to give `--thinking model_default`), to OpenAI's GPT-6 models, and to Google's Gemini 3
+    call, whose message says to give `--thinking model_default`), to OpenAI's GPT-6 models, to its GPT-5 models from
+    GPT-5.1 on (reasoning_effort: e.g. "Reasoning.effort supports: none, low, medium (default), high, xhigh, and max",
+    https://developers.openai.com/api/docs/models/gpt-5.6-sol, read 2026-11-18), and to Google's Gemini 3
     and later (thinkingLevel: "Recommended for Gemini 3 or later models", and "Use with earlier models results in an
     error": https://aistudio.google.com/api-reference/generate-content, read 2026-11-14)."""
     model, service = model or MODEL, service or SERVICE
@@ -484,6 +612,8 @@ def takes_thinking_cap(model: str | None = None, service: str | None = None) -> 
     if service == "anthropic":
         return maker(model) == "Anthropic"
     if service in ("litellm", "openai") and _gpt_version(model) >= 6:
+        return True
+    if service == "openai" and _gpt_version(model) > 5:
         return True
     if service == "google":
         return gemini >= 3
@@ -501,10 +631,17 @@ def cache_identity() -> str:
     """The model as the cache key names it (common/common_helpers/cache.py). Ask Sage's is the model name alone, as
     it was before a second service existed, so answers already paid for stay valid; another service's names the
     service too, since two services may use one name for different models; and the thinking cap, when one is sent
-    (thinking_sent), since it changes the answer; and the repeat, from 2 on (REPEAT), so each repeat has answers of
-    its own."""
+    (thinking_sent), since it changes the answer; at the setting thinking "lowest", the setting's name, the level sent
+    and the type of Anthropic's `thinking` field where one is sent (thinking_field), so its answers are never those of
+    a run at another level, even where the level sent is the same ("low"); and the repeat, from 2 on (REPEAT), so each
+    repeat has answers of its own."""
     sent = thinking_sent()
-    return ((MODEL if SERVICE == "asksage" else f"{SERVICE}:{MODEL}") + (f"|thinking:{sent}" if sent else "")
+    field = thinking_field()
+    if sent and THINKING == "lowest":
+        thinking = f"|thinking:lowest:{sent}" + (f":{field['type']}" if field else "")
+    else:
+        thinking = f"|thinking:{sent}" if sent else ""
+    return ((MODEL if SERVICE == "asksage" else f"{SERVICE}:{MODEL}") + thinking
             + (f"|repeat:{REPEAT}" if REPEAT > 1 else ""))
 
 
@@ -539,7 +676,8 @@ ERROR_BODY_CHARS = 4000
 #:   Anthropic (https://platform.claude.com/docs/en/build-with-claude/effort, read 2026-11-14): "Set
 #:     `output_config.effort` on the request", values low, medium, high, xhigh, max; on Claude Opus 5.5 "Adaptive
 #:     thinking is always on and can't be turned off, so effort is the primary control", and `medium` is its default,
-#:     so `thinking` is never sent and the effort always is (unless the step's thinking is model_default).
+#:     so the effort is always sent (unless the step's thinking is model_default), and `thinking` only at the step's
+#:     thinking lowest, to the models LOWEST_THINKING gives a `thinking` field for (thinking_field).
 #:     ANTHROPIC_API_KEY is the key the SDK reads first (the claude-api reference, "Authentication"); it is passed to
 #:     the client explicitly, like the other two.
 #:   OpenAI (https://developers.openai.com/api/docs/guides/latest-model; the Chat Completions reference,
@@ -548,7 +686,7 @@ ERROR_BODY_CHARS = 4000
 #:     `high`, `xhigh`, and `max`" and Chat Completions (https://developers.openai.com/api/docs/models/gpt-6.1-sol,
 #:     read 2026-11-14). OPENAI_API_KEY is the key the SDK reads (https://github.com/openai/openai-python, README).
 #:   Google (google-genai's google/genai/types.py: GenerateContentConfig's `max_output_tokens` and `thinking_config`,
-#:     ThinkingConfig's `thinking_level`, ThinkingLevel's values LOW, MEDIUM, HIGH; the REST reference,
+#:     ThinkingConfig's `thinking_level`, ThinkingLevel's values MINIMAL, LOW, MEDIUM, HIGH; the REST reference,
 #:     https://aistudio.google.com/api-reference/generate-content; both read 2026-11-14): Gemini 4 Argon takes the
 #:     levels "low, medium, high", medium its default (https://aistudio.google.com/docs/models/gemini-4-argon).
 #:     GEMINI_API_KEY is the name Google's docs use ("Set the GEMINI_API_KEY or GOOGLE_API_KEY. It will automatically

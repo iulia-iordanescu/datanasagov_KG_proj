@@ -13,7 +13,7 @@ import sys
 
 from common.llm import (
     DIRECT_SERVICES, ERROR_BODY_CHARS, READ_TIMEOUT, SERVICES, TEMPERATURE, _env, _last, _requests_lock,
-    max_tokens_sent, temperature_sent, thinking_sent)
+    max_tokens_sent, temperature_sent, thinking_field, thinking_sent)
 from common.llm_errors import (
     ApiError, NoAnswerInTime, RETRY_STATUSES, Refused, RetryLater, _retry_after, stop_if_budget_gone,
     stop_if_forbidden)
@@ -51,7 +51,10 @@ def _new_client(service: str, api_key: str, read_timeout: int):
     SDK's README). Google's takes `api_key` and `http_options`, whose `timeout` is "in milliseconds" and whose
     `retry_options` attempts are the "Maximum number of attempts, including the original request ... If 0 or 1, it
     means no retries. If not specified, default to 5" (google-genai's google/genai/types.py, HttpOptions and
-    HttpRetryOptions, read 2026-11-14)."""
+    HttpRetryOptions, read 2026-11-14). Google's client is pinned to the API version v1beta, which serves both stable and
+    preview models: gemini-3.1-pro-preview is not found on v1 ("models/gemini-3.1-pro-preview is not found for API
+    version v1", HTTP 404, 2026-11-18) and is listed on v1beta with generateContent and batchGenerateContent, while
+    gemini-3.8-flash is on both (Google's model listing, GET /v1/models/... and /v1beta/models/..., 2026-11-18)."""
     sdk = _sdk(service)
     if service == "anthropic":
         return sdk.Anthropic(api_key=api_key, max_retries=0, timeout=float(read_timeout))
@@ -59,7 +62,7 @@ def _new_client(service: str, api_key: str, read_timeout: int):
         return sdk.OpenAI(api_key=api_key, max_retries=0, timeout=float(read_timeout))
     from google.genai import types
     return sdk.Client(api_key=api_key, http_options=types.HttpOptions(
-        timeout=int(read_timeout * 1000), retry_options=types.HttpRetryOptions(attempts=1)))
+        api_version="v1beta", timeout=int(read_timeout * 1000), retry_options=types.HttpRetryOptions(attempts=1)))
 
 
 def _sdk_client(service: str, read_timeout: int = READ_TIMEOUT):
@@ -156,10 +159,11 @@ def _anthropic_params(prompt: str, model: str, cache_until: str | None) -> dict:
     _messages splits it for Anthropic's models (the start before cache_until as a system block marked
     `cache_control` ephemeral, for prompt caching: "system ... array of TextBlockParam ... cache_control: Create a cache
     control breakpoint at this content block", https://platform.claude.com/docs/en/api/messages), and
-    `output_config.effort` where a thinking level is sent (thinking_sent). No `thinking` (adaptive thinking is always
-    on, on Claude Opus 5.5: DIRECT_SERVICES) and no `temperature`, `top_p` or `top_k` (TEMPERATURE). Not sent either:
-    the server-side refusal `fallbacks`, which would let another model answer a refused request and so mix models in
-    one run's answers; a refusal is recorded as one (Refused)."""
+    `output_config.effort` where a thinking level is sent (thinking_sent). `thinking` only at the setting thinking
+    lowest, where llm.LOWEST_THINKING gives the model one (thinking_field: Claude Sonnet 5.5's between_tools, Claude
+    Haiku 5.5's disabled; adaptive thinking is always on, on Claude Opus 5.5: DIRECT_SERVICES), and no `temperature`,
+    `top_p` or `top_k` (TEMPERATURE). Not sent either: the server-side refusal `fallbacks`, which would let another
+    model answer a refused request and so mix models in one run's answers; a refusal is recorded as one (Refused)."""
     messages = _messages(prompt, model, cache_until)
     params = {"model": model, "max_tokens": max_tokens_sent("anthropic")}
     if messages[0]["role"] == "system":
@@ -170,6 +174,8 @@ def _anthropic_params(prompt: str, model: str, cache_until: str | None) -> dict:
         params["temperature"] = TEMPERATURE
     if thinking_sent(model, "anthropic"):
         params["output_config"] = {"effort": thinking_sent(model, "anthropic")}
+    if thinking_field(model, "anthropic"):
+        params["thinking"] = thinking_field(model, "anthropic")
     return params
 
 
@@ -245,8 +251,9 @@ def _ask_openai(prompt: str, model: str, read_timeout: int, cache_until: str | N
 
 def _google_config(model: str) -> dict:
     """The `config` of a request to Google's Gemini API, as plain data: `max_output_tokens` (MAX_ANSWER_TOKENS),
-    `thinking_config` {"thinking_level": the level in ThinkingLevel's spelling, e.g. "HIGH"} where a thinking level is
-    sent (thinking_sent), `temperature` only where temperature_sent says so (not to Gemini 3 and later: TEMPERATURE)."""
+    `thinking_config` {"thinking_level": the level in ThinkingLevel's spelling, e.g. "HIGH" or, at the setting thinking
+    lowest, "MINIMAL" for Gemini 3.5 Flash-Lite: llm.LOWEST_THINKING} where a thinking level is sent (thinking_sent),
+    `temperature` only where temperature_sent says so (not to Gemini 3 and later: TEMPERATURE)."""
     config = {"max_output_tokens": max_tokens_sent("google")}
     if temperature_sent(model, "google"):
         config["temperature"] = TEMPERATURE

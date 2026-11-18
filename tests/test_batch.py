@@ -256,12 +256,14 @@ class Batch(unittest.TestCase):
             self.clients[service] = make(self.fakes[service])
         return self.clients[service]
 
-    def run_batch(self, service, ids, outcome=None, test_call=True, running=2, cache_until=None, workers=4):
+    def run_batch(self, service, ids, outcome=None, test_call=True, running=2, cache_until=None, workers=4,
+                  model=None, thinking="high"):
         """One 060-like run with batch true: ids' records, one text piece each; the test call answered by FakeSDK;
-        workers: the step's setting workers (the single requests made at the same time)."""
+        workers: the step's setting workers (the single requests made at the same time); model: the service's
+        baseline model when None."""
         fake = self.fakes.setdefault(service, FakeBatch(service, running))
         fake.outcome = outcome or {}
-        calls = self.calls(service=service, model=tmc.BASELINE[service], thinking="high", batch=True)
+        calls = self.calls(service=service, model=model or tmc.BASELINE[service], thinking=thinking, batch=True)
         if test_call:
             self.sdk.replies.append(SYNC_TEST_REPLY[service])
         items = [{"id": i, "pieces": ["text"]} for i in ids]
@@ -370,6 +372,30 @@ class Batch(unittest.TestCase):
                 self.assertEqual(sent, 32768 if service == "google" else 64000)
                 self.assertEqual(self.state()["jobs"][0]["identity"]["max_answer_tokens"], sent)
                 self.assertEqual(llm.describe()["max_answer_tokens"], 64000)        # the run's recipe: its own limit
+
+    def test_requests_at_lowest_are_the_single_requests(self):
+        """At the setting thinking lowest, each listed model's batch request carries the lowest setting its maker
+        documents (tests/test_model_calls.py, LOWEST), as its single request does, at the batch answer limit."""
+        for service, model, thinking, key in tmc.LOWEST:
+            with self.subTest(model=model):
+                self.setUp_again()
+                self.run_batch(service, ["r00"], model=model, thinking="lowest")
+                (request,), = self.fakes[service].jobs.values()
+                prompt = "RULES\n----- BEGIN RECORD -----\n#r00#"
+                limit = 32768 if service == "google" else 64000
+                if service == "anthropic":
+                    params = {k: v for k, v in request["params"].items() if k != "messages"}
+                    single = llm._anthropic_params(prompt, model, None)
+                    self.assertEqual(request["params"], single)
+                elif service == "openai":
+                    params = {k: v for k, v in request["body"].items() if k != "messages"}
+                    self.assertEqual(request["body"], llm._chat_payload(prompt, model, None, "openai"))
+                else:
+                    params = {k: dict(v) if isinstance(v, dict) else v for k, v in request["config"].items()}
+                    self.assertEqual(self.clients["google"].made["model"], model)
+                self.assertEqual(params, tmc.lowest_request(service, model, thinking, limit))
+                self.assertEqual(llm.cache_identity(), f"{service}:{model}|thinking:{key}")
+                self.assertEqual(self.state()["jobs"][0]["identity"]["cache_identity"], llm.cache_identity())
 
     # ---------------------------------------------------------------- resume, cache
 

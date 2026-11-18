@@ -2407,7 +2407,21 @@ class LiteLLM(unittest.TestCase):
         self.assertFalse(llm.temperature_sent("google-claude-sonnet-5", "asksage"))
         self.assertFalse(llm.temperature_sent("gemini-3-pro", "litellm"))
         self.assertTrue(llm.temperature_sent("gemini-2.5-pro", "litellm"))
-        self.assertTrue(llm.temperature_sent("gpt-5", "litellm"))
+        self.assertTrue(llm.temperature_sent("gpt-4o", "litellm"))
+        # OpenAI's GPT-5 models: never (llm.TEMPERATURE), at every thinking setting and through every service
+        saved = llm.THINKING
+        try:
+            for thinking in ("lowest", "low", "high", "model_default"):
+                llm.THINKING = thinking
+                for model in ("gpt-5", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"):
+                    for service in ("openai", "litellm"):
+                        self.assertFalse(llm.temperature_sent(model, service), (model, service, thinking))
+        finally:
+            llm.THINKING = saved
+        # GPT-5.1 and later take the reasoning effort through OpenAI's own API at every level; GPT-5.0 and LiteLLM not
+        self.assertTrue(llm.takes_thinking_cap("gpt-5.6-terra", "openai"))
+        self.assertFalse(llm.takes_thinking_cap("gpt-5", "openai"))
+        self.assertFalse(llm.takes_thinking_cap("gpt-5.6-terra", "litellm"))
         self.assertIsNone(llm.effort_note("gemini-2.5-pro"))
 
     def test_unknown_service(self):

@@ -26,7 +26,8 @@ from common.stop import Stop
 from common.llm import (
     DIRECT_SERVICES, EARLY_STOP_FAILURES, EARLY_STOP_WINDOW, PROGRESS_ESTIMATE_AFTER, PROGRESS_SECONDS,
     READ_TIMEOUT, REASKS, REQUESTS, SERVED, SERVICES, THINKING_LEVELS, THINKING_WARN_SHARE, _last, call_settings,
-    maker, max_tokens_sent, takes_thinking_cap, thinking_parameter, thinking_sent)
+    lowest_refusal, lowest_thinking, maker, max_tokens_sent, takes_thinking_cap, thinking_field, thinking_parameter,
+    thinking_sent)
 from common.llm_errors import (
     BUDGET_GONE, BadReply, BudgetExhausted, CutOff, FORBIDDEN, ModelCallForbidden, Refused, _forbidden_message)
 from common.llm_replies import reasoning_tokens
@@ -53,13 +54,25 @@ class EarlyStop(SystemExit):
         self.paid = paid
 
 
+def _lowest_is_lower() -> bool:
+    """Whether the setting thinking lowest sends this run's model less thinking than low does: through a maker's own
+    API, to a model llm.LOWEST_THINKING gives a level other than low or a `thinking` field (GPT-6.1 Terra's none,
+    Claude Haiku 5.5's disabled thinking); not where lowest sends what low sends (Claude Opus 5.5, GPT-6.1 Sol, Gemini 4
+    Argon)."""
+    lowest = lowest_thinking()
+    return bool(lowest) and (lowest[0] != "low" or lowest[1] is not None)
+
+
 def _lower_thinking() -> str | None:
     """How to leave the answer more of MAX_ANSWER_TOKENS by thinking less, with this run's settings; None when the
-    pipeline can't cap this model's thinking."""
+    pipeline can't cap this model's thinking, or when it is already at its lowest (the setting thinking lowest, or low
+    where lowest sends the same)."""
     sent = thinking_sent()
-    if sent and sent != "low":
-        lower = " or ".join(f"`--thinking {t}`" for t in reversed(THINKING_LEVELS[:THINKING_LEVELS.index(sent)]))
-        return f"set the step's thinking setting lower (it is {sent}; {lower})"
+    if sent and llm.THINKING in ("low", "medium", "high"):
+        named = THINKING_LEVELS[THINKING_LEVELS.index("low"):THINKING_LEVELS.index(llm.THINKING)]
+        lower = [f"`--thinking {t}`" for t in reversed(named)] + (["`--thinking lowest`"] if _lowest_is_lower() else [])
+        if lower:
+            return f"set the step's thinking setting lower (it is {llm.THINKING}; {' or '.join(lower)})"
     if llm.THINKING == "model_default" and takes_thinking_cap():
         return "give `--thinking low` (the thinking isn't capped: thinking is model_default)"
     return None
@@ -88,8 +101,8 @@ def cut_off_advice(usage=None) -> str:
                    else "") + shorter)
     if thought >= THINKING_WARN_SHARE * llm.MAX_ANSWER_TOKENS:
         sent = thinking_sent()
-        if sent == "low":
-            fix = (f"the thinking is already at its lowest cap (low): raise {limit} and give `--thinking "
+        if sent and (llm.THINKING == "lowest" or (llm.THINKING == "low" and not _lowest_is_lower())):
+            fix = (f"the thinking is already at its lowest cap ({llm.THINKING}): raise {limit} and give `--thinking "
                    f"model_default`, or choose another model (`--model`)")
         else:
             fix = _lower_thinking()
@@ -190,6 +203,8 @@ class PaidCalls:
         log.info(plan)
         log.info(f"model: {llm.MODEL}, through {SERVICES.get(llm.SERVICE, llm.SERVICE)}"
                  + (f", thinking {thinking_sent()}" if thinking_sent() else "")
+                 + (f" (the setting thinking is lowest: {llm.thinking_sent_words()})" if llm.THINKING == "lowest"
+                    and thinking_sent() else "")
                  + (", as batch jobs (setting batch)" if llm.BATCH else ""))
         if self.notes:
             show_warnings(self.step, self.notes)
@@ -231,7 +246,10 @@ class PaidCalls:
                  f"call was made. If {service} says the model "
                  f"isn't allowed, give another with --model <name> (`py helpers/models.py --service {llm.SERVICE} --try <name> ...` "
                  f"tells which you may use)"
-                 + (f"; if it names {thinking_parameter()}, give `--thinking model_default`, which sends no thinking "
+                 + ((f"; if it names {thinking_parameter()}" + (" or thinking" if thinking_field() else "")
+                     + ", give `--thinking low`, which sends the level low, or `--thinking model_default`, which sends "
+                       "no thinking cap") if llm.THINKING == "lowest" and thinking_sent() else
+                    f"; if it names {thinking_parameter()}, give `--thinking model_default`, which sends no thinking "
                     f"cap" if thinking_sent() else "")
                  + f"; otherwise check your key in .env and that you're on NASA's network. Then run {again} again.{file}")
 
@@ -403,6 +421,8 @@ def paid_calls(settings: dict, output, notes: list = (), session_id: str | None 
                    f"which reaches only {own}'s models ({SERVICES[service]}), so the step can't run. Give a model by "
                    f"{own} (`py helpers/models.py --service {service}` lists them), or a service that reaches {name} "
                    f"(e.g. --service litellm), then run the step again.")
+    if thinking == "lowest" and lowest_refusal(name, service):
+        raise Stop(lowest_refusal(name, service))
     repeat = given["repeat"]
     if given["batch"] and llm.batch_refusal(service):
         raise Stop(llm.batch_refusal(service))

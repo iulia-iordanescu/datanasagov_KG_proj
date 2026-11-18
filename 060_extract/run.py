@@ -39,7 +39,7 @@ SETTINGS = {
     "workers":            4,               # model calls made at the same time
     "service":            SERVICE,         # the service that reaches the model: asksage, litellm, anthropic, openai, google
     "model":              MODEL,           # the AI model to ask (py helpers/models.py lists them)
-    "thinking":           THINKING,        # how much a model that thinks may think: low, medium, high, or model_default
+    "thinking":           THINKING,        # how much a model that thinks may think: lowest, low, medium, high, or model_default
     "repeat":             1,               # which repeat of this recipe: 1 reuses saved answers; 2, 3, ... ask again, each into answers of its own
     "batch":              False,           # true: send the model calls as batch jobs to the maker's batch API (half price, answers within 24 h); anthropic, openai, google only
     "confirm_paid_calls": True,            # stop and ask before the first model call; false for unattended runs

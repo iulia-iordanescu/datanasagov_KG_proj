@@ -167,7 +167,7 @@ class Guards(unittest.TestCase):
         from common.stop import Stop
         for settings, words in (({"service": "nowhere"}, "service must be one of asksage, litellm, anthropic, openai, google, but is 'nowhere'"),
                                 ({"model": " "}, "model must be a text .not empty., but is ' '"),
-                                ({"thinking": "max"}, "thinking must be one of low, medium, high, model_default, but is 'max'")):
+                                ({"thinking": "max"}, "thinking must be one of lowest, low, medium, high, model_default, but is 'max'")):
             with self.subTest(settings=settings), self.assertRaisesRegex(Stop, words):
                 self.calls(**settings)
 
@@ -1261,6 +1261,38 @@ GOOGLE_REPLY = ({"model_version": "gemini-4-argon-001", "candidates": [{"finish_
 BASELINE = {"anthropic": "claude-opus-5-5", "openai": "gpt-6.1-sol", "google": "gemini-4-argon"}
 
 
+#: The setting thinking lowest: what each model's request sends (llm.LOWEST_THINKING, with the makers' pages cited
+#: there), as (service, model, the request's thinking parameters, the cache key's thinking part). No model gets a
+#: temperature (llm.TEMPERATURE).
+LOWEST = (("anthropic", "claude-opus-5-5", {"output_config": {"effort": "low"}}, "lowest:low"),
+          ("anthropic", "claude-sonnet-5-5", {"output_config": {"effort": "low"}, "thinking": {"type": "between_tools"}},
+           "lowest:low:between_tools"),
+          ("anthropic", "claude-haiku-5-5", {"output_config": {"effort": "low"}, "thinking": {"type": "disabled"}},
+           "lowest:low:disabled"),
+          ("openai", "gpt-6.1-sol", {"reasoning_effort": "low"}, "lowest:low"),
+          ("openai", "gpt-6.1-terra", {"reasoning_effort": "none"}, "lowest:none"),
+          ("openai", "gpt-6-luna", {"reasoning_effort": "none"}, "lowest:none"),
+          ("openai", "gpt-5.6-sol", {"reasoning_effort": "none"}, "lowest:none"),
+          ("openai", "gpt-5.6-terra", {"reasoning_effort": "none"}, "lowest:none"),
+          ("openai", "gpt-5.6-luna", {"reasoning_effort": "none"}, "lowest:none"),
+          ("google", "gemini-4-argon", {"thinking_config": {"thinking_level": "LOW"}}, "lowest:low"),
+          ("google", "gemini-3.8-flash", {"thinking_config": {"thinking_level": "LOW"}}, "lowest:low"),
+          ("google", "gemini-3.5-flash-lite", {"thinking_config": {"thinking_level": "MINIMAL"}}, "lowest:minimal"),
+          ("google", "gemini-3.1-pro-preview", {"thinking_config": {"thinking_level": "LOW"}}, "lowest:low"),
+          ("google", "gemini-3-flash-preview", {"thinking_config": {"thinking_level": "MINIMAL"}}, "lowest:minimal"),
+          ("google", "gemini-3.1-flash-lite", {"thinking_config": {"thinking_level": "MINIMAL"}}, "lowest:minimal"))
+
+
+def lowest_request(service: str, model: str, thinking: dict, limit: int) -> dict:
+    """The whole request (but its prompt) one of LOWEST's models is sent at the setting thinking lowest, at the answer
+    limit `limit`: Anthropic's params, OpenAI's body, Google's config."""
+    if service == "anthropic":
+        return {"model": model, "max_tokens": limit, **thinking}
+    if service == "openai":
+        return {"model": model, "max_completion_tokens": limit, **thinking}
+    return {"max_output_tokens": limit, **thinking}
+
+
 class DirectServices(unittest.TestCase):
     """The makers' own APIs (services anthropic, openai, google), each through its SDK, faked (FakeSDK): the
     parameters each request sends (the answer limit under the maker's name, the thinking level under the maker's name,
@@ -1323,6 +1355,91 @@ class DirectServices(unittest.TestCase):
         self.assertIsNone(llm.thinking_sent("gpt-4o", "openai"))
         self.assertIsNone(llm.thinking_sent("claude-opus-5-5", "litellm"))
 
+    def test_lowest_sends_each_models_lowest_setting(self):
+        """The setting thinking lowest: each listed model's single request carries exactly the lowest setting its
+        maker documents (LOWEST), and no temperature where none was sent before; the cache key names lowest, so it differs from low's even where
+        the level sent is the same; the run's record and report say what was sent."""
+        replies = {"anthropic": ANTHROPIC_REPLY, "openai": OPENAI_REPLY, "google": GOOGLE_REPLY}
+        for service, model, thinking, key in LOWEST:
+            with self.subTest(model=model):
+                _, params = self.run_on(service, replies[service], thinking="lowest", model=model)
+                if service == "google":
+                    self.assertEqual(params["model"], model)
+                    params = params["config"]
+                else:
+                    params = {k: v for k, v in params.items() if k != "messages"}
+                self.assertEqual(params, lowest_request(service, model, thinking, llm.MAX_ANSWER_TOKENS))
+                self.assertEqual("temperature" in params, llm.temperature_sent(model, service))
+                self.assertFalse({"top_p", "top_k"} & set(params))
+                lowest = llm.cache_identity()
+                self.assertEqual(lowest, f"{service}:{model}|thinking:{key}")
+                made = llm.describe()
+                self.assertEqual(made["thinking"], "lowest")
+                self.assertEqual(made["thinking_sent"], key.split(":")[1])
+                self.assertEqual(made.get("thinking_field"), thinking.get("thinking"))
+                section = "\n".join(report.model_calls([("x", 1, 0)], 0, llm.model_label()))
+                self.assertIn(f"`lowest`, sent as {llm.thinking_sent_words()}.", section)
+                if "thinking" in thinking:
+                    self.assertIn(f"and `thinking` `{json.dumps(thinking['thinking'])}`", section)
+                    self.assertIn(f", with thinking {json.dumps(thinking['thinking'])}", made["effort"])
+                self.calls(service=service, model=model, thinking="low")      # near-miss: low, the same model
+                self.assertNotEqual(llm.cache_identity(), lowest)
+                self.assertNotIn("thinking", llm._anthropic_params("p", model, None) if service == "anthropic" else {})
+                if service == "openai":                                         # at low, no temperature to any GPT
+                    self.assertNotIn("temperature", llm._chat_payload("p", model, None, "openai"))
+        # the model's name compared as model_name_key compares it
+        self.calls(service="anthropic", model="claude-opus-5.5", thinking="lowest")
+        self.assertEqual(llm.thinking_sent(), "low")
+
+    def test_lowest_stops_where_no_lowest_is_known(self):
+        """A model LOWEST_THINKING doesn't list, or a service other than a maker's own API, stops the step at its
+        settings, before any request, saying what to do; the near-misses (listed models through their own makers' APIs)
+        run."""
+        for service, model in (("anthropic", "claude-opus-4-5"), ("anthropic", "claude-sonnet-5-5-20260101"),
+                               ("openai", "gpt-6-astra"), ("google", "gemini-2.5-pro")):
+            with self.subTest(model=model), self.assertRaises(Stop) as caught:
+                self.calls(service=service, model=model, thinking="lowest")
+            message = str(caught.exception)
+            self.assertIn(f"doesn't list the model {model}", message)
+            self.assertIn("no model call was made", message)
+            self.assertIn("Add the model's lowest setting to LOWEST_THINKING", message)
+            self.assertIn("`--thinking low`", message)
+        for service, model in (("litellm", "claude-opus-5-5"), ("litellm", "gemini-4-argon"),
+                               ("asksage", "google-claude-opus-5-5")):
+            with self.subTest(service=service, model=model), self.assertRaises(Stop) as caught:
+                self.calls(service=service, model=model, thinking="lowest")
+            self.assertIn(f"the setting service is {service}", str(caught.exception))
+            self.assertIn("only through a maker's own API", str(caught.exception))
+        self.assertEqual(self.sdk.requests, [])
+        self.assertEqual(stand_ins.PAYLOADS, [])
+        self.assertNotEqual(llm.THINKING, "lowest")                                 # the run's settings weren't set
+        # a direct call past the settings' check raises the same message instead of sending
+        llm.MODEL, llm.SERVICE, llm.THINKING = "claude-opus-4-5", "anthropic", "lowest"
+        with self.assertRaisesRegex(RuntimeError, "doesn't list the model claude-opus-4-5"):
+            llm.call_llm(llm.TEST_PROMPT)
+        self.assertEqual(self.sdk.requests, [])
+        for service, model, _, _ in LOWEST:                                          # near-misses
+            self.calls(service=service, model=model, thinking="lowest")
+
+    def test_lowest_in_the_advice(self):
+        """Lower thinking is advised only where it sends less: at low, lowest where it differs from low; at lowest,
+        nothing lower."""
+        for model, thinking, words in (("gpt-6.1-terra", "low", "(it is low; `--thinking lowest`)"),
+                                       ("gpt-6.1-terra", "high", "(it is high; `--thinking medium` or `--thinking low` "
+                                                                 "or `--thinking lowest`)"),
+                                       ("gpt-6.1-sol", "high", "(it is high; `--thinking medium` or `--thinking low`)"),
+                                       ("gpt-6.1-sol", "low", None), ("gpt-6.1-terra", "lowest", None)):
+            with self.subTest(model=model, thinking=thinking):
+                self.calls(service="openai", model=model, thinking=thinking)
+                lower = llm._lower_thinking()
+                self.assertEqual(lower and lower.split(" lower ", 1)[1], words)
+                usage = {"completion_tokens": 15000, "completion_tokens_details": {"reasoning_tokens": 12000}}
+                advice = llm.cut_off_advice(usage)
+                if words is None:
+                    self.assertIn(f"already at its lowest cap ({thinking})", advice)
+                else:
+                    self.assertIn(words, advice)
+
     def test_anthropic_request(self):
         text, params = self.run_on("anthropic", ANTHROPIC_REPLY)
         self.assertEqual(text, '{"ok": true}')
@@ -1373,8 +1490,8 @@ class DirectServices(unittest.TestCase):
         self.assertEqual(type(params["config"]["thinking_config"]).__name__, "ThinkingConfig")
         service, client = self.sdk.clients[0]
         self.assertEqual((service, client["api_key"]), ("google", "g-key"))
-        self.assertEqual(client["http_options"], {"timeout": llm.READ_TIMEOUT * 1000,
-                                                  "retry_options": {"attempts": 1}})
+        self.assertEqual(client["http_options"], {"api_version": "v1beta", "timeout": llm.READ_TIMEOUT * 1000,
+                                                  "retry_options": {"attempts": 1}})   # v1beta: preview models too
         self.assertEqual(llm.cache_identity(), "google:gemini-4-argon|thinking:high")
         self.assertEqual(llm.REQUESTS, {"sent": 1, "input_tokens": 25, "cache_read_tokens": 15,
                                         "cache_write_tokens": 0, "output_tokens": 65, "reasoning_tokens": 60})

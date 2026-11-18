@@ -97,7 +97,7 @@ SETTINGS = {
     "workers":            4,     # model calls made at the same time
     "service":            llm.SERVICE,  # the service that reaches the model: asksage, litellm, anthropic, openai, google
     "model":              SECOND_OPINION_MODEL,  # the model that gives the second opinion (py helpers/models.py lists them)
-    "thinking":           "medium",  # how much a model that thinks may think: low, medium, high, or model_default (050's setting)
+    "thinking":           "medium",  # how much a model that thinks may think: lowest, low, medium, high, or model_default (050's setting)
     "repeats":            REPEATS,  # how many times each record is drafted: repeats 1, 2, ..., N, each with answers of its own
     "confirm_paid_calls": True,  # stop and ask before the first model call; false for unattended runs
     "apply":              False,  # true: no drafting, no model call: match the saved drafts and write annotations/second_opinion.csv and second_opinion_candidates.csv (the only writes to annotations/)

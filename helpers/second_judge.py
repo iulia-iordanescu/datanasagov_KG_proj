@@ -123,7 +123,7 @@ SETTINGS = {
     "workers":            4,     # model calls made at the same time
     "service":            llm.SERVICE,  # the service that reaches the model: asksage, litellm, anthropic, openai, google
     "model":              SECOND_JUDGE_MODEL,  # the judge (py helpers/models.py lists them)
-    "thinking":           "medium",  # how much a model that thinks may think: low, medium, high, or model_default
+    "thinking":           "medium",  # how much a model that thinks may think: lowest, low, medium, high, or model_default
     "repeat":             1,     # which repeat of the same recipe: 2, 3, ... are asked again, with answers of their own
     "confirm_paid_calls": True,  # stop and ask before the first model call; false for unattended runs
 }
