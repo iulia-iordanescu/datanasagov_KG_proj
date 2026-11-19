@@ -253,14 +253,17 @@ BATCH_LIMITS = {"anthropic": (100_000, 240_000_000), "openai": (50_000, 190_000_
 #:           completes, its tokens no longer count toward the limit. The API counts input tokens at submission"
 #:           (https://developers.openai.com/api/docs/guides/rate-limits, read 2026-11-17). The account's caps (its usage
 #:           tier, Build, on its limits page, read 2026-11-17): gpt-6.1-sol and gpt-6.1-terra 1,350,000 tokens,
-#:           gpt-6-luna 20,000,000
+#:           gpt-6-luna 20,000,000; gpt-5.6-sol 1,350,000 (OpenAI's refusal of a job on 2026-11-18: "Enqueued token limit
+#:           reached for gpt-5.6-sol ... Limit: 1,350,000 enqueued tokens"), and gpt-5.6-terra taken as the same, as for
+#:           GPT-6.1 Terra, since its jobs were refused the same day with the same code (token_limit_exceeded)
 #:   google  "Enqueued tokens per model": "the maximum number of tokens that can be enqueued for batch processing
 #:           across all your active batch jobs for a given model" (https://aistudio.google.com/docs/rate-limits, read
 #:           2026-11-17). Tier 1: gemini-4-argon 5,000,000, gemini-3.8-flash 3,000,000, gemini-3.5-flash-lite
 #:           10,000,000; gemini-3.1-pro-preview 5,000,000 and gemini-3.1-flash-lite 10,000,000 (the same page, read
 #:           2026-11-18; it lists no cap for gemini-3-flash-preview)
 #: Anthropic's batch pages state no token cap (BATCH_QUEUE_REQUESTS has its cap on requests).
-BATCH_QUEUE_TOKENS = {"openai": {"gpt-6.1-sol": 1_200_000, "gpt-6.1-terra": 1_200_000, "gpt-6-luna": 18_000_000},
+BATCH_QUEUE_TOKENS = {"openai": {"gpt-6.1-sol": 1_200_000, "gpt-6.1-terra": 1_200_000, "gpt-6-luna": 18_000_000,
+                                 "gpt-5.6-sol": 1_200_000, "gpt-5.6-terra": 1_200_000},
                       "google": {"gemini-4-argon": 4_500_000, "gemini-3.8-flash": 2_700_000,
                                  "gemini-3.5-flash-lite": 9_000_000, "gemini-3.1-pro-preview": 4_500_000,
                                  "gemini-3.1-flash-lite": 9_000_000}}
