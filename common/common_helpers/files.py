@@ -205,7 +205,28 @@ def write_text(path, text: str, new: bool = False) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(path.name + ".part")
     tmp.write_text(text, encoding="utf-8", newline="\n")
-    os.replace(tmp, path)
+    _replace(tmp, path)
+
+
+#: How many times a rename onto a file is tried, and the pause before the first retry (seconds, doubling each time).
+#: On Windows a rename onto a file that another process holds open (a virus scanner or the search indexer reading
+#: it, often a large cache file just written) fails with PermissionError ("[WinError 5] Access is denied"), and
+#: succeeds once the other process lets go. Seen on 2026-11-18 while collecting batch jobs into
+#: outputs/intermediate_results/060_extract/cache/extract.json (10 MB).
+REPLACE_TRIES, REPLACE_PAUSE = 8, 0.25
+
+
+def _replace(tmp: Path, path: Path) -> None:
+    """os.replace(tmp, path), tried again after a short pause while Windows refuses it (REPLACE_TRIES); the last
+    refusal is raised, so a file that stays locked still stops the step."""
+    for attempt in range(REPLACE_TRIES):
+        try:
+            os.replace(tmp, path)
+            return
+        except PermissionError:
+            if attempt == REPLACE_TRIES - 1:
+                raise
+            time.sleep(REPLACE_PAUSE * 2 ** attempt)
 
 
 def write_json(path, data, indent: int | None = 1, new: bool = False) -> None:

@@ -31,6 +31,59 @@ def row(rid, s="", sc="", p="", o="", oc="", src="", done="1"):
     return [rid, s, sc, p, o, oc, src, done]
 
 
+class ReplaceRetries(unittest.TestCase):
+    """files.write_text renames its .part file onto the target; a rename Windows refuses (another process holds the
+    file, PermissionError) is tried again after a pause, and a refusal that lasts every try still stops the step."""
+
+    def setUp(self):
+        from common import files
+        self.files, self.tmp = files, Path(tempfile.mkdtemp())
+        self.saved = (files.os.replace, files.time.sleep)
+        files.time.sleep = lambda s: None
+
+    def tearDown(self):
+        self.files.os.replace, self.files.time.sleep = self.saved
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def flaky(self, refusals):
+        real, calls = self.saved[0], []
+
+        def replace(a, b):
+            calls.append(1)
+            if len(calls) <= refusals:
+                raise PermissionError(5, "Access is denied")
+            real(a, b)
+        self.files.os.replace = replace
+        return calls
+
+    def test_refused_twice_then_written(self):
+        calls = self.flaky(2)
+        target = self.tmp / "cache.json"
+        target.write_text("old", encoding="utf-8")
+        self.files.write_text(target, "new")
+        self.assertEqual((target.read_text(encoding="utf-8"), len(calls)), ("new", 3))
+        self.assertFalse((self.tmp / "cache.json.part").exists())
+
+    def test_refused_every_time_raises(self):            # near miss: a lock that never lets go still stops the step
+        calls = self.flaky(99)
+        target = self.tmp / "cache.json"
+        target.write_text("old", encoding="utf-8")
+        with self.assertRaises(PermissionError):
+            self.files.write_text(target, "new")
+        self.assertEqual((target.read_text(encoding="utf-8"), len(calls)), ("old", self.files.REPLACE_TRIES))
+
+    def test_other_errors_not_retried(self):             # near miss: only a refusal is tried again
+        calls = []
+
+        def replace(a, b):
+            calls.append(1)
+            raise FileNotFoundError(2, "gone")
+        self.files.os.replace = replace
+        with self.assertRaises(FileNotFoundError):
+            self.files.write_text(self.tmp / "x.txt", "ok")
+        self.assertEqual(len(calls), 1)
+
+
 class GroundTruthFiles(unittest.TestCase):
 
     def setUp(self):
