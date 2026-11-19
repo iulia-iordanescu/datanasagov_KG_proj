@@ -1,6 +1,6 @@
 # Recall by guideline rule
 
-Preliminary, computed on 2026-11-13, still to be reviewed by a person.
+Computed on 2026-11-13.
 
 ## What this is
 
@@ -15,7 +15,7 @@ Formula, for a rule *r* and one run: recall of *r* = the ground truth triples th
 - A rule's row holds the triples that use the rule, which is not the same as the triples the rule causes extraction to miss. The triples of a row also differ in their records and in their other rules, so a row with low recall is a place to look and not a finding about the rule.
 - A row with fewer than 10 ground truth triples is marked *too small*: rules 4, 5, 6, 7, 8, 10, and the one triple that records no rule. Its recall changes by many points with one triple and should not be read.
 - The column *Within reach* counts the row's ground truth triples that the induced schema can express through the translation table (`070_evaluate/metrics/recall_upper_bound.md`). With the ground truth schema every triple is within reach. A row with few triples within reach is limited by the schema before extraction starts: rule 9 has 47 triples, of which 24 are within reach.
-- The values in the column `rules` were written by a model and are still to be reviewed by a person (`docs/improvements.md`, *The rules each ground truth triple uses, recorded per triple*).
+- The values in the column `rules` were drafted by a model, and I review them (`docs/improvements.md`, *The rules each ground truth triple uses, recorded per triple*).
 - The extractions were made with the rules of 2026-11-05, before the rules changed on 2026-11-12 and 2026-11-13.
 
 ## The table

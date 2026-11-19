@@ -1,6 +1,6 @@
 # Scores by kind of record
 
-Preliminary, computed on 2026-11-13, still to be reviewed by a person.
+Computed on 2026-11-13.
 
 ## What this is
 

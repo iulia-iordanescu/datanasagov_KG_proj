@@ -1,6 +1,6 @@
 # What extracting from the whole catalog would take
 
-Preliminary, computed on 2026-11-13, still to be reviewed by a person.
+Computed on 2026-11-13.
 
 ## What is missing
 

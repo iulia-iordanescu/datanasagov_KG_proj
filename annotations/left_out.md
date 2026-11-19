@@ -2,7 +2,7 @@
 
 Statements of a [record](../docs/terminology.md#1-records-and-their-text)'s [text](../docs/terminology.md#1-records-and-their-text) that have no [ground truth triple](../docs/terminology.md#4-ground-truth-and-samples), because I decided so or a rule of the [annotation guidelines](guidelines.md) says so. It is the one place where I keep them, so that what the [ground truth](../docs/terminology.md#4-ground-truth-and-samples) leaves out is not lost: some of these words carry information I may want back once an expert answers a question, or once the schema can say it. Terms: [docs/terminology.md](../docs/terminology.md).
 
-One section per record I have annotated, in [pool](../docs/terminology.md#4-ground-truth-and-samples) order. Each item has the exact words (quoted from the record's text, as in `outputs/intermediate_results/020_clean/records.jsonl`), the rule that excluded them (quoted from `guidelines.md`), a *May matter because* line when the words carry information worth keeping, and the question in `questions_for_experts.md` that asks about it, if there is one. Left out here is not the same as wrong: a statement written in other words, or as part of a bigger ground truth triple, is not listed. Nor is a record's "is a data set" (the [describes class](../docs/terminology.md#2-triples) says it). Nor are all the type words that rule 23 of *Writing a classed triple* leaves out ("Take out a type word that only describes the thing,"): the items below name some of them, not every one. When I annotate a record, I add its section; when an expert's answer brings a statement back as a ground truth triple, I delete its item. An item that waits on an expert's answer (its rule is rule 2's "or it waits on an expert's answer") has its would-be ground truth triple in `annotations/pending_triples.csv`, so that step 070 doesn't count an extracted triple that matches it as wrong, or a note "No clear would-be triple:" that says why it has none.
+One section per record I have annotated, in [pool](../docs/terminology.md#4-ground-truth-and-samples) order. The records marked as annotated on 2026-11-13 with the rules frozen were annotated by a model (Claude Opus 5.5), and I review each of them. Each item has the exact words (quoted from the record's text, as in `outputs/intermediate_results/020_clean/records.jsonl`), the rule that excluded them (quoted from `guidelines.md`), a *May matter because* line when the words carry information worth keeping, and the question in `questions_for_experts.md` that asks about it, if there is one. Left out here is not the same as wrong: a statement written in other words, or as part of a bigger ground truth triple, is not listed. Nor is a record's "is a data set" (the [describes class](../docs/terminology.md#2-triples) says it). Nor are all the type words that rule 23 of *Writing a classed triple* leaves out ("Take out a type word that only describes the thing,"): the items below name some of them, not every one. When I annotate a record, I add its section; when an expert's answer brings a statement back as a ground truth triple, I delete its item. An item that waits on an expert's answer (its rule is rule 2's "or it waits on an expert's answer") has its would-be ground truth triple in `annotations/pending_triples.csv`, so that step 070 doesn't count an extracted triple that matches it as wrong, or a note "No clear would-be triple:" that says why it has none.
 
 ## "NASA Standards and and Technical Assistance Resource Tool" (pool position 0, id 3122be4c-b9d0-4cc9-b6d3-9b96c6e743da)
 
@@ -228,7 +228,7 @@ The dense record: its notes describe a whole family of products (several tempora
 
 ## "ROSETTA-ORBITER PRELANDING OSINAC 2 EDR MTP003 V2.0" (pool position 8, id 938ee451-561c-492d-9e24-fe9a1048b835)
 
-A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. 7 items, 2 that may matter.
+A held-out record, annotated on 2026-11-13 with the rules frozen. 7 items, 2 that may matter.
 
 - **Left out:** "2" (title, "OSINAC 2")
   - **Rule:** What counts as a fact, rule 1: "An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for"; a bare number is not "L" or "Level" followed by a number.
@@ -295,7 +295,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 
 ## "Shawano (SWNO) Ground-based Vector Magnetic Field (L2) 0.5 s Data" (pool position 11, id 1e16bbd4-0f3f-4f88-bda1-55a553c1282e)
 
-A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. 3 items, all 3 that may matter.
+A held-out record, annotated on 2026-11-13 with the rules frozen. 3 items, all 3 that may matter.
 
 - **Left out:** what "WI" stands for (notes, "Shawano, WI")
   - **Rule:** What counts as a fact, rule 1: "An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for, and what it stands for is never written, its entity class included". The record never says what WI is. Wikidata's Wisconsin (Q1537) has "WI" among its other names and is an instance of "U.S. state", a kind that fits no entity class of the ground truth schema (Country is "a nation", and SpatialExtent is "an area the data cover", which the record does not say of Wisconsin), so the name stays unexplained (https://www.wikidata.org/wiki/Q1537, checked on 2026-11-13). "Shawano, WI" and "Shawano (SWNO)" name one station, written "Shawano (SWNO)" (rule 23 of *Writing a classed triple*, test 4: the wording the record gives first).
@@ -449,7 +449,7 @@ The notes are mostly the abstract of the study the table comes from; whether a s
 
 ## "MARS EXPRESS ASPERA-3 RAW EDR ELECTRON SPECTROMTR EXT2 V1.0" (pool position 14, id 7400495e-f11f-475f-a647-070bc2f82a92)
 
-A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. 5 items, none that may matter.
+A held-out record, annotated on 2026-11-13 with the rules frozen. 5 items, none that may matter.
 
 - **Left out:** "EDR" (title)
   - **Rule:** What counts as a fact, rule 1: "An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for"
@@ -548,7 +548,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 
 ## "ROSETTA-ORBITER 67P OSIWAC 4 EXT3-MTP033 RDR-STR-REFL V1.0" (pool position 17, id 792e45e8-e7fb-427f-a3fb-2c1dac5f545f)
 
-A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. 9 items, 3 that may matter.
+A held-out record, annotated on 2026-11-13 with the rules frozen. 9 items, 3 that may matter.
 
 - **Left out:** "MTP033" (title, "EXT3-MTP033")
   - **Rule:** What counts as a fact, rule 1: "An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for"
@@ -740,7 +740,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 
 ## "Merged Catalog of Reflection Nebulae" (pool position 20, id a2d5781a-3b10-4bac-8993-295f235db4e4)
 
-A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. 7 items, 4 that may matter.
+A held-out record, annotated on 2026-11-13 with the rules frozen. 7 items, 4 that may matter.
 
 - **Left out:** "Merged" (title) and "have been merged" (notes, "Several catalogs of reflection nebulae have been merged to create a uniform catalog") as a method
   - **Rule:** Writing a classed triple, rule 24: "A verb or participle that says only what was done to the data ("corrected", "calibrated", "detrended", "binned", "mapped", "edited", "convert", "weighted") names no method"
@@ -802,7 +802,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 
 ## "SOLVE I Ground Site Data" (pool position 23, id ccbc2b1c-cfa2-4867-9981-a845b91d90ab)
 
-A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. 17 items, 5 that may matter.
+A held-out record, annotated on 2026-11-13 with the rules frozen. 17 items, 5 that may matter.
 
 - **Left out:** "ground site" (title, "Ground Site Data", and notes, "the ground site data")
   - **Rule:** What counts as a fact, rule 9: "A ground truth triple needs a subject and an object the record names"
@@ -931,7 +931,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 
 ## "VIIRS/NPP BRDF/Albedo NBAR at Solar Noon Band M4 Daily L3 Global 30ArcSec CMG V002" (pool position 26, id b5ef7c20-8253-4c10-91bb-a24f4d26147e)
 
-A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. 14 items, 5 that may matter.
+A held-out record, annotated on 2026-11-13 with the rules frozen. 14 items, 5 that may matter.
 
 - **Left out:** "NASA/NOAA" as a fact of its own (notes)
   - **Rule:** What counts as a fact, rule 1: "Only what the record states." The words name the two agencies and the platform, and do not say how they are related (whether the agencies built the platform, launched it or operate it), so they state no fact (rule 2, *A fact inside a name*: "When the naming states more than one predicate, or none, the name's words give no ground truth triple"). "NASA/NOAA" stays in the platform's instance, "NASA/NOAA Suomi National Polar-orbiting Partnership (Suomi NPP)", as in the record "VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002".
@@ -978,7 +978,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 
 ## "STEREO-A/SECCHI/HI-1 FITS data" (pool position 27, id 4b4681f4-215b-499c-864f-6f405743c775)
 
-A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. 9 items, 2 that may matter.
+A tuning record, annotated on 2026-11-13 with the rules frozen. 9 items, 2 that may matter.
 
 - **Left out:** what "STEREO-A" is (title)
   - **Rule:** What counts as a fact, rule 1: "An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for, and what it stands for is never written, its entity class included". The record never says what STEREO-A is. Its entity class, Platform, is written (FROM_PLATFORM "STEREO-A"), by rule 1's *A name the record does not explain*.
@@ -1013,7 +1013,7 @@ A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the r
 
 ## "STEREO-B SWAVES One minute averages of the high (hfr) frequency receiver data." (pool position 28, id ba80e9b9-ff1a-4484-a6d5-78a086d66f2f)
 
-A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. 7 items, 3 that may matter.
+A tuning record, annotated on 2026-11-13 with the rules frozen. 7 items, 3 that may matter.
 
 - **Left out:** what "STEREO-B" is (title)
   - **Rule:** What counts as a fact, rule 1: "An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for, and what it stands for is never written, its entity class included". The record never says what STEREO-B is. Its entity class, Platform, is written (FROM_PLATFORM "STEREO-B"), by rule 1's *A name the record does not explain*.
@@ -1042,7 +1042,7 @@ A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the r
 
 ## "MARS EXPRESS MARS MRS 1/2/3 EXTENDED MISSION 8 4193 V1.0" (pool position 29, id 6e6951d6-8ffd-4923-9b12-39d44ce6814d)
 
-A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. 6 items, 2 that may matter.
+A held-out record, annotated on 2026-11-13 with the rules frozen. 6 items, 2 that may matter.
 
 - **Left out:** "1/2/3" (title)
   - **Rule:** What counts as a fact, rule 1: "An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for"
@@ -1069,7 +1069,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 
 ## "MARS EXPRESS ASPERA-3 RAW EDR ION MASS ANALYZER EXT7 V1.0" (pool position 30, id 512dbadc-69c4-4e09-92d7-69887c4ba392)
 
-A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. The record repeats the text of the held-out record "MARS EXPRESS ASPERA-3 RAW EDR ELECTRON SPECTROMTR EXT2 V1.0" (pool position 14), with another instrument and another mission extension, and its decisions are copied from that record. 5 items, none that may matter.
+A tuning record, annotated on 2026-11-13 with the rules frozen. The record repeats the text of the held-out record "MARS EXPRESS ASPERA-3 RAW EDR ELECTRON SPECTROMTR EXT2 V1.0" (pool position 14), with another instrument and another mission extension, and its decisions are copied from that record. 5 items, none that may matter.
 
 - **Left out:** "EDR" (title)
   - **Rule:** What counts as a fact, rule 1: "An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for"
@@ -1090,7 +1090,7 @@ A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the r
 
 ## "Gateway to Astronaut Photography of Earth" (pool position 31, id c4534993-09d1-468b-8bf1-febed049fd8c)
 
-A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. Its describes class is WebTool, the entity class of the thing the title names, a gateway to photographs; the notes describe a gazetteer of planetary names instead (the first item). 7 items, 3 that may matter.
+A tuning record, annotated on 2026-11-13 with the rules frozen. Its describes class is WebTool, the entity class of the thing the title names, a gateway to photographs; the notes describe a gazetteer of planetary names instead (the first item). 7 items, 3 that may matter.
 
 - **Left out:** the title's "Gateway to Astronaut Photography of Earth" against the notes' "This gazetteer contains detailed information about all names of topographic and albedo features on planets and satellites" (title and notes), as a conflict to correct
   - **Rule:** Finishing a record, *A record that contradicts itself*: "write what each passage states (rule 1 of What counts as a fact), and correct neither from outside knowledge." Both are written: HAS_TARGET "Earth" from the title, and the two HAS_VARIABLE and four HAS_TARGET triples of the gazetteer from the notes, all for the thing the title names ("This gazetteer" is the catalog entry, rule 23 of *Writing a classed triple*, *The title's instance*).
@@ -1117,7 +1117,7 @@ A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the r
 
 ## "WMAP 7-Year Internal Templates and Needlets New Source Catalog" (pool position 32, id c2488fc9-0b15-4105-b245-85d889ac84c4)
 
-A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. 14 items, 6 that may matter.
+A held-out record, annotated on 2026-11-13 with the rules frozen. 14 items, 6 that may matter.
 
 - **Left out:** "new" (notes, "a new needlet-based method") and "New" (title, "New Source Catalog")
   - **Rule:** What counts as a fact, rule 10: "Take out "latest", "current", "now", "then available", and words like them."
@@ -1169,7 +1169,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 
 ## "NEAR GRS SPECTRA FOR CRUISE 4 PHASE" (pool position 33, id 4e7099c7-0f26-4d6e-a351-bf9c2c61b0f6)
 
-A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. 5 items, 2 that may matter.
+A tuning record, annotated on 2026-11-13 with the rules frozen. 5 items, 2 that may matter.
 
 - **Left out:** "phase" and "mission" (notes, "the fourth cruise phase of the NEAR mission")
   - **Rule:** Writing a classed triple, rule 23: "Take out a type word that only describes the entity,"
@@ -1191,7 +1191,7 @@ A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the r
 
 ## "OrbView-2 SeaWiFS Global Binned Chlorophyll (CHL) Data, version R2022.0" (pool position 34, id 0efa4f80-4a96-4b07-9d2f-1d0315038d68)
 
-A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. 4 items, 3 that may matter.
+A tuning record, annotated on 2026-11-13 with the rules frozen. 4 items, 3 that may matter.
 
 - **Left out:** "Binned" (title, "Global Binned Chlorophyll (CHL) Data")
   - **Rule:** Writing a classed triple, rule 24: "A verb or participle that says only what was done to the data ("corrected", "calibrated", "detrended", "binned", "mapped", "edited", "convert", "weighted") names no method"
@@ -1211,7 +1211,7 @@ A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the r
 
 ## "MARS EXPRESS SUN MRS 1/2/3 EXTENDED MISSION 5 3750 V1.0" (pool position 35, id 25ad28f9-4dab-4d1a-9d77-dc648c793d5c)
 
-A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. 6 items, 2 that may matter.
+A held-out record, annotated on 2026-11-13 with the rules frozen. 6 items, 2 that may matter.
 
 - **Left out:** "1/2/3" (title)
   - **Rule:** What counts as a fact, rule 1: "An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for"
@@ -1238,7 +1238,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 
 ## "CASSINI ORBITER SATURN UVIS IMAGE AT ONE WAVELENGTH 1.2" (pool position 36, id c5292e93-705c-4ac6-b0da-ba42c3dbdbfd)
 
-A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. 6 items, 2 that may matter.
+A tuning record, annotated on 2026-11-13 with the rules frozen. 6 items, 2 that may matter.
 
 - **Left out:** "1.2" (title)
   - **Rule:** What counts as a fact, rule 1: "An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for"; a bare number is not "V" or "Version" followed by a number.
@@ -1263,7 +1263,7 @@ A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the r
 
 ## "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP019 RDR-INFLDSTR V1.0" (pool position 37, id 8fa4b5c9-61e1-4331-92a1-51387242f4f1)
 
-A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. The record repeats the text of the tuning record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (pool position 13), with another planning period and another period covered, and its decisions are copied from that record. 8 items, 3 that may matter.
+A tuning record, annotated on 2026-11-13 with the rules frozen. The record repeats the text of the tuning record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (pool position 13), with another planning period and another period covered, and its decisions are copied from that record. 8 items, 3 that may matter.
 
 - **Left out:** "MTP019" (title, "ESC3-MTP019")
   - **Rule:** What counts as a fact, rule 1: "An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for"
@@ -1295,7 +1295,7 @@ A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the r
 
 ## "VIIRS/NOAA20 Dark Target Aerosol 6-Min L2 Swath 6 km" (pool position 38, id 6ed59de2-47ac-488a-8641-dbe6223fb0e6)
 
-A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. 18 items, 5 that may matter.
+A held-out record, annotated on 2026-11-13 with the rules frozen. 18 items, 5 that may matter.
 
 - **Left out:** "satellite-derived" (notes, "provides satellite-derived measurements of Aerosol Optical Thickness (AOT)")
   - **Rule:** What counts as a fact, rule 9: "A ground truth triple needs a subject and an object the record names"
@@ -1356,7 +1356,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 
 ## "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1228 V1.0" (pool position 39, id 874b6cc8-0d16-4efc-8125-f82aea1ef45f)
 
-A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. The record repeats the text of the tuning record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (pool position 1), with another measurement number and another period covered, and its decisions are copied from that record. 6 items, 2 that may matter.
+A tuning record, annotated on 2026-11-13 with the rules frozen. The record repeats the text of the tuning record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (pool position 1), with another measurement number and another period covered, and its decisions are copied from that record. 6 items, 2 that may matter.
 
 - **Left out:** "1/2/3" (title)
   - **Rule:** What counts as a fact, rule 1: "An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for"
@@ -1381,7 +1381,7 @@ A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the r
 
 ## "Model-Based Fault Detection and Diagnosis System for NASA Mars Subsurface Drill Prototype" (pool position 40, id 7404b473-5ea2-4383-b367-86a5c8d2a1b8)
 
-A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. Its describes class is Document: the notes call the catalog entry "This paper", and the title is the paper's title. The facts of the paper are what it covers (DOCUMENTED_AT, from the thing covered to the paper). The places of the field tests are written as Place, coined for this record, since SpatialExtent is an area the data cover. 9 items, 2 that may matter.
+A tuning record, annotated on 2026-11-13 with the rules frozen. Its describes class is Document: the notes call the catalog entry "This paper", and the title is the paper's title. The facts of the paper are what it covers (DOCUMENTED_AT, from the thing covered to the paper). The places of the field tests are written as Place, coined for this record, since SpatialExtent is an area the data cover. 9 items, 2 that may matter.
 
 - **Left out:** "for NASA Mars Subsurface Drill Prototype" (title), and "NASA" in it
   - **Rule:** Writing a classed triple, rule 17: "A title's words give a fact only where a predicate fits what they state" (*A title's facts*)
@@ -1414,7 +1414,7 @@ A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the r
 
 ## "First ISCCP Regional Experiment (FIRE) Cirrus Phase II Raman Lidar Data" (pool position 41, id 26714637-d3cd-4e11-9600-5b764346bef3)
 
-A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. 12 items, 6 that may matter.
+A held-out record, annotated on 2026-11-13 with the rules frozen. 12 items, 6 that may matter.
 
 - **Left out:** what "First ISCCP Regional Experiment (FIRE)" is (title and notes)
   - **Rule:** What counts as a fact, rule 1: "An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for, and what it stands for is never written, its entity class included". The name's kind word, "Experiment", fits more than one entity class: a named effort to collect data (Mission), or a device (Instrument), as "Stratospheric Aerosol and Gas Experiment (SAGE) III" in the record "SOLVE I Ground Site Data". No reference of rule 1's *A name the record does not explain* names it: the GCMD Platforms, Instruments and Providers keywords (version 25.2) and Wikidata have no entry for it (checked on 2026-11-13). I read the record's own sentences as its explanation: FIRE has goals, its "four intensive field-observation periods were planned and executed", and "Each mission combined coordinated satellite, airborne, and surface observations". They fit the definition of Mission ("a named effort to collect data, from space, from the air, on water or on the ground") and of no other entity class, so Mission is written (FROM_MISSION, HAS_PURPOSE, HAS_NUMBER_OF, and the periods' PART_OF).
@@ -1457,7 +1457,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 
 ## "ROSETTA-ORBITER 67P RSI 1/2/3 PRELANDING 0230 V1.0" (pool position 42, id c8dde77f-9954-44fe-ad72-1f065efc34ca)
 
-A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. The record repeats the text of the tuning record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1228 V1.0" (pool position 39), with another mission phase, another measurement number and another period covered, and its decisions are copied from that record. They differ in one ground truth triple: the phase's name "PRELANDING" holds no word for the comet, unlike "COMET ESCORT 4", so the phase has no HAS_TARGET triple here. 6 items, 2 that may matter.
+A tuning record, annotated on 2026-11-13 with the rules frozen. The record repeats the text of the tuning record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1228 V1.0" (pool position 39), with another mission phase, another measurement number and another period covered, and its decisions are copied from that record. They differ in one ground truth triple: the phase's name "PRELANDING" holds no word for the comet, unlike "COMET ESCORT 4", so the phase has no HAS_TARGET triple here. 6 items, 2 that may matter.
 
 - **Left out:** "1/2/3" (title)
   - **Rule:** What counts as a fact, rule 1: "An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for"
@@ -1482,7 +1482,7 @@ A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the r
 
 ## "VG2 NEP PLS DERIVED RDR ION INBOUND S-WIND 48SEC V1.0" (pool position 43, id cd62b985-b784-4df3-a0d0-cb9a5725349f)
 
-A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. Its title is read as the titles of the tuning record "VG1 J/S/SS PWS EDITED SPECTRUM ANALYZER FULL RES V1.0" (pool position 16) and the held-out record "VG2 JUP LECP CALIBRATED RESAMPLED SECTORED 15MIN V1.1" (pool position 92) are: "VG2" is Voyager 2, and the target's code begins the name the notes give. 11 items, 3 that may matter.
+A tuning record, annotated on 2026-11-13 with the rules frozen. Its title is read as the titles of the tuning record "VG1 J/S/SS PWS EDITED SPECTRUM ANALYZER FULL RES V1.0" (pool position 16) and the held-out record "VG2 JUP LECP CALIBRATED RESAMPLED SECTORED 15MIN V1.1" (pool position 92) are: "VG2" is Voyager 2, and the target's code begins the name the notes give. 11 items, 3 that may matter.
 
 - **Left out:** "best available" (notes, "the best available values")
   - **Rule:** What counts as a fact, rule 10: "Take out "latest", "current", "now", "then available", and words like them."
@@ -1521,7 +1521,7 @@ A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the r
 
 ## "ROSETTA-ORBITER 67P NAVCAM 2 COMET ESCORT 3 MTP019 V1.0" (pool position 44, id 87c1785c-4218-427d-a502-8ef5c6d7436a)
 
-A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. 9 items, 2 that may matter.
+A held-out record, annotated on 2026-11-13 with the rules frozen. 9 items, 2 that may matter.
 
 - **Left out:** "2" (title, "NAVCAM 2")
   - **Rule:** What counts as a fact, rule 1: "An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for"; a bare number is not "L" or "Level" followed by a number.
@@ -1555,7 +1555,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 
 ## "STARDUST 9P/TEMPEL 1 NAVCAM 2 NEXT V1.0" (pool position 45, id dee11ff1-e2df-44a2-b43a-872a82f68405)
 
-A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. Its decisions follow those of the tuning record "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (pool position 9), whose text names the same craft, mission and comet, and of the held-out record "DEEP IMPACT 9P/TEMPEL CRUISE - RAW MRI NAV IMAGES V1.0" (pool position 53), whose text also lists the images its data set contains. As there, each kind of image the record lists is a part of the record's dataset (PART_OF), and the instrument, the mission phase and the mission that the record states for the images are written as facts of the record's dataset. 6 items, 1 that may matter.
+A tuning record, annotated on 2026-11-13 with the rules frozen. Its decisions follow those of the tuning record "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (pool position 9), whose text names the same craft, mission and comet, and of the held-out record "DEEP IMPACT 9P/TEMPEL CRUISE - RAW MRI NAV IMAGES V1.0" (pool position 53), whose text also lists the images its data set contains. As there, each kind of image the record lists is a part of the record's dataset (PART_OF), and the instrument, the mission phase and the mission that the record states for the images are written as facts of the record's dataset. 6 items, 1 that may matter.
 
 - **Left out:** "2" (title, "NAVCAM 2") and "EDR" (notes, "EDR pre- and post-encounter and encounter images")
   - **Rule:** What counts as a fact, rule 1: "An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for"; a bare number is not "L" or "Level" followed by a number.
@@ -1581,7 +1581,7 @@ A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the r
 
 ## "Software Infrastructure to Enable Modeling & Simulation as a Service (M&SaaS) Project" (pool position 46, id 2d450311-b390-4fbd-9394-16132d43f426)
 
-A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. Its describes class is Project, the entity class of the thing the title names, a named effort to build something, as the DAME project is in the record "Model-Based Fault Detection and Diagnosis System for NASA Mars Subsurface Drill Prototype" (pool position 40). The notes repeat the title, and the one fact written is the one that the words "to Enable" state inside the name. 3 items, 1 that may matter.
+A tuning record, annotated on 2026-11-13 with the rules frozen. Its describes class is Project, the entity class of the thing the title names, a named effort to build something, as the DAME project is in the record "Model-Based Fault Detection and Diagnosis System for NASA Mars Subsurface Drill Prototype" (pool position 40). The notes repeat the title, and the one fact written is the one that the words "to Enable" state inside the name. 3 items, 1 that may matter.
 
 - **Left out:** the notes, "Software Infrastructure to Enable Modeling & Simulation as a Service (M&SaaS) Project"
   - **Rule:** Writing a classed triple, rule 16: "Each fact once, even if the record states it twice or in other words."
@@ -1596,7 +1596,7 @@ A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the r
 
 ## "Privacy Preserving Distributed Data Mining" (pool position 47, id 7615f547-e889-493f-b13b-0b54a3029a71)
 
-A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. The record states no facts, so it keeps its describes triple alone. Its describes class is Algorithm, since the title names a kind of data mining, a method, and the text never says what the catalog entry holds. 4 items, 1 that may matter.
+A held-out record, annotated on 2026-11-13 with the rules frozen. The record states no facts, so it keeps its describes triple alone. Its describes class is Algorithm, since the title names a kind of data mining, a method, and the text never says what the catalog entry holds. 4 items, 1 that may matter.
 
 - **Left out:** "Distributed data mining from privacy-sensitive multi-party data is likely to play an important role in the next generation of integrated vehicle health monitoring systems." (notes)
   - **Rule:** What counts as a fact, rule 7: "Not facts the record doesn't assert as true: uncertain ones, and ones it requires, requests or recommends."
@@ -1614,7 +1614,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 
 ## "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 2 0728 V1.0" (pool position 48, id 58210ae6-8fa8-4552-a52e-436cd3433c3d)
 
-A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. The record repeats the text of the tuning record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1228 V1.0" (pool position 39), with another mission phase, another measurement number and another period covered, and its decisions are copied from that record. 6 items, 2 that may matter.
+A tuning record, annotated on 2026-11-13 with the rules frozen. The record repeats the text of the tuning record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1228 V1.0" (pool position 39), with another mission phase, another measurement number and another period covered, and its decisions are copied from that record. 6 items, 2 that may matter.
 
 - **Left out:** "1/2/3" (title)
   - **Rule:** What counts as a fact, rule 1: "An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for"
@@ -1639,7 +1639,7 @@ A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the r
 
 ## "ARCTAS Model Data" (pool position 49, id 01432301-e0a8-4138-b1a1-ed57954c5fd6)
 
-A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. The data set holds model output along the flight tracks of the aircraft of a field mission; most of the notes tell the mission, whose facts are general facts about something the record's dataset relates to (rule 21 of *Writing a classed triple*). 17 items, 7 that may matter.
+A tuning record, annotated on 2026-11-13 with the rules frozen. The data set holds model output along the flight tracks of the aircraft of a field mission; most of the notes tell the mission, whose facts are general facts about something the record's dataset relates to (rule 21 of *Writing a classed triple*). 17 items, 7 that may matter.
 
 - **Left out:** "field campaign" (notes, "ARCTAS was a field campaign") and "mission" (notes, "the Arctic Research of the Composition of the Troposphere from Aircraft & Satellites (ARCTAS) mission")
   - **Rule:** What counts as a fact, rule 4: "A sentence that says what type of entity an instance refers to ("Kestrel is an imager") gives no ground truth triple: the instance's entity class says it"
@@ -1701,7 +1701,7 @@ A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the r
 
 ## "VIIRS/NPP BRDF/Albedo Parameter 1 Band M3 Daily L3 Global 30 ArcSec CMG V002" (pool position 50, id 28e8b8fd-4463-4794-b810-44934fd449f6)
 
-A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. Its text is that of the record "VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002" with another parameter, band and identifier, and it is annotated the same way. 16 items, 6 that may matter.
+A held-out record, annotated on 2026-11-13 with the rules frozen. Its text is that of the record "VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002" with another parameter, band and identifier, and it is annotated the same way. 16 items, 6 that may matter.
 
 - **Left out:** "NASA/NOAA" as a fact of its own (notes)
   - **Rule:** What counts as a fact, rule 1: "Only what the record states." The words name the two agencies and the platform, and do not say how they are related (whether the agencies built the platform, launched it or operate it), so they state no fact (rule 2, *A fact inside a name*: "When the naming states more than one predicate, or none, the name's words give no ground truth triple"). "NASA/NOAA" stays in the platform's instance, "NASA/NOAA Suomi National Polar-orbiting Partnership (Suomi NPP)", as in the record "VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002".
@@ -1753,7 +1753,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 
 ## "BARREL 2K X-ray Spectrometer (MSPC) Bremsstrahlung X-ray Spectrum Medium Time Resolution, Level 2, 4 s Data" (pool position 51, id 2445fb91-d303-487f-a07e-6f0d0742c338)
 
-A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. The record repeats the text of the held-out record "BARREL 2D X-ray Spectrometer (SSPC) Bremsstrahlung X-ray Spectrum Slow Time Resolution, Level 2, 32 s Data" (pool position 71), with another payload, another variable, another number of channels, another time resolution and another energy range, and its decisions are copied from that record. Its paragraphs about the mission repeat those of the tuning record "BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data" (pool position 19), whose decisions are the same. 45 items, 18 that may matter.
+A tuning record, annotated on 2026-11-13 with the rules frozen. The record repeats the text of the held-out record "BARREL 2D X-ray Spectrometer (SSPC) Bremsstrahlung X-ray Spectrum Slow Time Resolution, Level 2, 32 s Data" (pool position 71), with another payload, another variable, another number of channels, another time resolution and another energy range, and its decisions are copied from that record. Its paragraphs about the mission repeat those of the tuning record "BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data" (pool position 19), whose decisions are the same. 45 items, 18 that may matter.
 
 - **Left out:** "2K" (title)
   - **Rule:** What counts as a fact, rule 1: "An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for"
@@ -1883,7 +1883,7 @@ A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the r
 
 ## "SENTINEL-1B_METADATA_RAW" (pool position 52, id 0c8a329f-6510-4167-9295-2437ca71e66e)
 
-A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. Its describes class is Dataset: the notes call the catalog entry metadata, information about another product's data. No predicate of the ground truth schema says that one dataset is the metadata of another, so METADATA_FOR was coined for this record ("holds the metadata of this one: information that describes its data"). 4 items, 1 that may matter.
+A tuning record, annotated on 2026-11-13 with the rules frozen. Its describes class is Dataset: the notes call the catalog entry metadata, information about another product's data. No predicate of the ground truth schema says that one dataset is the metadata of another, so METADATA_FOR was coined for this record ("holds the metadata of this one: information that describes its data"). 4 items, 1 that may matter.
 
 - **Left out:** "Metadata" as what the catalog entry is (notes, "Metadata for Sentinel-1B level zero product")
   - **Rule:** What counts as a fact, rule 4: "the type is left out, and the belonging is a ground truth triple"
@@ -1901,7 +1901,7 @@ A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the r
 
 ## "DEEP IMPACT 9P/TEMPEL CRUISE - RAW MRI NAV IMAGES V1.0" (pool position 53, id 7edfd387-7276-4030-b01e-a15d6f7da5c9)
 
-A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. 6 items, 1 that may matter.
+A held-out record, annotated on 2026-11-13 with the rules frozen. 6 items, 1 that may matter.
 
 - **Left out:** "These observations were used for optical and autonomous navigation (NAV) of the flyby spacecraft." (notes), and the title's "NAV"
   - **Rule:** What counts as a fact, rule 9: "What data have been used for, or can be used for, is a fact of the work that used them, not of the data: when the record doesn't name that work, the use gives no ground truth triple."
@@ -1925,7 +1925,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 
 ## "BOREAS TF-08 NSA-OJP and SSA-OBS Ceilometer Data" (pool position 54, id 002f1a9d-b125-4908-a75d-4c75fe344438)
 
-A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. The team that collected the data is written as the party that made the record's dataset (DEVELOPED_BY_PARTY, as for a catalog "created by" an archive in the record "Ensemble X-Ray Variability of AGN in 2XMMi-DR3"), and the sites where the data were collected as the areas the data cover (HAS_SPATIAL_COVERAGE). 6 items, 3 that may matter.
+A tuning record, annotated on 2026-11-13 with the rules frozen. The team that collected the data is written as the party that made the record's dataset (DEVELOPED_BY_PARTY, as for a catalog "created by" an archive in the record "Ensemble X-Ray Variability of AGN in 2XMMi-DR3"), and the sites where the data were collected as the areas the data cover (HAS_SPATIAL_COVERAGE). 6 items, 3 that may matter.
 
 - **Left out:** what "BOREAS" is (title, and notes, "The BOREAS TF-08 team")
   - **Rule:** What counts as a fact, rule 1: "An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for, and what it stands for is never written, its entity class included". No reference of rule 1's *A name the record does not explain* names it: the GCMD Instruments, Platforms and Providers keywords (version 25.2) have no entry for it, and Wikidata's entries named "Boreas" are a journal, a god of Greek myth and others, none of them a study of the Earth (checked on 2026-11-13). So the title's "BOREAS" gives no FROM_MISSION, and the team gives no PART_OF; the word stays in the team's instance (rule 11 of *Writing a classed triple*).
@@ -1950,7 +1950,7 @@ A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the r
 
 ## "ROSETTA-ORBITER 67P OSIWAC 4 ESC2-MTP015 RDR-REFLECT V1.0" (pool position 55, id 7c37b7a0-c9d4-49aa-bf26-687a49d4e97f)
 
-A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. The record repeats the text of the tuning record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP019 RDR-INFLDSTR V1.0" (pool position 37), with another camera, another mission phase, another planning period, another period covered, fewer corrections, another unit and another review, and its decisions are copied from that record. 8 items, 3 that may matter.
+A tuning record, annotated on 2026-11-13 with the rules frozen. The record repeats the text of the tuning record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP019 RDR-INFLDSTR V1.0" (pool position 37), with another camera, another mission phase, another planning period, another period covered, fewer corrections, another unit and another review, and its decisions are copied from that record. 8 items, 3 that may matter.
 
 - **Left out:** "MTP015" (title, "ESC2-MTP015")
   - **Rule:** What counts as a fact, rule 1: "An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for"
@@ -1982,7 +1982,7 @@ A tuning record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the r
 
 ## "ROSETTA-ORBITER 67P ROSINA 2 EXT2 V2.0" (pool position 56, id 8e66de36-8623-4280-a913-02f03a930a91)
 
-A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. 8 items, none that may matter.
+A held-out record, annotated on 2026-11-13 with the rules frozen. 8 items, none that may matter.
 
 - **Left out:** what "COPS", "DFMS" and "RTOF" stand for (notes, "the COPS, DFMS and RTOF ROSINA sensors")
   - **Rule:** What counts as a fact, rule 1: "An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for"
@@ -2009,7 +2009,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 
 ## "VG1 SAT PWS EDITED SPECTRUM ANALYZER 4.0SEC V1.0" (pool position 59, id ef9ab3db-bef3-490f-8e24-0394345c39b6)
 
-A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. 15 items, 8 that may matter.
+A held-out record, annotated on 2026-11-13 with the rules frozen. 15 items, 8 that may matter.
 
 - **Left out:** "SAT" (title)
   - **Rule:** What counts as a fact, rule 1: "An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for"
@@ -2065,7 +2065,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 
 ## "CALIPSO Lidar Level 2 Vertical Feature Mask (VFM), V5-00" (pool position 62, id 9e49a827-733f-4a15-89e1-5f609f9a6b6e)
 
-A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. 12 items, 3 that may matter.
+A held-out record, annotated on 2026-11-13 with the rules frozen. 12 items, 3 that may matter.
 
 - **Left out:** "Lidar" (title) and "CALIPSO Lidar" (notes, "the Cloud-Aerosol Lidar and Infrared Pathfinder Satellite Observation (CALIPSO) Lidar Level 2 Vertical Feature Mask (VFM) data product") as facts of their own
   - **Rule:** Writing a classed triple, rule 16: "Each fact once, even if the record states it twice or in other words."
@@ -2107,7 +2107,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 
 ## "ROSETTA-ORBITER 67P NAVCAM 2 COMET ESCORT 1 MTP010 V1.1" (pool position 65, id 0ea5f919-f703-4edd-811d-cf4852a8d8a9)
 
-A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. 11 items, 3 that may matter.
+A held-out record, annotated on 2026-11-13 with the rules frozen. 11 items, 3 that may matter.
 
 - **Left out:** "2" (title, "NAVCAM 2")
   - **Rule:** What counts as a fact, rule 1: "An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for"; a bare number is not "L" or "Level" followed by a number.
@@ -2148,7 +2148,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 
 ## "BARREL 2C Tri-axial Fluxgate Magnetometer (MAGN) Magnetic Field Data, no Gain Correction, not Despun, Level 2, 0.25 s Data" (pool position 68, id 73ffdeec-4229-4411-af13-3a47cf604575)
 
-A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. 40 items, 18 that may matter.
+A held-out record, annotated on 2026-11-13 with the rules frozen. 40 items, 18 that may matter.
 
 - **Left out:** "2C" (title)
   - **Rule:** What counts as a fact, rule 1: "An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for"
@@ -2262,7 +2262,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 
 ## "BARREL 2D X-ray Spectrometer (SSPC) Bremsstrahlung X-ray Spectrum Slow Time Resolution, Level 2, 32 s Data" (pool position 71, id 4230ddcd-1523-4278-a7f2-7cb78262d2b7)
 
-A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. 45 items, 18 that may matter.
+A held-out record, annotated on 2026-11-13 with the rules frozen. 45 items, 18 that may matter.
 
 - **Left out:** "2D" (title)
   - **Rule:** What counts as a fact, rule 1: "An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for"
@@ -2392,7 +2392,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 
 ## "MARS EXPRESS SUN MRS 1/2/3 EXTENDED MISSION 8 4360 V1.0" (pool position 74, id 6d3c471e-464c-46d6-926c-ea7c5ae577cd)
 
-A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. 6 items, 2 that may matter.
+A held-out record, annotated on 2026-11-13 with the rules frozen. 6 items, 2 that may matter.
 
 - **Left out:** "1/2/3" (title)
   - **Rule:** What counts as a fact, rule 1: "An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for"
@@ -2419,7 +2419,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 
 ## "Hubble Source Catalog Detailed Search" (pool position 77, id 79f8f9dd-ff7f-40ee-bd2e-bfbee219ca18)
 
-A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. Its describes class is WebTool, since the title names a search and the notes say that it "displays an entry for each separate detection". 9 items, 3 that may matter.
+A held-out record, annotated on 2026-11-13 with the rules frozen. Its describes class is WebTool, since the title names a search and the notes say that it "displays an entry for each separate detection". 9 items, 3 that may matter.
 
 - **Left out:** "Hubble Source Catalog" and "Hubble" as facts of the search tool (title, "Hubble Source Catalog Detailed Search", and notes, "The Hubble Source Catalog (HSC) detailed search")
   - **Rule:** What counts as a fact, rule 2, *A fact inside a name*: "When the naming states more than one predicate, or none, the name's words give no ground truth triple, since choosing one would add what the record does not state."
@@ -2451,7 +2451,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 
 ## "ROSETTA-ORBITER 67P OSINAC 4 ESC4-MTP024 RDR-STRLIGHT V1.0" (pool position 80, id 29206dfa-52e6-4dc4-b0c7-4922bc68c5f0)
 
-A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. 8 items, 3 that may matter.
+A held-out record, annotated on 2026-11-13 with the rules frozen. 8 items, 3 that may matter.
 
 - **Left out:** "MTP024" (title, "ESC4-MTP024")
   - **Rule:** What counts as a fact, rule 1: "An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for"
@@ -2482,7 +2482,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 
 ## "ROSETTA-ORBITER 67P RSI 1/2/3 PRELANDING 0294 V1.0" (pool position 83, id 99c8679f-ad3a-41e6-b28b-d33f6b101250)
 
-A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. 6 items, 2 that may matter.
+A held-out record, annotated on 2026-11-13 with the rules frozen. 6 items, 2 that may matter.
 
 - **Left out:** "1/2/3" (title)
   - **Rule:** What counts as a fact, rule 1: "An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for"
@@ -2507,7 +2507,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 
 ## "ROSETTA-ORBITER 67P RSI 1/2/3 PRELANDING 0324 V1.0" (pool position 86, id b4c2a310-936f-44b9-b8b7-4d9a785d7163)
 
-A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. 6 items, 2 that may matter.
+A held-out record, annotated on 2026-11-13 with the rules frozen. 6 items, 2 that may matter.
 
 - **Left out:** "1/2/3" (title)
   - **Rule:** What counts as a fact, rule 1: "An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for"
@@ -2532,7 +2532,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 
 ## "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 3 0908 V1.0" (pool position 89, id 1c601946-f1b4-4479-8d66-2ffd38e5192a)
 
-A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. 6 items, 2 that may matter.
+A held-out record, annotated on 2026-11-13 with the rules frozen. 6 items, 2 that may matter.
 
 - **Left out:** "1/2/3" (title)
   - **Rule:** What counts as a fact, rule 1: "An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for"
@@ -2557,7 +2557,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 
 ## "VG2 JUP LECP CALIBRATED RESAMPLED SECTORED 15MIN V1.1" (pool position 92, id 7aeed9f7-aa69-44bf-8433-859c6c22e937)
 
-A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. 11 items, 6 that may matter.
+A held-out record, annotated on 2026-11-13 with the rules frozen. 11 items, 6 that may matter.
 
 - **Left out:** "CALIBRATED" and "RESAMPLED" (title), and "resampled" and "globally calibrated" (notes, "This data set consists of resampled data" and "The LECP data are globally calibrated")
   - **Rule:** Writing a classed triple, rule 24: "A verb or participle that says only what was done to the data ("corrected", "calibrated", "detrended", "binned", "mapped", "edited", "convert", "weighted") names no method"
@@ -2600,7 +2600,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 
 ## "Plasticity of the human IgM repertoire in response to a long-term spaceflight" (pool position 95, id 73521c6f-1378-4a8c-a47c-7626ee4f0de4)
 
-A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. 6 items, 2 that may matter.
+A held-out record, annotated on 2026-11-13 with the rules frozen. 6 items, 2 that may matter.
 
 - **Left out:** "Immune dysregulation is among the main adverse outcomes of spaceflight. Despite its crucial role in host protection effects on the human antibody repertoire are unknown." (notes)
   - **Rule:** What counts as a fact, rule 8: "Nothing else in the study is a fact of the record's dataset: its background, its findings, what it says about methods it did not use, and the details of its method beyond what rule 24 writes (how the method was applied, its parameters, what it allows)."
@@ -2624,7 +2624,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 
 ## "Dynamics and Chemistry of the Summer Stratosphere Radar and Satellite (Remote Sensing) Data Products" (pool position 98, id 972e69c6-676d-4b25-aaf8-e180a4745617)
 
-A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. The data set holds radar and satellite products made for a field campaign; the last paragraph of the notes tells the campaign, whose facts are general facts about something the record's dataset relates to (rule 21 of *Writing a classed triple*). 16 items, 8 that may matter.
+A held-out record, annotated on 2026-11-13 with the rules frozen. The data set holds radar and satellite products made for a field campaign; the last paragraph of the notes tells the campaign, whose facts are general facts about something the record's dataset relates to (rule 21 of *Writing a classed triple*). 16 items, 8 that may matter.
 
 - **Left out:** "sub-orbital campaign", "field campaign" and "research project" (notes, "the Dynamics and Chemistry of the Summer Stratosphere sub-orbital campaign" and "The Dynamics and Chemistry of the Summer Stratosphere (DCOTSS) field campaign is a NASA Earth Venture Suborbital research project")
   - **Rule:** What counts as a fact, rule 4: "A sentence that says what type of entity an instance refers to ("Kestrel is an imager") gives no ground truth triple: the instance's entity class says it"
@@ -2684,7 +2684,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 
 ## "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1202 V1.0" (pool position 101, id 0e0d4132-ea7e-4608-a588-5ec41fc18711)
 
-A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. The record repeats the text of the tuning record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1228 V1.0" (pool position 39), with another measurement number and another period covered, and its decisions are copied from that record. 6 items, 2 that may matter.
+A held-out record, annotated on 2026-11-13 with the rules frozen. The record repeats the text of the tuning record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1228 V1.0" (pool position 39), with another measurement number and another period covered, and its decisions are copied from that record. 6 items, 2 that may matter.
 
 - **Left out:** "1/2/3" (title)
   - **Rule:** What counts as a fact, rule 1: "An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for"
@@ -2709,7 +2709,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 
 ## "Lower eukaryotic isolates belonging to class Tremellomycetes isolated from International Space Station Genome sequencing and assembly" (pool position 104, id fe89cd38-cd50-4960-90bc-209a23854037)
 
-A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. The notes repeat the title's words in another order, so each fact is stated twice and written once (rule 16 of *Writing a classed triple*). The isolates are samples, a Dataset ("a set of observations, measurements, or samples"), and the record's dataset is made from them: the record's dataset COMPUTED_FROM "Lower eukaryotic isolates", with "Genome sequencing" as the way of measuring (USES_TECHNIQUE, as "high-throughput sequencing" is in the record "Plasticity of the human IgM repertoire in response to a long-term spaceflight") and "Genome assembly" as the method (PRODUCED_USING_ALGORITHM; rule 22 copies "Genome" onto both items). The isolates are written in the title's wording, the first of two that differ only in capitals (rule 23, *Capitals and punctuation*). 3 items, none that may matter.
+A held-out record, annotated on 2026-11-13 with the rules frozen. The notes repeat the title's words in another order, so each fact is stated twice and written once (rule 16 of *Writing a classed triple*). The isolates are samples, a Dataset ("a set of observations, measurements, or samples"), and the record's dataset is made from them: the record's dataset COMPUTED_FROM "Lower eukaryotic isolates", with "Genome sequencing" as the way of measuring (USES_TECHNIQUE, as "high-throughput sequencing" is in the record "Plasticity of the human IgM repertoire in response to a long-term spaceflight") and "Genome assembly" as the method (PRODUCED_USING_ALGORITHM; rule 22 copies "Genome" onto both items). The isolates are written in the title's wording, the first of two that differ only in capitals (rule 23, *Capitals and punctuation*). 3 items, none that may matter.
 
 - **Left out:** "class" (title and notes, the word before "Tremellomycetes")
   - **Rule:** Writing a classed triple, rule 23: "Take out a type word that only describes the entity,"
@@ -2723,7 +2723,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 
 ## "CPEX-CV Dropsonde Data" (pool position 107, id 22291a4f-d7fd-49ae-ae8c-2e18a38ed388)
 
-A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. The data set holds dropsonde data of a field campaign; most of the notes tell the campaign, whose facts are general facts about something the record's dataset relates to (rule 21 of *Writing a classed triple*). The notes tell the campaign in the future tense, as a plan, and also say that the data collection is complete. I read the statements in the future tense as asserted, since rule 7 of *What counts as a fact* leaves out only what the record does not assert as true, as "BARREL will make all its scientific data products quickly and publicly available" is written in the record "BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data". 10 items, 3 that may matter.
+A held-out record, annotated on 2026-11-13 with the rules frozen. The data set holds dropsonde data of a field campaign; most of the notes tell the campaign, whose facts are general facts about something the record's dataset relates to (rule 21 of *Writing a classed triple*). The notes tell the campaign in the future tense, as a plan, and also say that the data collection is complete. I read the statements in the future tense as asserted, since rule 7 of *What counts as a fact* leaves out only what the record does not assert as true, as "BARREL will make all its scientific data products quickly and publicly available" is written in the record "BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data". 10 items, 3 that may matter.
 
 - **Left out:** "campaign" (notes, "Convective Processes Experiment – Cabo Verde (CPEX-CV) campaign" and "the CPEX – Aerosols & Winds (CPEX-AW) campaign") and "missions" (notes, "previous CPEX and CPEX-AW missions")
   - **Rule:** What counts as a fact, rule 4: "A sentence that says what type of entity an instance refers to ("Kestrel is an imager") gives no ground truth triple: the instance's entity class says it"
@@ -2759,7 +2759,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 
 ## "UARS Cryogenic Limb Array Etalon Spectrometer (CLAES) Level 3AT V009 (UARCL3AT) at GES DISC" (pool position 110, id e7793e25-9923-44e2-8388-8f3fa0123f31)
 
-A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. The title's "(UARCL3AT)" is written as the record's dataset's HAS_IDENTIFIER: it stands after "V009", not right after the words it would abbreviate, so it is a code (rule 20 of *Writing a classed triple*), as "(H3ZFCGPH)" is in the record "HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH)". 6 items, 2 that may matter.
+A held-out record, annotated on 2026-11-13 with the rules frozen. The title's "(UARCL3AT)" is written as the record's dataset's HAS_IDENTIFIER: it stands after "V009", not right after the words it would abbreviate, so it is a code (rule 20 of *Writing a classed triple*), as "(H3ZFCGPH)" is in the record "HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH)". 6 items, 2 that may matter.
 
 - **Left out:** "alternating each satellite yaw cycle of about 36 days" (notes, "Data were collected between latitude 34S and 80N and 80S and 34N, alternating each satellite yaw cycle of about 36 days")
   - **Rule:** What counts as a fact, rule 9: "An amount or a count per member gives no ground truth triple, unless the predicate itself says "each" (HAS_GRANULE_DURATION, HAS_SPATIAL_RESOLUTION)."
@@ -2784,7 +2784,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 
 ## "ROSETTA-ORBITER EARTH OSIWAC 3 EAR2 RDR V2.0" (pool position 113, id bda58c07-f36f-459f-b1c8-40d4ac3c15a5)
 
-A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. Its text follows the held-out records "ROSETTA-ORBITER 67P OSIWAC 4 EXT3-MTP033 RDR-STR-REFL V1.0" (pool position 17) and "ROSETTA-ORBITER PRELANDING OSINAC 2 EDR MTP003 V2.0" (pool position 8), with another level, phase, period and target, and its decisions are copied from them where the words are the same. The phase's name holds the body the record names as its target, and gives "EARTH SWING-BY 2" HAS_TARGET "Earth", as a phase named with its comet gives "COMET ESCORT 4" HAS_TARGET "67P" in the record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0". 9 items, 3 that may matter.
+A held-out record, annotated on 2026-11-13 with the rules frozen. Its text follows the held-out records "ROSETTA-ORBITER 67P OSIWAC 4 EXT3-MTP033 RDR-STR-REFL V1.0" (pool position 17) and "ROSETTA-ORBITER PRELANDING OSINAC 2 EDR MTP003 V2.0" (pool position 8), with another level, phase, period and target, and its decisions are copied from them where the words are the same. The phase's name holds the body the record names as its target, and gives "EARTH SWING-BY 2" HAS_TARGET "Earth", as a phase named with its comet gives "COMET ESCORT 4" HAS_TARGET "67P" in the record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0". 9 items, 3 that may matter.
 
 - **Left out:** "RDR" (title)
   - **Rule:** What counts as a fact, rule 1: "An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for"
@@ -2819,7 +2819,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 
 ## "MMS 3 Magnetic Ephemeris and Coordinates (MEC) and Support (Tsyganenko 2004 model, Dynamic conditions), Level 2 (L2), Survey Mode, 30 s Data" (pool position 116, id d5d2e3f1-ff5b-49e4-b9f9-79f7705bd79f)
 
-A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. The data set holds the position and the magnetic surroundings of one spacecraft, most of them computed with field models; each variable the notes name is written as HAS_VARIABLE or, for the "ancillary variables", HAS_ANCILLARY_DATA. The title's "Survey Mode" is written as USES_TECHNIQUE, the way the data were taken, since no other predicate of the ground truth schema fits a mode of operation. 11 items, 4 that may matter.
+A held-out record, annotated on 2026-11-13 with the rules frozen. The data set holds the position and the magnetic surroundings of one spacecraft, most of them computed with field models; each variable the notes name is written as HAS_VARIABLE or, for the "ancillary variables", HAS_ANCILLARY_DATA. The title's "Survey Mode" is written as USES_TECHNIQUE, the way the data were taken, since no other predicate of the ground truth schema fits a mode of operation. 11 items, 4 that may matter.
 
 - **Left out:** "MMS 3" (title) as FROM_PLATFORM of the record's dataset
   - **Rule:** Writing a classed triple, rule 17: "A title's words give a fact only where a predicate fits what they state"
@@ -2860,7 +2860,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 
 ## "MARS EXPRESS SUN MRS 1/2/3 EXTENDED MISSION 5 3767 V1.0" (pool position 119, id ffa68737-ddfb-4545-b84f-26acfb4a36b6)
 
-A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. The record repeats the text of the held-out record "MARS EXPRESS SUN MRS 1/2/3 EXTENDED MISSION 5 3750 V1.0" (pool position 35), with another measurement number and another period covered, and its decisions are copied from that record. 6 items, 2 that may matter.
+A held-out record, annotated on 2026-11-13 with the rules frozen. The record repeats the text of the held-out record "MARS EXPRESS SUN MRS 1/2/3 EXTENDED MISSION 5 3750 V1.0" (pool position 35), with another measurement number and another period covered, and its decisions are copied from that record. 6 items, 2 that may matter.
 
 - **Left out:** "1/2/3" (title)
   - **Rule:** What counts as a fact, rule 1: "An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for"
@@ -2887,7 +2887,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 
 ## "MODIS_CR_Equal_Angle_Daily" (pool position 122, id 4ea399fb-dcc6-41df-945a-b829da60c586)
 
-A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. The title's words, joined by underscores, are a list of facts of the record's dataset (rule 17 of *Writing a classed triple*, *A title's facts*). The cloud regimes are the dataset's own values, so the record's dataset is the output of the step the last sentence tells (rule 24, *The record's dataset's own values*). 6 items, 3 that may matter.
+A held-out record, annotated on 2026-11-13 with the rules frozen. The title's words, joined by underscores, are a list of facts of the record's dataset (rule 17 of *Writing a classed triple*, *A title's facts*). The cloud regimes are the dataset's own values, so the record's dataset is the output of the step the last sentence tells (rule 24, *The record's dataset's own values*). 6 items, 3 that may matter.
 
 - **Left out:** the title's "Daily" against the notes' "Three-Hourly" (title and notes, "The MODIS Collection 6.1 Equal-Angle Three-Hourly Cloud Regime product"), as a conflict to correct
   - **Rule:** Finishing a record, *A record that contradicts itself*: "write what each passage states (rule 1 of What counts as a fact), and correct neither from outside knowledge." Both are written: HAS_TEMPORAL_RESOLUTION "Daily" and HAS_TEMPORAL_RESOLUTION "Three-Hourly".
@@ -2911,7 +2911,7 @@ A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the
 
 ## "ROSETTA-ORBITER 67P OSIWAC 4 EXT2-MTP028 RDR-INF-REFL V1.0" (pool position 125, id bbb8f62a-84d4-47cb-8ce6-5fd5820ee54d)
 
-A held-out record, annotated on 2026-11-13 by a model (Claude Opus 5.5) with the rules frozen; preliminary, still to be reviewed by a person. Its text is that of the held-out record "ROSETTA-ORBITER 67P OSIWAC 4 EXT3-MTP033 RDR-STR-REFL V1.0" (pool position 17), with another planning period, phase and period covered, and with the in-field stray-light correction and the review of the tuning record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP019 RDR-INFLDSTR V1.0" (pool position 37); its decisions are copied from those two records. 9 items, 3 that may matter.
+A held-out record, annotated on 2026-11-13 with the rules frozen. Its text is that of the held-out record "ROSETTA-ORBITER 67P OSIWAC 4 EXT3-MTP033 RDR-STR-REFL V1.0" (pool position 17), with another planning period, phase and period covered, and with the in-field stray-light correction and the review of the tuning record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP019 RDR-INFLDSTR V1.0" (pool position 37); its decisions are copied from those two records. 9 items, 3 that may matter.
 
 - **Left out:** "MTP028" (title, "EXT2-MTP028")
   - **Rule:** What counts as a fact, rule 1: "An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for"

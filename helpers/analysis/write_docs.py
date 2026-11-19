@@ -36,7 +36,7 @@ ids = [made[n] for n in ("1816", "1816-2", "1816-3", "1817", "1817-2", "1817-3")
 ids_text = (", ".join(f"`{i}`" for i in ids[:3]) + " (induced schema) and " + ", ".join(f"`{i}`" for i in ids[3:])
             + " (ground truth schema)")
 SCRATCH = "helpers/analysis"
-LABEL = "Preliminary, computed on 2026-11-13, still to be reviewed by a person."
+LABEL = "Computed on 2026-11-13."
 p1 = lambda v: f"{100 * v:.1f}"
 old, new = r["old"], r["new"]
 
@@ -100,7 +100,7 @@ The command names three of step 070's four inputs from step 060. The fourth, `ex
 
 ## What changed in the ground truth
 
-The changes are those recorded in `docs/improvements.md`, section *050_annotate*, in the entries dated 2026-11-12 and 2026-11-13. All of them were made by a model (Claude Fable 5.2, and Claude Opus 5.5 for the last stage) and are still to be reviewed by a person. The 20 finished records had 416 ground truth triples at commit `5b958ce` and have 432 now. The count moved in seven stages, of which the fifth and the seventh changed triples without changing the count.
+The changes are those recorded in `docs/improvements.md`, section *050_annotate*, in the entries dated 2026-11-12 and 2026-11-13. All of them were made by a model (Claude Fable 5.2, and Claude Opus 5.5 for the last stage), and I review each of them. The 20 finished records had 416 ground truth triples at commit `5b958ce` and have 432 now. The count moved in seven stages, of which the fifth and the seventh changed triples without changing the count.
 
 1. A fact counts wherever its words are, even inside a name (416 to 431). Rule 2 gained the part *A fact inside a name*, and 15 ground truth triples were added, for example "radiance data" HAS_MEASUREMENTS_OF "radiance". None was changed or deleted.
 2. Fixes from two audits of the ground truth against the guidelines (431 to 428). One triple was deleted because its name does not say how two things are related, six instances took the title's capitals under rule 23, and the column `rules` was corrected.
@@ -166,7 +166,7 @@ Formula, for a rule *r* and one run: recall of *r* = the ground truth triples th
 - A rule's row holds the triples that use the rule, which is not the same as the triples the rule causes extraction to miss. The triples of a row also differ in their records and in their other rules, so a row with low recall is a place to look and not a finding about the rule.
 - A row with fewer than 10 ground truth triples is marked *too small*: rules {', '.join(sorted(small, key=int))}, and the one triple that records no rule. Its recall changes by many points with one triple and should not be read.
 - The column *Within reach* counts the row's ground truth triples that the induced schema can express through the translation table (`070_evaluate/metrics/recall_upper_bound.md`). With the ground truth schema every triple is within reach. A row with few triples within reach is limited by the schema before extraction starts: rule 9 has {g["9"]["1816"]["n"]} triples, of which {g["9"]["1816"]["within_reach"]} are within reach.
-- The values in the column `rules` were written by a model and are still to be reviewed by a person (`docs/improvements.md`, *The rules each ground truth triple uses, recorded per triple*).
+- The values in the column `rules` were drafted by a model, and I review them (`docs/improvements.md`, *The rules each ground truth triple uses, recorded per triple*).
 - The extractions were made with the rules of 2026-11-05, before the rules changed on 2026-11-12 and 2026-11-13.
 
 ## The table
