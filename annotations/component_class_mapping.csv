@@ -395,7 +395,7 @@ predicate,HAS_APPROACH_COUNT,HAS_NUMBER_OF,no,narrower,yes,The subject dataset o
 predicate,HAS_BROWSE_IMAGE,(none),no,,yes,"The subject dataset provides browse images showing the object quantity, or the object Count of browse images.",,,
 predicate,HAS_BYTE_ORDER,(none),no,,yes,The subject dataset stores its binary values in the object ByteOrder.,,,
 predicate,HAS_CATEGORY_COUNT,HAS_NUMBER_OF,no,narrower,yes,The subject dataset is organized into the object Count of categories.,has this many,,
-predicate,HAS_CHANGE,(none),no,,yes,The subject dataset version includes the object Update relative to an earlier version.,"its release brings this change (a Task) from the release before, e.g. adding of the FITS version",,
+predicate,HAS_CHANGE,(none),no,,yes,The subject dataset version includes the object Update relative to an earlier version.,,,
 predicate,HAS_COLUMN_COUNT,HAS_NUMBER_OF,no,narrower,yes,The subject catalog or dataset has the object Count of columns.,has this many,,
 predicate,HAS_COMPLETENESS,(none),no,,yes,The subject survey or project has the object Percentage of its sources identified or with the stated information.,,,
 predicate,HAS_DEVELOPMENT_FOCUS,(none),no,,yes,The subject Technology has further development or refinement focused on the object Method.,,,

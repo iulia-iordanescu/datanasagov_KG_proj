@@ -148,7 +148,7 @@ def _old_cost(made: dict, numbers: dict, day: str | None) -> tuple:
     if cost["usd"] is None:
         return None, "unknown", cost["unknown"]
     return cost["usd"], None, (f"from the report's totals, every request {'a batch request' if batch else 'a single '
-                               f'request'}, at the prices of {day}")
+                               'request'}, at the prices of {day}")
 
 
 def run_row(folder: Path, reports_dir: Path, fetch=None) -> dict | None:

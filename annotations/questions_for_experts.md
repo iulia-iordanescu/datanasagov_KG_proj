@@ -177,6 +177,8 @@ Checked on 2026-10-31, for the expert's (a) (the research of 2026-10-31 on NASA'
 - classed triple of the record at pool position 45: "STARDUST 9P/TEMPEL 1 NAVCAM 2 NEXT V1.0" (Dataset) HAS_SPATIAL_REPRESENTATION "images" (SpatialRepresentation)
 - classed triple of the record at pool position 51: "BARREL 2K X-ray Spectrometer (MSPC) Bremsstrahlung X-ray Spectrum Medium Time Resolution, Level 2, 4 s Data" (Dataset) HAS_SPATIAL_REPRESENTATION "Bremsstrahlung X-ray spectra" (SpatialRepresentation)
 - classed triple of the record at pool position 55: "ROSETTA-ORBITER 67P OSIWAC 4 ESC2-MTP015 RDR-REFLECT V1.0" (Dataset) HAS_SPATIAL_REPRESENTATION "radiometric calibrated and geometric distortion corrected (resampled) image data" (SpatialRepresentation)
+- translation table row: entity class DataStructure
+- translation table row: predicate HAS_DATA_STRUCTURE
 - ground truth schema entry: entity class SpatialRepresentation
 - ground truth schema entry: predicate HAS_SPATIAL_REPRESENTATION
 - rule: Writing a classed triple, rule 11
@@ -280,8 +282,8 @@ Checked again on 2026-10-31, the old (c) above, against GCMD and CMR: GCMD's Pla
 
 - entity class Instrument: a device that takes measurements
 - predicate ABOARD: is carried on
-- entity class Mission -> Mission: A planned space or flight undertaking, such as a satellite mission, balloon program, or spaceflight of a given duration, carried out to accomplish scientific objectives.
-- entity class Spacecraft -> Platform: A vehicle or platform, such as a satellite, aircraft, or balloon, that carries instruments to collect observations.
+- entity class Mission -> Mission: A named space or flight undertaking, such as a satellite mission or a space station expedition, organized to achieve particular objectives.
+- entity class Spacecraft -> Platform: A satellite or other vehicle built to operate in space.
 - Writing a classed triple, rule 11: Subject instance and object instance: the record's own words, as written.
 - Writing a classed triple, rule 14: Entity classes and predicates: the ground truth schema's, when one fits, so that every record uses the same entity class or predicate for the same meaning.
 - Writing a classed triple, rule 23: One entity, one wording, within a record.
@@ -489,6 +491,10 @@ Checked again on 2026-10-31, the old (c) above, against GCMD and CMR: GCMD's Pla
 - translation table row: predicate SOURCED_FROM
 - translation table row: predicate ACQUIRED_BY
 - translation table row: predicate OBSERVED_BY
+- translation table row: entity class Vehicle
+- translation table row: entity class Balloon
+- translation table row: predicate COLLECTED_DURING_MISSION
+- translation table row: predicate COLLECTED_FROM
 - ground truth schema entry: entity class Mission
 - ground truth schema entry: entity class Platform
 - ground truth schema entry: predicate FROM_MISSION
@@ -611,9 +617,9 @@ Checked on 2026-10-31, the notes left for us above. The old (h): the emissivitie
 - predicate PRODUCED_USING_ALGORITHM: was made or detected by applying this Algorithm
 - predicate HAS_SPATIAL_COVERAGE: covers this SpatialExtent
 - predicate HAS_TARGET: is about, or studies, this CelestialBody
-- entity class PhysicalQuantity -> PhysicalQuantity: A measurable physical property or variable, such as temperature, wind speed, water vapor, or emission distribution, that is observed or derived in a dataset.
-- predicate MEASURES -> HAS_MEASUREMENTS_OF: The subject (an instrument, mission, dataset or product) measures or provides data on the object, a physical quantity, variable or phenomenon.
-- predicate PROVIDES -> HAS_MEASUREMENTS_OF: The subject (an instrument, data center, product or dataset) supplies or produces the object, a data product, measurement, variable or information layer.
+- entity class PhysicalQuantity -> PhysicalQuantity: A measurable property or quantity, such as gravity, a count rate, a mixing ratio, or a density, or a specific value of one.
+- predicate MEASURES -> HAS_MEASUREMENTS_OF: The subject instance, such as a Dataset, Instrument, or Mission, measures or holds measurements of the PhysicalQuantity, ChemicalSpecies, BiologicalProcess, or Phenomenon that the object instance names.
+- predicate PROVIDES -> (none): The subject instance, such as an Instrument, Method, Project, WebPage or WebService, makes available or yields the object instance, such as data, a Catalog, a capability, or a benefit to its users.
 - predicate MEASURED_BY -> HAS_MEASUREMENTS_OF (swap subject and object): Links a measured quantity to the instrument, system or method used to measure it.
 - Writing a classed triple, rule 14: Entity classes and predicates: the ground truth schema's, when one fits, so that every record uses the same entity class or predicate for the same meaning.
 - Writing a classed triple, rule 19: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
@@ -769,6 +775,10 @@ Checked on 2026-10-31, the notes left for us above. The old (h): the emissivitie
 - translation table row: predicate PROVIDES
 - translation table row: predicate MEASURED_BY
 - translation table row: predicate COVERS
+- translation table row: entity class Variable
+- translation table row: predicate CONTAINS
+- translation table row: predicate HAS_PARAMETER
+- translation table row: predicate ESTIMATES
 - ground truth schema entry: entity class PhysicalQuantity
 - ground truth schema entry: entity class Variable
 - ground truth schema entry: predicate HAS_MEASUREMENTS_OF
@@ -892,13 +902,13 @@ Checked on 2026-10-31, the old (c): neither of NASA's vocabularies makes a field
 - predicate SOURCED_FROM -> (none): The subject (a dataset, file, objective or person) originates from the object, a source instrument, platform, observation set, data portion or institution.
 - predicate ACQUIRED_BY -> ACQUIRED_BY_INSTRUMENT: The subject (a dataset or observed class of objects) is collected or detected by the object, an instrument or platform.
 - predicate COLLECTED_DURING -> HAS_MISSION_PHASE: The subject (a dataset, campaign, mission activity or event) took place or was gathered during the object, a time period or named field campaign.
-- predicate PROVIDED_BY -> PROVIDED_BY_PARTY: The subject (a product, campaign or responsibility) is supplied, conducted or overseen by the object, an organization, team or instrument mission.
-- entity class Spacecraft -> Platform: A vehicle or platform, such as a satellite, aircraft, or balloon, that carries instruments to collect observations.
-- entity class SpaceStation -> Platform: A crewed orbiting space station, such as the International Space Station, used as a platform for research and observation.
+- predicate PROVIDED_BY -> PROVIDED_BY_PARTY: The Dataset that the subject instance refers to is provided, distributed, or made available by the Archive, Organization, or Project that the object instance names.
+- entity class Spacecraft -> Platform: A satellite or other vehicle built to operate in space.
+- entity class SpaceStation -> Platform: A crewed orbital space station, such as the International Space Station.
 - entity class Aircraft -> Platform: A crewed or research airplane used as a platform for airborne observations or measurements.
-- entity class Mission -> Mission: A planned space or flight undertaking, such as a satellite mission, balloon program, or spaceflight of a given duration, carried out to accomplish scientific objectives.
-- entity class Campaign -> Campaign: A coordinated period of field or flight measurement activity, such as an aircraft or balloon campaign, conducted to collect data.
-- entity class Program -> (none): A named organized scientific initiative, often a telescope legacy or key program, encompassing coordinated observations and data products.
+- entity class Mission -> Mission: A named space or flight undertaking, such as a satellite mission or a space station expedition, organized to achieve particular objectives.
+- entity class Campaign -> Campaign: A time-bounded field, airborne, or balloon measurement effort, often conducted as part of a Mission or Project.
+- entity class Program -> (none): A long-term organized initiative that encompasses multiple Missions, Projects, or activities.
 - Writing a classed triple, rule 14: Entity classes and predicates: the ground truth schema's, when one fits, so that every record uses the same entity class or predicate for the same meaning.
 - Writing a classed triple, rule 15: One fact per ground truth triple. A sentence that states two facts gives two ground truth triples.
 
@@ -1184,6 +1194,13 @@ Checked on 2026-10-31, the old (c): neither of NASA's vocabularies makes a field
 - translation table row: entity class Campaign
 - translation table row: entity class Program
 - translation table row: predicate OBSERVED_BY
+- translation table row: entity class Vehicle
+- translation table row: entity class Balloon
+- translation table row: entity class MissionPhase
+- translation table row: predicate COLLECTED_DURING_MISSION
+- translation table row: predicate COLLECTED_FROM
+- translation table row: predicate COLLECTED_BY
+- translation table row: predicate COLLECTED_DURING_MISSION_PHASE
 - ground truth schema entry: entity class Platform
 - ground truth schema entry: entity class Mission
 - ground truth schema entry: entity class MissionPhase
@@ -1297,10 +1314,10 @@ Added on 2026-10-31, for the expert's (a) (the research of 2026-10-31): the reco
 ### Quoted for us
 
 - predicate HAS_SPATIAL_COVERAGE: covers this SpatialExtent
-- entity class Frequency -> TemporalResolution: A rate of occurrence, such as daily or weekly, or a radio frequency band, such as S-, X-, or Ku-band.
+- entity class Frequency -> TemporalResolution: A rate of repetition, such as daily, or an electromagnetic frequency or frequency band, such as 2.8 GHz or L-band.
 - predicate HAS_TIME_RESOLUTION -> HAS_TEMPORAL_RESOLUTION: The subject (a dataset or measurement) has the object as its temporal resolution, averaging interval, cycle or file time-period.
 - predicate COVERS -> HAS_TIME_SPAN: The subject (a dataset, campaign, flight series or technique) spans the object, a time period, geographic area or measured variable.
-- predicate HAS_DURATION -> HAS_DURATION: The subject (a dataset, granule, orbit portion or observation series) lasts for or spans the object, a time length or period.
+- predicate HAS_DURATION -> HAS_DURATION: The subject instance lasts or lasted for the TimePeriod that the object instance gives.
 - Writing a classed triple, rule 19: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
 - Writing a classed triple, rule 21: General facts: include them; about another dataset, only when the record links it to the record's dataset by "part of" or "made from".
 - Writing a classed triple, rule 21: Another dataset. Include facts about another dataset when the record states a chain of "part of" or "made from" links that connects it to the record's dataset: its parts, what it is part of, what it is made from, and so on through further datasets or variables the record names. Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it. In every case, include the connection the record states (rule 1, only what the record states).
@@ -1409,6 +1426,10 @@ Added on 2026-10-31, for the expert's (a) (the research of 2026-10-31): the reco
 - translation table row: predicate HAS_DURATION
 - translation table row: predicate COVERS
 - translation table row: predicate HAS_FREQUENCY
+- translation table row: entity class TemporalResolution
+- translation table row: predicate HAS_TEMPORAL_RESOLUTION
+- translation table row: predicate HAS_FILE_GRANULARITY
+- translation table row: predicate HAS_TEMPORAL_COVERAGE
 - ground truth schema entry: entity class TemporalResolution
 - ground truth schema entry: predicate HAS_TEMPORAL_RESOLUTION
 - ground truth schema entry: predicate HAS_GRANULE_DURATION
@@ -1497,8 +1518,8 @@ Checked on 2026-10-31, the old (a): both readings are true. NASA's metadata trea
 
 ### Quoted for us
 
-- entity class ProcessingLevel -> ProcessingLevel: A designation of how far a data product has been processed from raw instrument output, such as Level 0 through Level 3 or Near Real Time.
-- predicate HAS_PROCESSING_LEVEL -> HAS_PROCESSING_LEVEL: The subject (a data product) has the object as its data processing level, such as L0, Level-2 or Level-3.
+- entity class ProcessingLevel -> ProcessingLevel: A designation of how far data have been processed from their raw form, such as L1B, L2, or L3.
+- predicate HAS_PROCESSING_LEVEL -> HAS_PROCESSING_LEVEL: The Dataset that the subject instance refers to has the ProcessingLevel that the object instance names.
 - Writing a classed triple, rule 11: Subject instance and object instance: the record's own words, as written.
 - Writing a classed triple, rule 19: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
 - Writing a classed triple, rule 20: A name with its own abbreviation, another name or code of its own, or a short note in parentheses is one instance, as written.
@@ -1668,7 +1689,7 @@ Checked on 2026-10-31, the old (c): each of the four words refers to a named, do
 - entity class Variable: a property narrowed by a method, a band, a threshold, another object or another constraint, e.g. SST4; NDSI; band 31 emissivity; dust fluences at each of twelve mass thresholds
 - predicate UNIQUE_TO_INSTRUMENT: is found only on this Instrument
 - entity class Wavelength -> Channel: A wavelength band or spectral range, such as an infrared filter band, in which observations are made.
-- predicate DERIVED_FROM -> COMPUTED_FROM: The subject (a data product, quantity, value or format) is computed from or based on the object, a source measurement, signal, input data or prior standard.
+- predicate DERIVED_FROM -> COMPUTED_FROM: The subject instance was computed, derived, or extracted from the data, source, or input that the object instance refers to.
 - What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere. An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for, and what it stands for is never written, its entity class included, except as *A name the record does not explain* (below) allows.
 - Writing a classed triple, rule 22: A list: one ground truth triple per item. Apply rule 19 (qualifiers) first. Then write one ground truth triple per item of the list, in which that item alone takes the list's place (the subject or the object), with the words the items share copied onto the item. Each such ground truth triple names one item, so shared words that agree with the number of items are put in the singular, to agree with one item ("channels" becomes "channel"; "are" becomes "is"); an item's own words stay as written ("rivers"). An item that names no specific entity ("his team") gives no ground truth triple (rule 9, a specific entity).
 - Writing a classed triple, rule 22: Suppose: a record says the SST is "derived from the long wave IR 11 and 12 micron wavelength channels". Then: two ground truth triples, with the objects "long wave IR 11 micron wavelength channel" and "long wave IR 12 micron wavelength channel".
@@ -1754,6 +1775,7 @@ Checked on 2026-10-31, the old (c): each of the four words refers to a named, do
 - classed triple of the record at pool position 49: "ARCTAS Model Data" (Dataset) PRODUCED_USING_ALGORITHM "CMAQ" (Algorithm)
 - translation table row: predicate DERIVED_FROM
 - translation table row: predicate USES
+- translation table row: predicate PRODUCED_USING
 - ground truth schema entry: predicate COMPUTED_FROM
 - ground truth schema entry: predicate PRODUCED_USING_ALGORITHM
 - rule: Writing a classed triple, rule 22
@@ -1834,12 +1856,12 @@ Checked on 2026-10-31, the old (a), in NASA's metadata: CMR lists "NASA/JPL/PODA
 - predicate AFFILIATED_WITH: works at or belongs to this Organization
 - predicate SPONSORED_BY_PARTY: is sponsored by this Person or Organization
 - predicate BASED_IN: is based in this Country
-- entity class Organization -> Organization: An institution, agency, center, or collaborative body, such as NASA, HEASARC, or CIESIN, responsible for producing, managing, or distributing data or research.
-- entity class Team -> Organization: A group of people, such as investigators, specialists or institutional groups, working together on a mission, project or study.
-- entity class Program -> (none): A named organized scientific initiative, often a telescope legacy or key program, encompassing coordinated observations and data products.
-- entity class Facility -> Organization: A physical site, base, space center or installation, or the organization operating it, where research, launches or observations are carried out.
+- entity class Organization -> Organization: An institution such as an agency, university, or research group, or a unit within one.
+- entity class Team -> Organization: A group of people working together on a Project, Mission, or task, such as a science team, specialist group, or flight controllers.
+- entity class Program -> (none): A long-term organized initiative that encompasses multiple Missions, Projects, or activities.
+- entity class Facility -> Place: A physical site, building, station, observatory, or major installation where research, testing, launches, or operations take place.
 - entity class Location -> (none): A named geographic, terrestrial, or celestial place or region, such as a research station, sky field, or facility, where observations or activities occur.
-- predicate LOCATED_IN -> BASED_IN: The subject (a facility, site, observation or item) is situated at or in the object, a geographic place, region or physical setting.
+- predicate LOCATED_IN -> LOCATED_AT: The subject instance is situated in, or took place in, the place or position that the object instance names, such as a Country, City, GeographicArea, Facility, or CelestialCoordinates.
 - What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere. An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for, and what it stands for is never written, its entity class included, except as *A name the record does not explain* (below) allows.
 - What counts as a fact, rule 4: Not "is a" facts. A sentence that says what type of entity an instance refers to ("Kestrel is an imager") gives no ground truth triple: the instance's entity class says it. A sentence that names one specific role is not an "is a" fact, though, and gives a ground truth triple ("X is the official … archive for Y").
 - What counts as a fact, rule 4: Suppose: a record says "JPL is the official Physical Oceanography Data Archive (PO.DAAC) for SST". Then: a ground truth triple, since it names a role only JPL holds, not a type of entity.
@@ -1929,6 +1951,7 @@ Checked on 2026-10-31, the old (a), in NASA's metadata: CMR lists "NASA/JPL/PODA
 - translation table row: entity class Facility
 - translation table row: entity class Team
 - translation table row: predicate LOCATED_IN
+- translation table row: predicate HAS_ROLE
 - ground truth schema entry: entity class Organization
 
 - ground truth schema entry: entity class Role
@@ -2108,6 +2131,8 @@ Withdrawn on 2026-10-31: settled, so it is no longer asked of the experts; kept 
 - classed triple of the record at pool position 51: "2014 balloon campaign" (Campaign) HAS_PURPOSE "maintain an array with about five payloads spread across about six hours of magnetic local time, MLT, in the region that magnetically maps to the radiation belts" (Purpose)
 - translation table row: predicate USED_TO_STUDY
 - translation table row: predicate HAS_OBJECTIVE
+- translation table row: entity class Objective
+- translation table row: predicate HAS_PURPOSE
 - ground truth schema entry: entity class Purpose
 - ground truth schema entry: predicate HAS_PURPOSE
 - rule: Writing a classed triple, rule 12
@@ -2203,9 +2228,9 @@ Checked on 2026-10-31, against part of the reason for Technique (docs/improvemen
 - entity class Algorithm: a method applied to data to compute a result, e.g. series of screens; modified nonlinear SST algorithm
 - predicate ACQUIRED_BY_INSTRUMENT: was collected by this Instrument
 - predicate PRODUCED_USING_ALGORITHM: was made or detected by applying this Algorithm
-- entity class Method -> Algorithm: A technique, procedure, operating mode, or analytical approach used to acquire, transmit, or analyze data.
-- entity class Topic -> Discipline: A subject area or theme, such as agriculture, AGN, or ecosystem interaction, that a dataset or study addresses.
-- predicate HAS_DISCIPLINE -> HAS_DISCIPLINE: The subject (a set of observations or data) belongs to the object, a scientific discipline or category.
+- entity class Method -> Algorithm: A technique, procedure, algorithm, or approach used to carry out, analyze, or produce something.
+- entity class Topic -> Discipline: A subject or theme that a Dataset, Document, or other resource is about.
+- predicate HAS_DISCIPLINE -> HAS_DISCIPLINE: The subject archive contains observations belonging to the object scientific discipline.
 - What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere. An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for, and what it stands for is never written, its entity class included, except as *A name the record does not explain* (below) allows.
 - Writing a classed triple, rule 11: Subject instance and object instance: the record's own words, as written.
 - Writing a classed triple, rule 14: Entity classes and predicates: the ground truth schema's, when one fits, so that every record uses the same entity class or predicate for the same meaning.
@@ -2242,6 +2267,7 @@ Checked on 2026-10-31, against part of the reason for Technique (docs/improvemen
 - translation table row: entity class Method
 - translation table row: entity class Topic
 - translation table row: predicate HAS_DISCIPLINE
+- translation table row: predicate HAS_OBSERVATION_TYPE
 - ground truth schema entry: entity class Discipline
 - ground truth schema entry: predicate HAS_DISCIPLINE
 - ground truth schema entry: entity class Technique
@@ -2336,7 +2362,7 @@ Checked on 2026-10-31, for the expert's (b) (the research of 2026-10-31 on NASA'
 - predicate HAS_MEASUREMENTS_OF: holds measurements of this PhysicalQuantity
 - predicate HAS_TARGET: is about, or studies, this CelestialBody
 - entity class SpatialCoverage -> SpatialExtent: The geographic or sky extent covered by a dataset or observation, such as global, a swath width, or a number of square degrees or areas.
-- predicate HAS_SPATIAL_COVERAGE -> HAS_SPATIAL_COVERAGE: The subject (a dataset or survey) covers the object, a geographic region, latitude range, area extent or coverage descriptor.
+- predicate HAS_SPATIAL_COVERAGE -> HAS_SPATIAL_COVERAGE: The subject instance covers, or took place over, the GeographicArea, SkyRegion, or other region that the object instance names.
 - Writing a classed triple, rule 19: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
 - Writing a classed triple, rule 19: Any other qualifier stays in the instance ("glacier surface albedo" stays whole), and so does a qualifier of the seven above when taking it out would give a triple the record doesn't state (the test of rule 11).
 - Writing a classed triple, rule 19: Suppose: a record says "sea surface salinity". Then: it stays whole, and the words "sea surface" say which salinity is measured and state no fact about another entity, so they give no ground truth triple.
@@ -2494,9 +2520,9 @@ Checked on 2026-10-31, for the expert's (b): DCAT's notion of a dataset "is broa
 - entity class Variable: a property narrowed by a method, a band, a threshold, another object or another constraint, e.g. SST4; NDSI; band 31 emissivity; dust fluences at each of twelve mass thresholds
 - entity class Identifier: a code that names one entity, or one product line, permanently, e.g. a DOI; MOD11A1
 - predicate HAS_DOI: has this Identifier, a Digital Object Identifier (DOI)
-- entity class Dataset -> Dataset: A named collection of data compiled from observations, measurements, experiments, or statistics and distributed as a unit, such as an index, data collection, or instrument time series.
+- entity class Dataset -> Dataset: A named or described collection of data produced by observation, measurement, simulation, or compilation, such as a data product derived from an Instrument or Mission.
 - entity class DataProduct -> Dataset: A specific processed output of data, such as calibrated images, retrieval products, files, or data segments, generated from instrument or model data.
-- entity class Catalog -> Dataset: A published, organized list of astronomical sources or objects with their properties, typically derived from a survey or mission.
+- entity class Catalog -> Dataset: A compiled and published list of astronomical sources or objects with their properties, often identified by a catalog designation.
 - entity class Database -> Dataset: An organized collection or repository of data records, sources or proposals that can be stored, queried and accessed.
 - Writing a classed triple, rule 11: Subject instance and object instance: the record's own words, as written.
 - Writing a classed triple, rule 21: General facts: include them; about another dataset, only when the record links it to the record's dataset by "part of" or "made from".
@@ -2645,7 +2671,7 @@ Checked on 2026-10-31, for the expert's (b) (the research of 2026-10-31 on NASA'
 - predicate UNIQUE_TO_INSTRUMENT: is found only on this Instrument
 - predicate ACQUIRED_BY_INSTRUMENT: was collected by this Instrument
 - entity class Wavelength -> Channel: A wavelength band or spectral range, such as an infrared filter band, in which observations are made.
-- entity class Frequency -> TemporalResolution: A rate of occurrence, such as daily or weekly, or a radio frequency band, such as S-, X-, or Ku-band.
+- entity class Frequency -> TemporalResolution: A rate of repetition, such as daily, or an electromagnetic frequency or frequency band, such as 2.8 GHz or L-band.
 - Writing a classed triple, rule 14: Entity classes and predicates: the ground truth schema's, when one fits, so that every record uses the same entity class or predicate for the same meaning.
 - Writing a classed triple, rule 19: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
 - Writing a classed triple, rule 19: Any other qualifier stays in the instance ("glacier surface albedo" stays whole), and so does a qualifier of the seven above when taking it out would give a triple the record doesn't state (the test of rule 11).
@@ -2687,6 +2713,9 @@ Checked on 2026-10-31, for the expert's (b) (the research of 2026-10-31 on NASA'
 - classed triple of the record at pool position 18: "VIIRS band M4 (0.555 μm)" (Channel) CHANNEL_OF "Visible Infrared Imaging Radiometer Suite (VIIRS)" (Instrument)
 - translation table row: entity class Wavelength
 - translation table row: entity class Frequency
+- translation table row: entity class SpectralBand
+- translation table row: predicate HAS_SPECTRAL_BAND
+- translation table row: predicate SPECTRAL_BAND_OF
 - ground truth schema entry: entity class Channel
 - ground truth schema entry: predicate CHANNEL_OF
 - rule: Writing a classed triple, rule 19
@@ -2792,6 +2821,8 @@ Checked on 2026-10-31: the SWEET ontology files human-caused effects on the envi
 - classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) PRODUCTION_DISCONTINUED_DUE_TO "loss of data retrieval following the Constellation Exit Maneuvers" (Issue)
 - classed triple of the record at pool position 7: "loss of data retrieval following the Constellation Exit Maneuvers" (Issue) DOCUMENTED_AT "https://landweb.modaps.eosdis.nasa.gov/displayissue?id=98" (WebPage)
 - translation table row: entity class PhysicalPhenomenon
+- translation table row: entity class Phenomenon
+- translation table row: entity class BiologicalProcess
 - ground truth schema entry: entity class Phenomenon
 
 ## Q15: Is a coordinate system a map projection?
@@ -2823,7 +2854,7 @@ Our schema has an entity class MapProjection, "a way of drawing the curved Earth
 
 ### Translation table
 
-- entity class CoordinateSystem -> CoordinateSystem: A spatial reference frame or grid, such as a heliographic system or equidistant grid, used to locate or map data.
+- entity class CoordinateSystem -> CoordinateSystem: A reference frame used to express positions or vector quantities, such as geocentric solar ecliptic or heliographic coordinates.
 
 ### Options
 
@@ -2867,7 +2898,7 @@ Checked on 2026-10-31: the standard agrees with our reading. OGC's Abstract Spec
 - predicate MAPPED_INTO: its values were laid onto a map drawn with this MapProjection
 - predicate ALSO_KNOWN_AS: is the same entity under another name
 - predicate DOCUMENTED_AT: more details about it are written at this WebPage or in this Document
-- predicate HAS_COORDINATE_SYSTEM -> HAS_COORDINATE_SYSTEM: The subject (a dataset) is expressed in, projected to, or mapped onto the object, a coordinate system or grid projection.
+- predicate HAS_COORDINATE_SYSTEM -> HAS_COORDINATE_SYSTEM: The subject instance, a Dataset, gives its positions or vector values in the CoordinateSystem named by the object instance.
 - Writing a classed triple, rule 11: Subject instance and object instance: the record's own words, as written. Don't paraphrase them, and don't expand an abbreviation the record leaves unexpanded.
 - Writing a classed triple, rule 23: One entity, one wording, within a record.
 - Writing a classed triple, rule 23: the other wordings appear only in a ground truth triple that says one wording is also known as another (ALSO_KNOWN_AS), and only if the record states one (rule 20, parentheses).
@@ -2998,6 +3029,8 @@ Checked on 2026-10-31, the rest of (a): NASA's own search uses the equator cross
 - record at pool position 34: 0efa4f80-4a96-4b07-9d2f-1d0315038d68
 - classed triple of the record at pool position 4: "Aqua" (Platform) HAS_ORBIT "sun synchronous, polar orbit with a daylight ascending node at 13:30" (Orbit)
 - classed triple of the record at pool position 34: "SeaWiFS" (Instrument) HAS_ORBIT "local noon (descending) equator crossing time orbit" (Orbit)
+- translation table row: entity class OrbitType
+- translation table row: predicate HAS_ORBIT
 - ground truth schema entry: entity class Orbit
 - ground truth schema entry: predicate HAS_ORBIT
 - rule: Writing a classed triple, rule 15
@@ -3190,6 +3223,7 @@ Settled on 2026-10-31: SST4 is a skin SST, as the OBPG's SST4 document says ("Th
 - classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) HAS_VARIABLE "SST4" (Variable)
 - rule: What counts as a fact, rule 7
 - translation table row: predicate MORE_ACCURATE_THAN
+- translation table row: predicate ESTIMATES
 - ground truth schema entry: predicate ESTIMATES
 - ground truth schema entry: predicate HAS_LOWER_UNCERTAINTY_THAN
 - rule: What counts as a fact, rule 1
@@ -3434,8 +3468,8 @@ Changed on 2026-11-01: the record "OPERA Dynamic Surface Water Extent from Senti
 - predicate DOCUMENTED_AT: more details about it are written at this WebPage or in this Document
 - entity class Version: a label that marks one release of something
 - predicate ALSO_KNOWN_AS: is the same entity under another name
-- predicate HAS_LATENCY -> HAS_LATENCY: The subject (a data product or table) is made available or updated with the object, a latency or update delay.
-- predicate HAS_IDENTIFIER -> HAS_IDENTIFIER: The subject (a dataset, data series or document) is indexed by, or refers to items using, the object, which is a key, label or designator such as a prime key or detector name.
+- predicate HAS_LATENCY -> HAS_LATENCY: Gives how soon the subject Dataset is made available or updated after acquisition or after source updates, such as near real time or within a week.
+- predicate HAS_IDENTIFIER -> HAS_IDENTIFIER: The subject instance is identified or indexed by the Identifier, code, or key that the object instance gives.
 - What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere. An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for, and what it stands for is never written, its entity class included, except as *A name the record does not explain* (below) allows.
 - Writing a classed triple, rule 20: A name with its own abbreviation, another name or code of its own, or a short note in parentheses is one instance, as written.
 - Writing a classed triple, rule 21: General facts: include them; about another dataset, only when the record links it to the record's dataset by "part of" or "made from".
@@ -3490,6 +3524,8 @@ Changed on 2026-11-01: the record "OPERA Dynamic Surface Water Extent from Senti
 - translation table row: predicate HAS_DOI
 - translation table row: predicate HAS_LATENCY
 - translation table row: predicate HAS_IDENTIFIER
+- translation table row: entity class Identifier
+- translation table row: entity class Latency
 - rule: What counts as a fact, rule 1
 - rule: Writing a classed triple, rule 20
 - rule: Writing a classed triple, rule 21
@@ -3893,6 +3929,10 @@ Checked on 2026-10-31, for (a) and (b): no one NASA list covers the catalog. GCM
 - translation table row: entity class Aircraft
 - translation table row: entity class Mission
 - translation table row: entity class PhysicalQuantity
+- translation table row: entity class InstrumentGroup
+- translation table row: entity class Telescope
+- translation table row: entity class Vehicle
+- translation table row: entity class Balloon
 - ground truth schema entry: entity class Instrument
 - ground truth schema entry: entity class Platform
 - ground truth schema entry: entity class Mission
@@ -4007,6 +4047,8 @@ Checked on 2026-10-26, for (b): the catalog (020's records.jsonl, 36,406 records
 - translation table row: entity class SpatialResolution
 - translation table row: predicate HAS_RESOLUTION
 - translation table row: predicate HAS_PROPERTY
+- translation table row: predicate HAS_SPATIAL_RESOLUTION
+- translation table row: predicate HAS_PIXEL_SIZE
 - rule: Writing a classed triple, rule 21
 - rule: Writing a classed triple, rule 23
 
@@ -4072,6 +4114,8 @@ Withdrawn on 2026-10-31: settled from the field's practice, so it is no longer a
 - record at pool position 4: 03a09af3-081e-4db6-9e3b-ea7c0e3138bd
 - classed triple of the record at pool position 4: "Aqua" (Platform) FLIES_IN "A-train" (SatelliteFormation)
 - classed triple of the record at pool position 4: "Earth Observation Satellites (EOS)" (SatelliteFormation) HAS_TARGET "Earth" (CelestialBody)
+- translation table row: entity class Constellation
+- translation table row: predicate MEMBER_OF_CONSTELLATION
 - ground truth schema entry: entity class SatelliteFormation
 - ground truth schema entry: predicate FLIES_IN
 
@@ -4357,6 +4401,7 @@ Checked on 2026-10-31, for the expert's (b): the standards have one general part
 - ground truth schema entry: predicate PART_OF
 - translation table row: predicate PART_OF
 - translation table row: predicate CONTAINS
+- translation table row: predicate DIVIDES_INTO
 - pipeline method: docs/improvements.md: An entity class hierarchy for the schemas
 - pipeline method: docs/improvements.md: Judgements are Equivalent, Narrower, Broader, or Unrelated
 
