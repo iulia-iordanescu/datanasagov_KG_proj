@@ -14,8 +14,10 @@ and 070's stats.py use for their reports. Beside the numbers, it writes every
 record's role and text, every triple instance of schema induction, every
 extracted triple and ground truth triple with what came of it on scoring, the
 model calls, and each model's roles, settings and prompt files, each read from
-the files the runs wrote (common/common_helpers/step.py, output_of_run). Free:
-no model calls.
+the files the runs wrote (common/common_helpers/step.py, output_of_run), and
+each run's speed, tokens and cost at the makers' list prices (as
+helpers/run_costs.py reads them), with the prices themselves. Free: no model
+calls.
 
     py helpers/export_results.py                                  the run list results/technical_publication/runs.tsv
     py helpers/export_results.py --runs <list.tsv> --out <folder> another run list, into another folder
@@ -36,6 +38,7 @@ sys.path.insert(0, str(ROOT / "helpers"))                                      #
 
 import compare_runs                                                            # noqa: E402
 import held_out_results                                                        # noqa: E402
+import run_costs                                                               # noqa: E402
 import stats                                                                   # noqa: E402
 from common import console, llm                                                # noqa: E402
 from common.files import read_csv, read_json, read_jsonl, read_text, write_csv, write_text   # noqa: E402
@@ -45,7 +48,7 @@ from common.step import REPORTS_DIR, RESULTS_DIR, output_of_run, repo_path, run_
 FOLDER = ROOT / "results" / "technical_publication"
 RUN_LIST = FOLDER / "runs.tsv"
 CATALOG = RESULTS_DIR / "020_clean" / "records.jsonl"
-TUNING, HELD_OUT = "tuning", "held-out"
+TUNING, HELD_OUT, TRANSLATION = "tuning", "held-out", "translation"
 #: The numbers of stats.numbers() given besides those of stats.WITH_MARGIN: point values with no range of their own.
 EXTRA = [(("describes", "majority_baseline"), "describes majority baseline"),
          (("describes", "per_entity_class_average"), "describes per entity class average")]
@@ -73,11 +76,21 @@ def read_run_list(text: str) -> tuple:
                            "run_070": run070, "run_060": run060})
         elif len(cells) == 2 and cells[0] == HELD_OUT:
             held_out.append(cells[1])
+        elif len(cells) == 2 and cells[0] == TRANSLATION:
+            continue                                   # translation_runs reads it
         else:
             sys.exit(f"Line {n} of the run list is neither a tuning line (six fields separated by tabs: schema, "
-                     f"thinking, model, repeat, 070's run id, 060's run id) nor a held-out line (held-out, then 070's "
-                     f"run id): {line!r}. Correct the line, then run the command again.")
+                     f"thinking, model, repeat, 070's run id, 060's run id), a held-out line (held-out, then 070's "
+                     f"run id) nor a translation line (translation, then 070's run id): {line!r}. Correct the line, "
+                     f"then run the command again.")
     return tuning, held_out
+
+
+def translation_runs(text: str) -> list:
+    """The run ids of the run list's translation lines (translation, then the run id of a run of step 070 that asked
+    a model to propose translation rows): their model usage only goes into model_usage.csv."""
+    return [c[1].strip() for c in (line.split("	") for line in text.splitlines() if not line.startswith("#"))
+            if len(c) == 2 and c[0].strip() == TRANSLATION]
 
 
 def groups(tuning: list, held_out_runs: list, load_tuning) -> list:
@@ -474,7 +487,7 @@ PAIRED = ("exact pair", "partial pair")
 def _refs(origin: str) -> tuple:
     """(the extracted triple's reference, the ground truth triple's) of a compared_triples.csv row's origin: the 060
     file and its row (0-based, after the header) as `extracted_triples.csv#N`, and the ground truth file and row as
-    annotations/ground_truth/batch_NNN.csv#M."""
+    annotations/ground_truth/batch_<NNN>.csv#M."""
     ex = gt = ""
     for o in (origin or "").split("; "):
         if o.startswith("annotations/"):
@@ -519,7 +532,7 @@ def compared_rows(key: dict, part: str, compared: list, extracted: list) -> tupl
 
 def ground_truth_rows(gt_rows: list, parts: dict) -> list:
     """ground_truth_triples.csv: every ground truth triple of the evaluated records (their describes triples left
-    out, as step 070 compares those apart), by its reference annotations/ground_truth/batch_NNN.csv#M."""
+    out, as step 070 compares those apart), by its reference annotations/ground_truth/batch_<NNN>.csv#M."""
     out = []
     for r in gt_rows:
         if r["id"] not in parts or r["predicate"] == "DESCRIBES":
@@ -650,7 +663,24 @@ def model_rows(gs: list, evidence: dict, gt_rows: list, second_opinion: list, se
         rows.append({"model": model, "role": f"second judge ({task})", "where": "helpers/second_judge.py", "count": n,
                      "count_of": "rows of annotations/second_judge.csv",
                      "prompt_files": f"helpers/helpers_prompts/second_judge_{task}.txt"})
-    return rows
+    return rows + BY_HAND
+
+
+#: Roles no file of the runs or of annotations/ records (annotations/partial_pair_reviews.csv has no model column),
+#: written here by hand from the author's own account of the work (2026-11-19): the models, the counts and the
+#: settings are hers. Each was run at its maker's default settings, so no setting was chosen and none is recorded
+#: elsewhere. The drafting of the 12 ground truth triples claude-fable-5.2 drafted is model_rows' drafting row.
+BY_HAND = [
+    {"model": "claude-fable-5-2", "role": "review of every partial pair", "where": "annotations/partial_pair_reviews.csv",
+     "count": 1169, "count_of": "partial pairs: 661 of the tuning records and 508 of the held-out records",
+     "thinking": "the maker's default", "thinking_sent": "effort high", "temperature": "not sent"},
+    {"model": "claude-fable-5-2", "role": "audits of the annotation guidelines and the ground truth",
+     "where": "annotations/guidelines.md, annotations/ground_truth/",
+     "thinking": "the maker's default", "thinking_sent": "effort high", "temperature": "not sent"},
+    {"model": "claude-opus-5-5", "role": "annotating the records added for the Technical Publication (not yet reviewed by a person)",
+     "where": "annotations/ground_truth/", "count": 60, "count_of": "records: 20 tuning and 40 held-out",
+     "thinking": "the maker's default", "thinking_sent": "effort medium", "temperature": "not sent"},
+]
 
 
 def _count(rows: list, *keys) -> dict:
@@ -747,6 +777,230 @@ def export_details(gs: list, out: Path, catalog: dict, evidence: dict, twins: di
     return written, missing
 
 
+# ------------------------------ speed, tokens and cost ----------------------
+
+USAGE_COLUMNS = ["step", "run", "model", "schema", "thinking", "repeat", "records", "calls_made",
+                 "calls_answered_from_cache", "answers_received", "sent_not_from_cache", "sent_read_from_cache",
+                 "sent_written_to_cache", "received", "received_as_thinking", "cost_usd", "cost_note", "batch",
+                 "batch_processing_seconds", "wall_seconds", "received_per_second", "time_basis"]
+TOKEN_KEYS = ("sent_not_from_cache", "sent_read_from_cache", "sent_written_to_cache", "received", "received_as_thinking")
+
+
+def parse_calls(text: str) -> dict:
+    """A report's table of model calls (*Calls to | Made | Answered from the cache*): the calls made and those
+    answered from the cache, summed over its rows, and the answers received this run; {} when it has none."""
+    if "| Calls to | Made | Answered from the cache |" not in text:
+        return {}
+    table = text.split("| Calls to | Made | Answered from the cache |", 1)[1]
+    made = cached = 0
+    for line in table.splitlines()[2:]:
+        if not line.startswith("|"):
+            break
+        m = re.match(r"^\| \*\*answers received this run\*\* \| \*\*([\d,]+)\*\* \|", line)
+        if m:
+            return {"calls_made": made, "calls_answered_from_cache": cached, "answers_received": _n(m.group(1))}
+        cells = [c.strip() for c in line.strip("|").split("|")]
+        if len(cells) >= 3 and re.fullmatch(r"[\d,]+", cells[1]):
+            made += _n(cells[1])
+            cached += _n(cells[2]) if re.fullmatch(r"[\d,]+", cells[2]) else 0
+    return {"calls_made": made, "calls_answered_from_cache": cached}
+
+
+def wall_seconds(text: str):
+    """A run's wall time from its report's *Started* and *Finished*, in seconds; None when either is missing."""
+    import datetime as dt
+    m1 = re.search(r"^\| Started \| (\S+) \|", text, re.M)
+    m2 = re.search(r"^\| Finished \| (\S+) \|", text, re.M)
+    if not (m1 and m2):
+        return None
+    return (dt.datetime.fromisoformat(m2.group(1)) - dt.datetime.fromisoformat(m1.group(1))).total_seconds()
+
+
+def with_rate(row: dict) -> dict:
+    """The row with received_per_second: tokens received over the batch jobs' processing time for a batch run, over
+    the wall time otherwise, and which time it used; empty when either number is missing or the time is 0."""
+    batch = row.get("batch") == "yes"
+    seconds = row.get("batch_processing_seconds") if batch else row.get("wall_seconds")
+    received = row.get("received")
+    if not (isinstance(received, int) and isinstance(seconds, (int, float)) and seconds > 0):
+        return {**row, "received_per_second": "", "time_basis": ""}
+    return {**row, "received_per_second": num(received / seconds, 1),
+            "time_basis": "batch processing" if batch else "wall time"}
+
+
+def extraction_usage_row(key: dict, cost_row: dict | None, report: str) -> dict:
+    """model_usage.csv's row of one run of step 060: its tokens, cost, batch jobs' processing time and wall time as
+    helpers/run_costs.py reads them from the run's record (or, for a run recorded before the record kept them, from
+    its report), and its calls from its report. The service is never written."""
+    row = {"step": "060_extract", **key, **parse_calls(report), "wall_seconds": wall_seconds(report)}
+    if cost_row is None:
+        return with_rate({**row, "cost_note": "the run's record isn't kept"})
+    for ours, theirs in zip(TOKEN_KEYS, ("input_tokens", "cache_read_tokens", "cache_write_tokens", "output_tokens",
+                                         "reasoning_tokens")):
+        v = cost_row.get(theirs)
+        row[ours] = v if isinstance(v, int) else ""
+    usd = cost_row.get("cost_usd")
+    row["cost_usd"] = num(usd) if isinstance(usd, (int, float)) else ""
+    row["cost_note"] = ("" if isinstance(usd, (int, float)) and not cost_row.get("notes") else
+                        "computed from the report's token totals, every request at one price"
+                        if isinstance(usd, (int, float)) else "no list price applies" if usd == "unknown" else
+                        "not recorded: the run's record doesn't keep how its tokens divide between prices")
+    row["batch"] = "yes" if cost_row.get("job_processing", "–") != "–" else "no"
+    seconds = [float(x) for x in str(cost_row.get("job_processing_seconds") or "").split(";") if x]
+    row["batch_processing_seconds"] = sum(seconds) if seconds else ""
+    row["records"] = int(str(cost_row.get("records", "")).split(" ")[0].replace(",", "") or 0) or ""
+    return with_rate(row)
+
+
+def induction_usage_row(made: dict, report: str, texts: int) -> dict:
+    """model_usage.csv's row of the schema induction run: its tokens and calls from its report, and its cost from
+    those totals at the model's list prices (llm.run_cost), every request a single request at the standard price on
+    the run's day: step 040 sends no batch job, and its report predates the cost lines."""
+    tokens = parse_tokens(report)
+    m = re.search(r"^\| Started \| (\d{4}-\d{2}-\d{2})", report, re.M)
+    row = {"step": "040_induce_schema", "run": made.get("run_id", ""), "model": made.get("model", ""),
+           "schema": "", "thinking": made.get("thinking", ""), "repeat": made.get("repeat", ""), "records": texts,
+           **parse_calls(report), **{k: tokens.get(k, "") for k in TOKEN_KEYS}, "batch": "no",
+           "wall_seconds": wall_seconds(report)}
+    if m and all(isinstance(tokens.get(k), int) for k in TOKEN_KEYS[:4]):
+        price = {"kind": "single", "tier": "base", "day": m.group(1), "answers": 0,
+                 "input_tokens": tokens["sent_not_from_cache"], "cache_read_tokens": tokens["sent_read_from_cache"],
+                 "cache_write_tokens": tokens["sent_written_to_cache"], "cache_write_1h_tokens": 0,
+                 "output_tokens": tokens["received"], "reasoning_tokens": tokens.get("received_as_thinking") or 0}
+        cost = llm.run_cost([price], made.get("model"), made.get("service"))
+        row["cost_usd"] = num(cost["usd"]) if cost["usd"] is not None else ""
+        row["cost_note"] = ("computed from the report's token totals, every request a single request at the "
+                            "standard price" if cost["usd"] is not None else "no list price applies")
+    else:
+        row["cost_note"] = "the report gives no token totals"
+    return with_rate(row)
+
+
+def translation_usage_row(run_id: str, report: str) -> dict:
+    """model_usage.csv's row of a run of step 070 that asked a model to propose translation rows: its model and wall
+    time from its report; its tokens and calls only where the report gives them (a run that stopped has no table of
+    model calls)."""
+    m = re.search(r"^\| `model` \| ([^|]+?) \|", report, re.M)
+    t = re.search(r"^\| `thinking` \| ([^|]+?) \|", report, re.M)
+    tokens = parse_tokens(report)
+    calls = parse_calls(report)
+    row = {"step": "070_evaluate", "run": run_id, "model": m.group(1) if m else "", "thinking": t.group(1) if t else "",
+           **calls, **{k: tokens.get(k, "") for k in TOKEN_KEYS}, "batch": "no", "wall_seconds": wall_seconds(report),
+           "cost_note": ("" if calls else "not recorded: the run stopped before its report's table of model calls, "
+                                          "so its calls and tokens aren't kept")}
+    return with_rate(row)
+
+
+PRICE_KINDS = (("", "standard"), ("batch_", "batch"), ("long_", "standard_long"), ("batch_long_", "batch_long"))
+PRICE_COLUMNS = (["model", "period_from", "period_through", "long_above_tokens"]
+                 + [f"{prefix}{field}" for prefix, _ in PRICE_KINDS for field in llm.PRICE_FIELDS]
+                 + ["source_url", "date_read"])
+
+
+def prices_read_on() -> str:
+    """The date the prices in PRICES were read, as common/common_helpers/llm.py records it beside PRICE_PAGES."""
+    m = re.search(r"The price pages the prices in PRICES were read from, by service \(all read (\d{4}-\d{2}-\d{2})\)",
+                  read_text(ROOT / "common" / "common_helpers" / "llm.py"))
+    return m.group(1) if m else ""
+
+
+def price_rows(models: list) -> list:
+    """model_prices.csv: each model's list prices (llm.PRICES), one row per price period, in US dollars per million
+    tokens, with the page they were read from; a model PRICES doesn't list gets a row with its name only."""
+    rows, read_on = [], prices_read_on()
+    for model in models:
+        entry = {llm.model_name_key(k): v for k, v in llm.PRICES.items()}.get(llm.model_name_key(model))
+        if entry is None:
+            rows.append({"model": model})
+            continue
+        for period in entry["periods"]:
+            row = {"model": model, "period_from": period.get("from") or "", "period_through": period.get("through") or "",
+                   "long_above_tokens": entry.get("long_above") or "",
+                   "source_url": llm.PRICE_PAGES.get(entry["service"], ""), "date_read": read_on}
+            for prefix, kind in PRICE_KINDS:
+                for field in llm.PRICE_FIELDS:
+                    v = (period.get(kind) or {}).get(field)
+                    row[f"{prefix}{field}"] = "" if v is None else f"{v:g}"
+            rows.append(row)
+    return rows
+
+
+BY_MODEL_COLUMNS = ["step", "model", "thinking", "runs", "runs_with_cost", "records", "calls_made",
+                    "calls_answered_from_cache", "answers_received", *TOKEN_KEYS, "cost_usd", "cost_usd_per_run",
+                    "cost_usd_per_record", "sent_per_record", "received_per_record", "seconds", "seconds_per_record"]
+
+
+def by_model_rows(usage: list) -> list:
+    """model_usage_by_model.csv: model_usage.csv's runs of one step, model and thinking setting together: sums over
+    the runs, and means per run and per record. The cost means use only the runs with a cost (runs_with_cost), and
+    the records of those runs; the seconds are each run's time_basis time (batch processing, or wall time)."""
+    found = {}
+    for r in usage:
+        found.setdefault((r["step"], r["model"], r.get("thinking", "")), []).append(r)
+    out = []
+    for (step, model, thinking), rs in found.items():
+        def total(key, among=rs):
+            vals = [r.get(key) for r in among if isinstance(r.get(key), (int, float))]
+            return sum(vals) if vals else ""
+        costed = [r for r in rs if r.get("cost_usd") not in ("", None)]
+        cost = sum(float(r["cost_usd"]) for r in costed)
+        records = total("records")
+        cost_records = total("records", costed)
+        sent = sum(total(k) or 0 for k in TOKEN_KEYS[:3]) if any(total(k) != "" for k in TOKEN_KEYS[:3]) else ""
+        received = total("received")
+        timed = [r for r in rs if r.get("time_basis")]
+        seconds = sum(float(r["batch_processing_seconds"] if r["time_basis"] == "batch processing"
+                            else r["wall_seconds"]) for r in timed)
+        timed_records = total("records", timed)
+        out.append({"step": step, "model": model, "thinking": thinking, "runs": len(rs), "runs_with_cost": len(costed),
+                    "records": records, **{k: total(k) for k in ("calls_made", "calls_answered_from_cache",
+                                                                 "answers_received", *TOKEN_KEYS)},
+                    "cost_usd": num(cost) if costed else "",
+                    "cost_usd_per_run": num(cost / len(costed)) if costed else "",
+                    "cost_usd_per_record": num(cost / cost_records) if costed and cost_records else "",
+                    "sent_per_record": num(sent / records, 1) if sent != "" and records else "",
+                    "received_per_record": num(received / records, 1) if received != "" and records else "",
+                    "seconds": num(seconds, 1) if timed else "",
+                    "seconds_per_record": num(seconds / timed_records, 2) if timed and timed_records else ""})
+    return out
+
+
+def usage_rows(gs: list, evidence: dict, report_of, cost_rows: dict, translation: list) -> list:
+    """model_usage.csv: the schema induction run, every run of step 060 of the groups (each once, from its tuning
+    group), and the translation runs, in that order."""
+    rows = []
+    made = evidence.get("made") or {}
+    if made.get("run_id"):
+        rows.append(induction_usage_row(made, report_of(made["run_id"]), len(evidence.get("texts", []))))
+    for g in gs:
+        if g["part"] != TUNING:
+            continue
+        for r in g["runs"]:
+            key = {"run": r["run_060"], "model": g["model"], "schema": g["schema"], "thinking": g["thinking"],
+                   "repeat": r["repeat"]}
+            rows.append(extraction_usage_row(key, cost_rows.get(r["run_060"]), report_of(r["run_060"])))
+    rows += [translation_usage_row(run_id, report_of(run_id)) for run_id in translation]
+    return rows
+
+
+def export_usage(gs: list, out: Path, evidence: dict, report_of, cost_rows: dict, translation: list) -> dict:
+    """Writes model_usage.csv, model_usage_by_model.csv and model_prices.csv into out; {file name: rows}."""
+    usage = usage_rows(gs, evidence, report_of, cost_rows, translation)
+    for r in usage:
+        for k in ("wall_seconds", "batch_processing_seconds"):
+            if isinstance(r.get(k), float):
+                r[k] = num(r[k], 1)
+    summary = by_model_rows([{**r, **{k: float(r[k]) for k in ("wall_seconds", "batch_processing_seconds")
+                                      if r.get(k) not in ("", None)}} for r in usage])
+    models = list(dict.fromkeys(r["model"] for r in usage if r.get("model")))
+    prices = price_rows(models)
+    for name, columns, rows in (("model_usage.csv", USAGE_COLUMNS, usage),
+                                ("model_usage_by_model.csv", BY_MODEL_COLUMNS, summary),
+                                ("model_prices.csv", PRICE_COLUMNS, prices)):
+        write_csv(out / name, columns, rows)
+    return {"model_usage.csv": len(usage), "model_usage_by_model.csv": len(summary), "model_prices.csv": len(prices)}
+
+
 # ------------------------------ the export ----------------------------------
 
 def export(gs: list, out: Path, titles: dict, report_of) -> dict:
@@ -783,7 +1037,8 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
     run_list = Path(args.runs)
     out = Path(args.out) if args.out else run_list.parent
-    tuning, held_out_ids = read_run_list(read_text(run_list))
+    listed = read_text(run_list)
+    tuning, held_out_ids = read_run_list(listed)
     print(f"Reading {len(tuning)} tuning evaluation(s) and {len(held_out_ids)} held-out look(s) ...")
     gs = groups(tuning, [held_out_results.load(i) for i in held_out_ids], compare_runs.load)
     catalog = {r["id"]: r for _, r in read_jsonl(CATALOG)} if CATALOG.exists() else {}
@@ -814,6 +1069,8 @@ def main(argv=None) -> int:
                                 read_csv(annotations / "second_opinion.csv"), read_csv(annotations / "second_judge.csv"))
     written.update(more)
     missing += gone
+    written.update(export_usage(gs, out, evidence, report_of, {r["run_id"]: r for r in run_costs.collect()},
+                                translation_runs(listed)))
     print(f"Wrote {len(written)} files into {repo_path(out)}/:")
     for name, n in written.items():
         print(f"  {name}: {n} rows, {(out / name).stat().st_size:,} bytes")

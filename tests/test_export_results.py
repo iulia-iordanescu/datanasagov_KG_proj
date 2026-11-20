@@ -163,5 +163,95 @@ class Export(unittest.TestCase):
         self.assertEqual(ex.instance_rows(evidence)[0]["text_id"], "t")
 
 
+USAGE_REPORT = """| Started | 2026-11-17T21:00:00-05:00 |
+| Finished | 2026-11-17T21:01:40-05:00 |
+| `model` | claude-opus-5-5 | changed on the command line |
+| `thinking` | low | default |
+| Calls to | Made | Answered from the cache |
+|---|---:|---:|
+| stage 2: extract triple instances (one call per text piece) | 1,000 | 2 |
+| stage 3: label component instances (80 per call) | 10 | 0 |
+| the one-line test (first paid call of a run) | 1 | – |
+| **answers received this run** | **1,011** | |
+| sent, not from the cache | 1,000,000 |
+| sent, read from the cache (billed at a fraction) | 2,000,000 |
+| sent, written to the cache (billed a little above normal) | 100,000 |
+| received | 500,000 |
+| received as thinking (reasoning tokens, where the service reports them) | 300,000 |
+"""
+
+
+class Usage(unittest.TestCase):
+    """model_usage.csv, model_usage_by_model.csv and model_prices.csv."""
+
+    def test_the_report(self):
+        self.assertEqual(ex.parse_calls(USAGE_REPORT), {"calls_made": 1011, "calls_answered_from_cache": 2,
+                                                        "answers_received": 1011})
+        self.assertEqual(ex.parse_calls("no table"), {})
+        self.assertEqual(ex.wall_seconds(USAGE_REPORT), 100.0)
+        self.assertIsNone(ex.wall_seconds("| Started | 2026-11-17T21:00:00-05:00 |"))
+
+    def test_the_induction_cost(self):
+        """Every request single, at claude-opus-5-5's standard list price ($4 input, $0.20 cache read, $5 cache write,
+        $20 output per million tokens): 4 + 0.4 + 0.5 + 10 = $14.90."""
+        row = ex.induction_usage_row({"run_id": "r", "model": "claude-opus-5-5", "service": "anthropic",
+                                      "thinking": "high", "repeat": 1}, USAGE_REPORT, 3)
+        self.assertEqual((row["cost_usd"], row["batch"], row["records"]), ("14.9000", "no", 3))
+        self.assertEqual((row["received_per_second"], row["time_basis"]), ("5000.0", "wall time"))
+        self.assertTrue(set(row) <= set(ex.USAGE_COLUMNS))
+        self.assertNotIn("anthropic", str(row))                          # the service is never written
+
+    def test_a_translation_run_that_stopped(self):
+        row = ex.translation_usage_row("t", USAGE_REPORT.split("| Calls to")[0])
+        self.assertEqual((row["model"], row["thinking"], row["wall_seconds"], row["received"]),
+                         ("claude-opus-5-5", "low", 100.0, ""))
+        self.assertTrue(row["cost_note"].startswith("not recorded"))
+        self.assertEqual(ex.translation_runs("# c\ntranslation\tt1\nheld-out\th1\n"), ["t1"])
+        self.assertEqual(ex.read_run_list("translation\tt1\n"), ([], []))
+
+    def test_an_extraction_run(self):
+        cost_row = {"input_tokens": 10, "cache_read_tokens": 20, "cache_write_tokens": 0, "output_tokens": 900,
+                    "reasoning_tokens": 0, "cost_usd": 0.5, "notes": "", "job_processing": "j1: 1 min; j2: 30 s",
+                    "job_processing_seconds": "60;30", "records": "40 (40 extracted)"}
+        row = ex.extraction_usage_row({"run": "x", "model": "m"}, cost_row, USAGE_REPORT)
+        self.assertEqual((row["batch"], row["batch_processing_seconds"], row["records"], row["cost_usd"]),
+                         ("yes", 90.0, 40, "0.5000"))
+        self.assertEqual((row["received_per_second"], row["time_basis"]), ("10.0", "batch processing"))
+        row = ex.extraction_usage_row({"run": "x", "model": "m"},
+                                      {**cost_row, "cost_usd": "not recorded", "job_processing": "–",
+                                       "job_processing_seconds": ""}, USAGE_REPORT)
+        self.assertEqual((row["cost_usd"], row["batch"], row["time_basis"]), ("", "no", "wall time"))
+        self.assertTrue(row["cost_note"].startswith("not recorded"))
+
+    def test_by_model(self):
+        usage = [{"step": "060", "model": "m", "thinking": "lowest", "records": 40, "cost_usd": "1.0000",
+                  "sent_not_from_cache": 100, "sent_read_from_cache": 300, "sent_written_to_cache": 0, "received": 80,
+                  "time_basis": "batch processing", "batch_processing_seconds": 40.0, "wall_seconds": 5.0},
+                 {"step": "060", "model": "m", "thinking": "lowest", "records": 80, "cost_usd": "",
+                  "sent_not_from_cache": 0, "sent_read_from_cache": 0, "sent_written_to_cache": 0, "received": 40,
+                  "time_basis": "wall time", "wall_seconds": 80.0}]
+        row = ex.by_model_rows(usage)[0]
+        self.assertEqual((row["runs"], row["runs_with_cost"], row["records"], row["cost_usd"]), (2, 1, 120, "1.0000"))
+        self.assertEqual(row["cost_usd_per_record"], f"{1 / 40:.4f}")           # only the runs with a cost
+        self.assertEqual((row["sent_per_record"], row["received_per_record"]), (f"{400 / 120:.1f}", "1.0"))
+        self.assertEqual((row["seconds"], row["seconds_per_record"]), ("120.0", "1.00"))
+        self.assertEqual(list(row), ex.BY_MODEL_COLUMNS)
+
+    def test_roles_written_by_hand(self):
+        rows = ex.model_rows([], {}, [], [], [])
+        self.assertEqual(rows[-len(ex.BY_HAND):], ex.BY_HAND)
+        self.assertTrue(all(set(r) <= set(ex.MODEL_COLUMNS) for r in ex.BY_HAND))
+
+    def test_prices(self):
+        rows = ex.price_rows(["claude-opus-5-5", "gemini-3.8-flash", "no-such-model"])
+        self.assertEqual([(r["model"], r.get("period_from", "")) for r in rows],
+                         [("claude-opus-5-5", ""), ("gemini-3.8-flash", ""), ("gemini-3.8-flash", "2027-01-01"),
+                          ("no-such-model", "")])
+        self.assertEqual((rows[0]["input"], rows[0]["batch_output"], rows[0]["long_input"]), ("4", "10", ""))
+        self.assertRegex(rows[0]["date_read"], r"^\d{4}-\d{2}-\d{2}$")
+        self.assertTrue(rows[0]["source_url"].startswith("https://"))
+        self.assertTrue(set(rows[0]) <= set(ex.PRICE_COLUMNS))
+
+
 if __name__ == "__main__":
     unittest.main()

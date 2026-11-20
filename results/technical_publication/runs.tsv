@@ -85,3 +85,5 @@ held-out	070_evaluate_2026-11-19_1712
 held-out	070_evaluate_2026-11-19_1713
 held-out	070_evaluate_2026-11-19_1713-2
 held-out	070_evaluate_2026-11-19_1714
+# the run of 070 that asked a model to propose translation rows (its model usage only)
+translation	070_evaluate_2026-11-18_1900

@@ -12,7 +12,7 @@ py helpers/export_results.py
 
 The script reads the run list `runs.tsv` (in this folder) and the runs' files in `outputs/`, and writes every other file of this folder again. It calls no model and computes no number of its own: each number comes from the functions that `helpers/compare_runs.py`, `helpers/held_out_results.py` and step 070 use for their reports (`helpers/export_results.md`).
 
-The run list `runs.tsv` is a tab-separated file whose lines starting with `#` are comments. A tuning line gives the schema, the thinking setting, the model, the repeat, the run id of step 070's evaluation of its tuning records, and the run id of step 060. A held-out line gives the word `held-out` and the run id of step 070's held-out look. A held-out look finds its model and repeat through the run of step 060 it scored.
+The run list `runs.tsv` is a tab-separated file whose lines starting with `#` are comments. A tuning line gives the schema, the thinking setting, the model, the repeat, the run id of step 070's evaluation of its tuning records, and the run id of step 060. A held-out line gives the word `held-out` and the run id of step 070's held-out look. A held-out look finds its model and repeat through the run of step 060 it scored. A translation line gives the word `translation` and the run id of a run of step 070 that asked a model to propose translation rows, whose model usage alone goes into `model_usage.csv`.
 
 ## Terms
 
@@ -32,7 +32,7 @@ The terms are those of [`docs/terminology.md`](../../docs/terminology.md), which
 - Proportions (precision, recall, F1 and the others) are written as proportions with four decimals, so 0.7040 is 70.40%. Variances have six decimals.
 - An empty cell means there is no value: there is nothing to divide by, the value needs more than one run, or the number has no range.
 - The metric names are those of step 070's reports, a pair level followed by the number (`partial: f1`, `exact: recall`), or the number alone (`recall upper bound`, `schema fit`, `describes accuracy`). What each number divides by what, and how to read it, is in [`070_evaluate/metrics.md`](../../070_evaluate/metrics.md).
-- A reference `extracted_triples.csv#N` names row N (counted from 0, after the header) of the `extracted_triples.csv` that the run of step 060 wrote. A reference `annotations/ground_truth/batch_NNN.csv#M` names row M (counted from 0, after the header) of a ground truth file in Git.
+- A reference `extracted_triples.csv#N` names row N (counted from 0, after the header) of the `extracted_triples.csv` that the run of step 060 wrote. A reference `annotations/ground_truth/batch_<NNN>.csv#M` names row M (counted from 0, after the header) of a ground truth file in Git.
 
 ## The numbers
 
@@ -211,13 +211,13 @@ Each row gives the tokens of one run of step 040 or step 060, as the run's repor
 
 ### `models.csv`
 
-Each row gives one model in one role, from the runs' recipes and from the files in `annotations/`.
+Each row gives one model in one role, from the runs' recipes and from the files in `annotations/`. Three rows, for roles that no run or file records (the review of the partial pairs, the audits of the guidelines and the ground truth, and the annotation of the records added for the Technical Publication), are written into `helpers/export_results.py` by hand (`BY_HAND`) from my own account, each at its maker's default settings.
 
 | Column | Meaning |
 |---|---|
 | `model` | The model. |
 | `role` | What the model did. |
-| `where` | The step or helper that called the model. |
+| `where` | The step or helper that called the model, or, for a role no run records, the files the model worked on. |
 | `count` | How much the model did in that role. |
 | `count_of` | What `count` counts. |
 | `thinking` | The reasoning setting of its calls, where these files record it. |
@@ -225,6 +225,75 @@ Each row gives one model in one role, from the runs' recipes and from the files 
 | `temperature` | Whether and how a temperature was sent. |
 | `answer_limit_tokens` | The answer limit, in tokens, the calls were sent with. |
 | `prompt_files` | The prompt files the model was sent, as paths in this repository. |
+
+### `model_usage.csv`
+
+Each row gives the speed, tokens and cost of one run that called a model: the schema induction run of step 040, the 58 runs of step 060, and the run of step 070 that asked a model to propose translation rows. The cost is computed from the run's token counts and the makers' list prices (`PRICES` in `common/common_helpers/llm.py`, also in `model_prices.csv`), not read from an invoice, so a discount, a credit or a tax does not show in it. A run counts the tokens of every batch job it collected, whichever run sent the job and whichever schema its answers were for, so the tokens and the cost of one schema's runs can sit in a run of the other schema. A run whose answers came from the cache shows no tokens and no cost for them, since an earlier run paid for them.
+
+| Column | Meaning |
+|---|---|
+| `step` | The step of the run: `040_induce_schema`, `060_extract` or `070_evaluate`. |
+| `run` | The run id. |
+| `model` | The model the run called. |
+| `schema` | The schema a run of step 060 extracted with, empty for the other steps. |
+| `thinking` | The run's reasoning setting as the run records it. |
+| `repeat` | The run's repeat number, empty where the run records none. |
+| `records` | The number of records the run worked on: the induction texts for step 040, and the records chosen for step 060. |
+| `calls_made` | The number of model calls the run made, from its report's table of model calls, the one-line test call included. |
+| `calls_answered_from_cache` | The number of calls answered from the answers cache instead of the model. |
+| `answers_received` | The number of answers the run received from the model. |
+| `sent_not_from_cache` | The tokens sent that were not read from the model maker's prompt cache. |
+| `sent_read_from_cache` | The tokens sent that were read from that prompt cache. |
+| `sent_written_to_cache` | The tokens sent that were written to that prompt cache. |
+| `received` | The tokens received, thinking included. |
+| `received_as_thinking` | The tokens received as thinking, where the model's maker reports them. |
+| `cost_usd` | The cost in US dollars at the list prices, as the run's record computes it, empty when it can't be computed. |
+| `cost_note` | How the cost was computed when the run's record doesn't give it, or why it is empty. |
+| `batch` | `yes` when the run's calls went as batch jobs, which are billed at the batch prices, and `no` otherwise. |
+| `batch_processing_seconds` | The processing time of the batch jobs the run collected, each as the model's maker reports it, summed over the jobs, empty where the run's record doesn't keep it. |
+| `wall_seconds` | The run's wall time, from its report's start to its end. A run that collected batch jobs sent by an earlier run has a short wall time. |
+| `received_per_second` | The tokens received divided by the batch processing time for a batch run, or by the wall time otherwise, empty when either is missing. |
+| `time_basis` | Which time `received_per_second` divides by: `batch processing` or `wall time`. |
+
+Three runs have gaps that the runs' own records explain. The thinking-high run of `claude-opus-5-5` made no call, because all 40 of its answers came from the cache, paid for by an earlier run that the run list does not name. The thinking-high runs of `claude-haiku-5-5` and `gemini-3.8-flash` have no cost, because their records do not keep how their tokens divide between the prices they were billed at. The run of step 070 stopped after proposing the translation rows, before its report's table of model calls, so its calls and tokens are not recorded. The cost of the schema induction run is computed by the same function from its report's token totals, with every request a single request at the standard price of its day, since step 040 sends no batch job.
+
+### `model_usage_by_model.csv`
+
+Each row sums the runs of `model_usage.csv` of one step, model and reasoning setting.
+
+| Column | Meaning |
+|---|---|
+| `step`, `model`, `thinking` | The step, the model and the reasoning setting. |
+| `runs` | The number of runs summed. |
+| `runs_with_cost` | The number of those runs with a cost. |
+| `records` | The records of those runs, summed over the runs. |
+| `calls_made`, `calls_answered_from_cache`, `answers_received` | The calls and answers, summed over the runs. |
+| `sent_not_from_cache`, `sent_read_from_cache`, `sent_written_to_cache`, `received`, `received_as_thinking` | The tokens, summed over the runs. |
+| `cost_usd` | The cost in US dollars, summed over the runs with a cost. |
+| `cost_usd_per_run` | That cost divided by the number of runs with a cost. |
+| `cost_usd_per_record` | That cost divided by the records of the runs with a cost. |
+| `sent_per_record` | All the tokens sent, from the cache or not, divided by the records. |
+| `received_per_record` | The tokens received divided by the records. |
+| `seconds` | Each run's time in seconds, as `time_basis` gives it, summed over the runs that have one. |
+| `seconds_per_record` | Those seconds divided by the records of those runs. |
+
+The cost per record of a model's runs is a cost per record extracted only in sum over both schemas, because a run's batch jobs may carry the other schema's answers.
+
+### `model_prices.csv`
+
+Each row gives the list prices of one model in one price period, as `PRICES` in `common/common_helpers/llm.py` records them, in US dollars per million tokens.
+
+| Column | Meaning |
+|---|---|
+| `model` | The model. |
+| `period_from`, `period_through` | The first and last day the prices apply to, empty when the period is open at that end. |
+| `long_above_tokens` | The prompt length in tokens above which a request pays the long-prompt prices, empty when the model has one price at every length. |
+| `input`, `cache_read`, `cache_write`, `cache_write_1h`, `output` | The standard prices of a token sent not from the cache, read from the cache, written to the cache at the default lifetime, written to the cache for one hour, and received (thinking included), empty where the maker lists no such price. |
+| `batch_input`, `batch_cache_read`, `batch_cache_write`, `batch_cache_write_1h`, `batch_output` | The same prices for a request in a batch job. |
+| `long_input` … `long_output` | The standard prices for a prompt longer than `long_above_tokens`. |
+| `batch_long_input` … `batch_long_output` | The batch prices for such a prompt. |
+| `source_url` | The maker's price page the prices were read from. |
+| `date_read` | The day the prices were read. |
 
 ### Each model's role
 
@@ -235,7 +304,7 @@ Each model's input can be rebuilt from its prompt files (the column `prompt_file
 - **Drafting the ground truth (step 050):** the models named in the ground truth files' column `drafted_by` drafted the ground truth triples, with the prompts of `050_annotate/050_annotate.md`, *Prompts*. A record is finished only once I have checked that every fact of its text is there, so I read and corrected every drafted triple of these records.
 - **Second opinion on the ground truth** (`helpers/second_opinion.py`): another model drafted the finished records again with step 050's prompt, three repeats each. The file `annotations/second_opinion.csv` records, for each ground truth triple, in how many repeats it was found.
 - **Second judge** (`helpers/second_judge.py`): a model of another maker decided again, without seeing my decision, my decisions on facts the second opinion proposed (`annotations/second_judge.csv`, task `facts`).
-- **Translation proposals (step 070):** step 070 made no model call in these evaluations, as each of their reports shows 0 answers received. The translation table it used is `annotations/component_class_mapping.csv`.
+- **Translation proposals (step 070):** step 070 made no model call in these evaluations, as each of their reports shows 0 answers received. The translation table it used is `annotations/component_class_mapping.csv`, to which `claude-opus-5-5` proposed 251 rows for the induced schema's component classes in an earlier run of step 070, `070_evaluate_2026-11-18_1900` (its usage is in `model_usage.csv`).
 - **Partial pair reviews:** Claude Fable 5.2 reviewed every partial pair of the tuning and held-out records under the annotation guidelines, and its verdicts are in `annotations/partial_pair_reviews.csv`.
 
 ## Records and triples

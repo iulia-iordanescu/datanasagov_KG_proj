@@ -11,10 +11,11 @@ Free: no model calls, by code. It runs no step and changes nothing in `outputs/`
 
 ## What it reads
 
-- **The run list:** a tab-separated file, lines starting with `#` being comments. A tuning line gives the schema, the thinking setting, the model, the repeat, 070's run id of its tuning records, and 060's run id; a held-out line gives `held-out` and 070's run id of a held-out look. A look finds its model and repeat through the run of step 060 it scored, which must be a tuning line's; a line of another shape stops the helper, naming it.
+- **The run list:** a tab-separated file, lines starting with `#` being comments. A tuning line gives the schema, the thinking setting, the model, the repeat, 070's run id of its tuning records, and 060's run id; a held-out line gives `held-out` and 070's run id of a held-out look; a translation line gives `translation` and the run id of a run of step 070 that asked a model to propose translation rows, whose model usage alone is written. A look finds its model and repeat through the run of step 060 it scored, which must be a tuning line's; a line of another shape stops the helper, naming it.
 - **The evaluations step 070 kept:** `evaluations/<run id>.json` for the tuning lines (as `py helpers/compare_runs.py` reads them) and `held_out_evaluations/<run id>.json` for the looks (as `py helpers/held_out_results.py` reads them).
 - **Each run's own files:** 060's `extracted_triples.csv`, `extracted_triples_removed.csv` and `extracted_triples_details.json`, 070's `compared_triples.csv`, and 040's `induction_evidence.json`, each as that run wrote it: the copy with the sha256 the run's manifest records, live or in `previous_runs/` (`output_of_run` in `common/common_helpers/step.py`). Another run's version is never read in its place; a file with no copy left is named and left out.
-- **The runs' reports** (`outputs/reports/<run id>.md`): 060's extraction figures and the token counts of steps 040 and 060.
+- **The runs' reports** (`outputs/reports/<run id>.md`): 060's extraction figures, the calls, the token counts and the wall time of each run that called a model.
+- **The runs' costs and batch processing times:** each run of step 060 as `py helpers/run_costs.py` reads it (`run_row`), and the model's list prices (`PRICES` in `common/common_helpers/llm.py`); for step 040, whose report predates the cost lines, `llm.run_cost` over the report's token totals.
 - **The records' text** (020's `records.jsonl`), the pool (030's `splits.json`), the ground truth (`annotations/ground_truth/`, through `common/common_helpers/ground_truth.py`), and `annotations/second_opinion.csv` and `annotations/second_judge.csv`.
 
 ## How the numbers are computed
@@ -33,5 +34,5 @@ What each file holds, column by column, is in the folder's own `README.md` (`res
 ## What it can't give
 
 - **Token counts per model call:** the runs record tokens per run (each report's *Tokens* table), so the files give them per run.
-- **Which service served a run, and what it cost:** left out on purpose, though the reports have both.
+- **Which service served a run:** left out on purpose, though the reports name it.
 - **A run list's files kept elsewhere:** a run whose files are no longer in `outputs/` (deleted, or made on another laptop) is named, not exported; copy its folders into `outputs/` first.

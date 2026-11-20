@@ -1,0 +1,61 @@
+step,run,model,schema,thinking,repeat,records,calls_made,calls_answered_from_cache,answers_received,sent_not_from_cache,sent_read_from_cache,sent_written_to_cache,received,received_as_thinking,cost_usd,cost_note,batch,batch_processing_seconds,wall_seconds,received_per_second,time_basis
+040_induce_schema,040_induce_schema_2026-11-17_2103,claude-opus-5-5,,high,1,138,195,0,195,708014,2867332,85592,836106,512994,20.5556,"computed from the report's token totals, every request a single request at the standard price",no,,2779.0,300.9,wall time
+060_extract,060_extract_2026-11-18_1835,claude-haiku-5-5,ground truth,lowest,1,40,38,2,38,55146,4668024,76386,178092,0,0.0783,,yes,751.1,30.0,237.1,batch processing
+060_extract,060_extract_2026-11-18_1851,claude-haiku-5-5,ground truth,lowest,2,40,0,40,0,0,0,0,0,0,0.0000,,yes,,5.0,,
+060_extract,060_extract_2026-11-18_1843-3,claude-haiku-5-5,ground truth,lowest,3,40,40,0,40,55798,4809480,0,171169,0,0.0696,,yes,777.5,52.0,220.2,batch processing
+060_extract,060_extract_2026-11-18_1836-2,claude-opus-5-5,ground truth,lowest,1,40,38,2,38,55146,4668140,76388,248526,0,3.3679,,yes,303.1,33.0,819.9,batch processing
+060_extract,060_extract_2026-11-18_1840,claude-opus-5-5,ground truth,lowest,2,40,40,0,40,55798,4809600,0,257037,411,3.1629,,yes,738.2,44.0,348.2,batch processing
+060_extract,060_extract_2026-11-18_1845,claude-opus-5-5,ground truth,lowest,3,40,40,0,40,55798,4809600,0,257351,377,3.1661,,yes,492.6,57.0,522.4,batch processing
+060_extract,060_extract_2026-11-18_1836,claude-sonnet-5-5,ground truth,lowest,1,40,38,2,38,55146,4668024,76386,213505,0,1.5088,,yes,725.8,31.0,294.2,batch processing
+060_extract,060_extract_2026-11-18_1839-3,claude-sonnet-5-5,ground truth,lowest,2,40,40,0,40,55798,4809480,0,213950,0,1.3660,,yes,723.0,42.0,295.9,batch processing
+060_extract,060_extract_2026-11-18_1844,claude-sonnet-5-5,ground truth,lowest,3,40,40,0,40,55798,4809480,0,211463,0,1.3536,,yes,795.8,54.0,265.7,batch processing
+060_extract,060_extract_2026-11-18_1838-2,gemini-3.1-flash-lite,ground truth,lowest,1,40,38,2,38,484872,439765,0,33958,0,0.0916,,yes,130.6,16.0,260.0,batch processing
+060_extract,060_extract_2026-11-18_1842-3,gemini-3.1-flash-lite,ground truth,lowest,2,40,40,0,40,265377,707714,0,34054,0,0.0676,,yes,136.8,21.0,248.9,batch processing
+060_extract,060_extract_2026-11-18_1848-2,gemini-3.1-flash-lite,ground truth,lowest,3,40,40,0,40,283785,689306,0,34971,0,0.0703,,yes,157.6,23.0,221.9,batch processing
+060_extract,060_extract_2026-11-18_1839,gemini-3.1-pro-preview,ground truth,lowest,1,40,38,2,38,924637,0,0,77728,33754,1.3910,,yes,128.4,16.0,605.4,batch processing
+060_extract,060_extract_2026-11-18_1843-2,gemini-3.1-pro-preview,ground truth,lowest,2,40,40,0,40,973091,0,0,85633,40137,1.4869,,yes,218.9,21.0,391.2,batch processing
+060_extract,060_extract_2026-11-18_1852,gemini-3.1-pro-preview,ground truth,lowest,3,40,31,9,31,754608,0,0,61325,30961,1.1226,,yes,157.5,40.0,389.4,batch processing
+060_extract,060_extract_2026-11-18_1838-3,gemini-3.8-flash,ground truth,lowest,1,40,38,2,38,924637,0,0,49000,0,0.4386,,yes,179.3,16.0,273.3,batch processing
+060_extract,060_extract_2026-11-18_1843,gemini-3.8-flash,ground truth,lowest,2,40,40,0,40,928688,44403,0,52341,0,0.4481,,yes,178.6,21.0,293.1,batch processing
+060_extract,060_extract_2026-11-18_1854,gemini-3.8-flash,ground truth,lowest,3,40,2,38,2,48467,0,0,2627,0,0.0231,,yes,200.9,18.0,13.1,batch processing
+060_extract,060_extract_2026-11-18_1837,gpt-5.6-luna,ground truth,lowest,1,40,38,2,38,354,0,3244759,131704,0,0.4847,,yes,532.0,30.0,247.6,batch processing
+060_extract,060_extract_2026-11-18_1841,gpt-5.6-luna,ground truth,lowest,2,40,40,0,40,360,2363304,927667,138078,0,0.2225,,yes,293.0,42.0,471.3,batch processing
+060_extract,060_extract_2026-11-18_1846,gpt-5.6-luna,ground truth,lowest,3,40,40,0,40,360,3290971,0,135841,0,0.1145,,yes,173.0,53.0,785.2,batch processing
+060_extract,060_extract_2026-11-18_1838,gpt-5.6-sol,ground truth,lowest,1,40,38,2,38,114,0,881455,47822,0,2.6821,,yes,147.0,17.0,325.3,batch processing
+060_extract,060_extract_2026-11-18_1842-2,gpt-5.6-sol,ground truth,lowest,2,40,40,0,40,120,0,927667,48128,0,2.8007,,yes,165.0,20.0,291.7,batch processing
+060_extract,060_extract_2026-11-18_1851-2,gpt-5.6-sol,ground truth,lowest,3,40,36,4,36,108,789198,46212,44948,0,0.7231,,yes,83.0,23.0,541.5,batch processing
+060_extract,060_extract_2026-11-18_1837-2,gpt-5.6-terra,ground truth,lowest,1,40,38,2,38,114,0,881455,33731,0,1.3043,,yes,205.0,16.0,164.5,batch processing
+060_extract,060_extract_2026-11-18_1842,gpt-5.6-terra,ground truth,lowest,2,40,40,0,40,120,0,927667,33860,0,1.3629,,yes,238.0,20.0,142.3,batch processing
+060_extract,060_extract_2026-11-18_1847,gpt-5.6-terra,ground truth,lowest,3,40,40,0,40,120,881455,46212,34892,0,0.3554,,yes,111.0,24.0,314.3,batch processing
+060_extract,060_extract_2026-11-18_1849,claude-haiku-5-5,induced,lowest,1,80,0,80,0,0,0,0,0,0,0.0000,,yes,,6.0,,
+060_extract,060_extract_2026-11-18_1849-5,claude-haiku-5-5,induced,lowest,2,80,32,48,32,13221,1403232,0,47629,0,0.0196,,yes,716.7,27.0,66.5,batch processing
+060_extract,060_extract_2026-11-18_1850-3,claude-haiku-5-5,induced,lowest,3,80,0,80,0,0,0,0,0,0,0.0000,,yes,,5.0,,
+060_extract,060_extract_2026-11-18_1849-3,claude-opus-5-5,induced,lowest,1,80,0,80,0,0,0,0,0,0,0.0000,,yes,,6.0,,
+060_extract,060_extract_2026-11-18_1850,claude-opus-5-5,induced,lowest,2,80,0,80,0,0,0,0,0,0,0.0000,,yes,,6.0,,
+060_extract,060_extract_2026-11-18_1850-5,claude-opus-5-5,induced,lowest,3,80,0,80,0,0,0,0,0,0,0.0000,,yes,,6.0,,
+060_extract,060_extract_2026-11-18_1849-2,claude-sonnet-5-5,induced,lowest,1,80,0,80,0,0,0,0,0,0,0.0000,,yes,,5.0,,
+060_extract,060_extract_2026-11-18_1849-6,claude-sonnet-5-5,induced,lowest,2,80,0,80,0,0,0,0,0,0,0.0000,,yes,,6.0,,
+060_extract,060_extract_2026-11-18_1850-4,claude-sonnet-5-5,induced,lowest,3,80,0,80,0,0,0,0,0,0,0.0000,,yes,,6.0,,
+060_extract,060_extract_2026-11-18_2137,gemini-3.1-flash-lite,induced,lowest,1,80,80,0,80,734914,1775930,0,74654,0,0.1751,,yes,118.5,93.0,630.0,batch processing
+060_extract,060_extract_2026-11-18_2139,gemini-3.1-flash-lite,induced,lowest,2,80,80,0,80,244636,2234236,0,74118,0,0.1141,,yes,217.8,41.0,340.3,batch processing
+060_extract,060_extract_2026-11-18_2140,gemini-3.1-flash-lite,induced,lowest,3,80,80,0,80,359212,2119660,0,71652,0,0.1251,,yes,212.3,46.0,337.5,batch processing
+060_extract,060_extract_2026-11-18_2138,gemini-3.1-pro-preview,induced,lowest,1,80,80,0,80,2478872,0,0,165204,74349,3.4701,,yes,118.6,57.0,1393.0,batch processing
+060_extract,060_extract_2026-11-18_2159,gemini-3.1-pro-preview,induced,lowest,2,80,81,0,81,2478884,0,0,160944,74099,3.4454,,yes,149.2,453.0,1078.7,batch processing
+060_extract,060_extract_2026-11-18_2217,gemini-3.1-pro-preview,induced,lowest,3,80,81,0,81,2450081,28803,0,165180,75781,3.4477,,yes,149.0,438.0,1108.6,batch processing
+060_extract,060_extract_2026-11-18_2141,gemini-3.8-flash,induced,lowest,1,80,81,0,81,2401068,77816,0,99568,0,1.0900,,yes,255.5,543.0,389.7,batch processing
+060_extract,060_extract_2026-11-18_2150,gemini-3.8-flash,induced,lowest,2,80,81,0,81,2423901,86335,0,103305,0,1.1198,,yes,365.2,528.0,282.9,batch processing
+060_extract,060_extract_2026-11-18_2206,gemini-3.8-flash,induced,lowest,3,80,81,0,81,2425543,53341,0,99915,0,1.0989,,yes,341.4,637.0,292.7,batch processing
+060_extract,060_extract_2026-11-18_1849-4,gpt-5.6-luna,induced,lowest,1,80,0,80,0,0,0,0,0,0,0.0000,,yes,,7.0,,
+060_extract,060_extract_2026-11-18_1850-2,gpt-5.6-luna,induced,lowest,2,80,0,80,0,0,0,0,0,0,0.0000,,yes,,6.0,,
+060_extract,060_extract_2026-11-18_1850-6,gpt-5.6-luna,induced,lowest,3,80,0,80,0,0,0,0,0,0,0.0000,,yes,,6.0,,
+060_extract,060_extract_2026-11-18_2242,gpt-5.6-sol,induced,lowest,1,80,81,0,81,257,0,2363304,108857,0,6.9975,,yes,338.0,799.0,322.1,batch processing
+060_extract,060_extract_2026-11-19_0013,gpt-5.6-sol,induced,lowest,2,80,6,75,6,32,146893,0,2451,0,0.0541,,yes,73.0,256.0,33.6,batch processing
+060_extract,060_extract_2026-11-18_2354,gpt-5.6-sol,induced,lowest,3,80,81,0,81,257,0,2363304,109010,0,6.9990,,yes,683.0,1123.0,159.6,batch processing
+060_extract,060_extract_2026-11-18_2226,gpt-5.6-terra,induced,lowest,1,80,81,0,81,257,0,2363304,80990,0,3.4404,,yes,605.0,971.0,133.9,batch processing
+060_extract,060_extract_2026-11-18_2255,gpt-5.6-terra,induced,lowest,2,80,81,0,81,257,0,2363304,80580,0,3.4379,,yes,966.0,1450.0,83.4,batch processing
+060_extract,060_extract_2026-11-18_2341,gpt-5.6-terra,induced,lowest,3,80,81,0,81,257,0,2363304,79216,0,3.4297,,yes,359.0,768.0,220.7,batch processing
+060_extract,060_extract_2026-11-18_1338,claude-haiku-5-5,ground truth,high,1,40,40,0,40,18099,1268904,32536,543565,465137,,not recorded: the run's record doesn't keep how its tokens divide between prices,yes,,20.0,,
+060_extract,060_extract_2026-11-18_0019,claude-opus-5-5,ground truth,high,1,40,0,40,0,0,0,0,0,0,0.0000,"computed from the report's token totals, every request at one price",yes,,5.0,,
+060_extract,060_extract_2026-11-18_1337,claude-sonnet-5-5,ground truth,high,1,40,40,0,40,18099,1268904,32536,158032,82474,0.9368,"computed from the report's token totals, every request at one price",yes,,20.0,,
+060_extract,060_extract_2026-11-18_1338-2,gemini-3.8-flash,ground truth,high,1,40,39,0,39,1466157,44403,0,2337479,2254738,,not recorded: the run's record doesn't keep how its tokens divide between prices,yes,,2000.0,,
+070_evaluate,070_evaluate_2026-11-18_1900,claude-opus-5-5,,low,,,,,,,,,,,,"not recorded: the run stopped before its report's table of model calls, so its calls and tokens aren't kept",no,,105.0,,
