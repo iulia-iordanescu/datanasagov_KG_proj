@@ -571,11 +571,16 @@ MODEL_CALL_FIELDS = ("service", "model", "served_as", "temperature", "max_answer
 #: workers, batch and confirm_paid_calls: how the calls are sent and paid for, not what they ask. served_as: the
 #: model that answered, empty when every answer came from the cache. 070's own service and model: the model that
 #: proposes and suggests rows of the translation table; the translation used for scoring is recorded by its own
-#: fingerprint (translation_sha256), which stays in the recipe.
+#: fingerprint (translation_sha256), which stays in the recipe. The count and fingerprint of the partial-pair verdicts
+#: that applied to a run's own pairs: repeats extract different triples, so they meet different verdicts of one review
+#: set; the review set itself, by fingerprint (partial_pair_verdicts / reviews_sha256), stays in the recipe, so a
+#: review between two runs still keeps them from being taken for repeats.
 NOT_THE_RECIPE = ("extraction (060) / run_id", "extraction (060) / git_commit",
                   "extraction (060) / settings / workers", "extraction (060) / settings / batch",
                   "extraction (060) / settings / confirm_paid_calls", "extraction (060) / model_calls / served_as",
-                  "evaluation (070) / git_commit", "evaluation (070) / service", "evaluation (070) / model")
+                  "evaluation (070) / git_commit", "evaluation (070) / service", "evaluation (070) / model",
+                  "evaluation (070) / partial_pair_verdicts / applied",
+                  "evaluation (070) / partial_pair_verdicts / sha256")
 #: Where the repeat itself is recorded: 060's setting, and its copy in the model calls' record.
 REPEAT_PATHS = ("extraction (060) / settings / repeat", "extraction (060) / model_calls / repeat")
 
@@ -587,6 +592,14 @@ def _verdicts_applied(records: list) -> list:
     return sorted(v for r in records for v in ((r.get("compared") or {}).get("partial_review") or {}).get("verdicts", []))
 
 
+def _reviews_fingerprint(reviews: dict) -> str:
+    """The fingerprint of every verdict the scoring read from annotations/partial_pair_reviews.csv (records.py:
+    read_reviews, {pair_key: verdict}), whichever pairs a run had: [the pair's key..., the verdict], sorted. The same
+    for every run scored against one review set, so it tells a review between two runs from the repeats' own
+    variation in which verdicts applied."""
+    return _fingerprint(sorted([*k, v] for k, v in (reviews or {}).items()))
+
+
 def _recipe(evaluated, translation, inputs_manifest: dict, records: list | None = None) -> dict:
     """What made this run's numbers, for py helpers/compare_runs.py to show what differs between runs: 060's run
     (code version, settings, how its model calls were sent (llm.describe(), from its details file: the exact model
@@ -596,8 +609,8 @@ def _recipe(evaluated, translation, inputs_manifest: dict, records: list | None 
     of what 070 counts (pairing.EVALUATION_VERSION: the gate, the keys, the tie rule), the facts
     that wait on an expert (that occurrences matching them are left out of precision, how many there are, and their
     rows by fingerprint), the verdicts on partial pairs that apply to the records kept (records: those of the file
-    the recipe is written to; all evaluated records when not given), by count and fingerprint, and the model that
-    proposed the translation)."""
+    the recipe is written to; all evaluated records when not given), by count and fingerprint, the whole set of
+    verdicts on partial pairs that the scoring read, by fingerprint, and the model that proposed the translation)."""
     verdicts = _verdicts_applied(getattr(evaluated, "records", []) if records is None else records)
     extraction = {"run_id": evaluated.extraction_made.get("run_id") or inputs_manifest.get("run_id"),
                   "git_commit": inputs_manifest.get("git_commit"), "settings": inputs_manifest.get("settings", {}),
@@ -621,9 +634,13 @@ def _recipe(evaluated, translation, inputs_manifest: dict, records: list | None 
                                  UNTRANSLATABLE_FIELD: {
                                      "excluded_from_precision": True,
                                      "to_none_predicates_sha256": _fingerprint(sorted(translation.to_none.get("predicate", [])))},
-                                 # the verdicts on partial pairs that decided pairs of these records: a review between
-                                 # two runs changes this, so they aren't taken for repeats (helpers/compare_runs.py)
-                                 "partial_pair_verdicts": {"applied": len(verdicts), "sha256": _fingerprint(verdicts)},
+                                 # the verdicts on partial pairs that decided pairs of these records (applied, sha256:
+                                 # information, they differ between repeats), and the whole review set the scoring
+                                 # read (reviews_sha256): a review between two runs changes it, so they aren't taken
+                                 # for repeats (helpers/compare_runs.py)
+                                 "partial_pair_verdicts": {"applied": len(verdicts), "sha256": _fingerprint(verdicts),
+                                                           "reviews_sha256": _reviews_fingerprint(
+                                                               getattr(evaluated, "reviews", {}))},
                                  **{k: v for k, v in llm.describe().items() if k in ("service", "model")}}}
 
 

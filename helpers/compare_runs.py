@@ -69,10 +69,14 @@ UNRECORDED = [
     "invisible.",
     "- **070's model call settings:** of 070's settings, only the service and the model are recorded (not its "
     "thinking cap); its translation is recorded by fingerprint, so a different translation shows anyway.",
-    "- **The partial-pair verdicts of a run made before 2026-11-17** (`annotations/partial_pair_reviews.csv`): such a "
-    "run records none, so review no partial pairs between it and the runs you compare with it; a later run records the "
-    "verdicts that applied to its records, by count and fingerprint (`partial_pair_verdicts`), so a review between two "
-    "later runs shows in the table below.",
+    "- **The partial-pair verdicts of a run without `reviews_sha256`** (`annotations/partial_pair_reviews.csv`): a "
+    "run made before 2026-11-17 records no verdicts, and a run made from 2026-11-17 until 2026-11-19 records only the "
+    "verdicts that applied to its own records, by count and fingerprint (`partial_pair_verdicts`, `applied` and "
+    "`sha256`). Repeats extract different triples and so meet different verdicts, so these two parts may differ "
+    "between repeats, and such runs are grouped by the rest of their recipe: review no partial pairs between such a "
+    "run and the runs you compare with it. A later run also records the whole set of verdicts it was scored against, "
+    "by fingerprint (`reviews_sha256`), so a review between two later runs shows in the table below and keeps them "
+    "from being taken for repeats.",
     "- **The model's own variation:** the same recipe can answer differently on another run (no setting makes a "
     "model answer the same every time), and a cached answer is reused, so two runs of one recipe usually agree; "
     "repeats of one recipe (060's setting `repeat`: 2, 3, ...) are asked again, so their *Spread across the runs* "
@@ -393,7 +397,8 @@ def points(v) -> str:
 def repeat_only(path: str) -> bool:
     """Whether a part of the recipe (a path of flatten) may differ between repeats of one recipe: the repeat itself
     (moves.REPEAT_PATHS), or a part that changes neither what the model is asked nor how its answers are scored
-    (moves.NOT_THE_RECIPE: run ids, code versions, how the calls were sent and paid for). The one list both this
+    (moves.NOT_THE_RECIPE: run ids, code versions, how the calls were sent and paid for, which verdicts of one
+    partial-pair review set applied to a run's own pairs). The one list both this
     helper and helpers/held_out_results.py read."""
     return path in REPEAT_PATHS or path in NOT_THE_RECIPE
 
@@ -557,7 +562,8 @@ def report(runs: list, ids: list, left: dict, notes: list = (), across_schemas: 
     lines += ["", "## Spread across the runs", "",
               ("These runs are repeats of one recipe: besides the repeat (060's setting `repeat`), only parts that "
                "change neither what the model is asked nor how its answers are scored differ (run ids, code versions, "
-               "how the calls were sent and paid for), so each was answered by the model anew, and this spread is the model's own variation on these records, the noise "
+               "how the calls were sent and paid for, which verdicts of one partial-pair review set applied to a "
+               "run's own pairs), so each was answered by the model anew, and this spread is the model's own variation on these records, the noise "
                "floor. Whether a later change helped is decided by the rule fixed before the runs, on these repeats "
                "and the change's (`--baseline … --changed …`, helpers/compare_runs.md, *Did a change help?*), not by "
                "this width."

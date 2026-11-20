@@ -972,7 +972,8 @@ class CompareRuns(unittest.TestCase):
     def test_repeats_ignore_what_changes_no_question(self):
         """Repeats pool although they differ in parts that change neither what the model is asked nor how its answers
         are scored (moves.NOT_THE_RECIPE: run ids, code versions, workers, batch, confirm_paid_calls, served_as, 070's
-        own service and model). Near-misses: one more difference in a part that does matter (a prompt's fingerprint,
+        own service and model, and the count and fingerprint of the partial-pair verdicts that applied to the run's own
+        pairs). Near-misses: one more difference in a part that does matter (a prompt's fingerprint,
         the thinking setting, the answer limit, 060's service) and they are not repeats; the ignored parts alone,
         with the same repeat, are not repeats either."""
         import moves
@@ -987,7 +988,9 @@ class CompareRuns(unittest.TestCase):
                                    "thinking": "high", "max_answer_tokens": 64000})
             ex["settings"].update(service="anthropic", thinking="high", repeat=n, workers=n, batch=bool(n % 2),
                                   confirm_paid_calls=not n % 2)
-            r["recipe"]["evaluation (070)"].update(git_commit=f"e{n}", service=f"s{n}", model=f"m{n}")
+            r["recipe"]["evaluation (070)"].update(git_commit=f"e{n}", service=f"s{n}", model=f"m{n}",
+                                                   partial_pair_verdicts={"applied": n, "sha256": f"v{n}",
+                                                                          "reviews_sha256": "set"})
             for path, value in change.items():
                 *where, leaf = path.split(" / ")
                 d = r["recipe"]
@@ -1003,7 +1006,8 @@ class CompareRuns(unittest.TestCase):
         for path, value in (("extraction (060) / prompts / extract.txt", "bbb"),
                             ("extraction (060) / settings / thinking", "low"),
                             ("extraction (060) / model_calls / max_answer_tokens", 32000),
-                            ("extraction (060) / settings / service", "litellm")):
+                            ("extraction (060) / settings / service", "litellm"),
+                            ("evaluation (070) / partial_pair_verdicts / reviews_sha256", "another set")):
             with self.subTest(path=path):
                 self.assertFalse(cr.only_repeats(cr.differences(runs[:2] + [run(3, **{path: value})])))
         same_repeat = run(1)
@@ -1943,10 +1947,54 @@ class ReviewOf2026_11_17(unittest.TestCase):
         self.assertEqual((a["applied"], b["applied"]), (0, 1))
         self.assertNotEqual(a["sha256"], b["sha256"])
         self.assertEqual(a, moves._recipe(ev, translation(), {})["evaluation (070)"]["partial_pair_verdicts"])  # records default
-        # runs whose recipes differ in the verdicts (and the repeat) aren't repeats of one recipe
-        path = "evaluation (070) / partial_pair_verdicts / sha256"
+        # the whole review set the scoring read: the same whichever verdicts applied, another after a review
+        reviews = {("r1", "modis", "aboard", "aqua", "modis terra", "aboard", "aqua"): "not the same fact",
+                   ("r2", "x", "p", "y", "x", "p", "z"): "the same fact"}
+        set_of = lambda revs, recs: moves._recipe(SimpleNamespace(**{**vars(ev), "reviews": revs}), translation(), {},   # noqa: E731
+                                                  recs)["evaluation (070)"]["partial_pair_verdicts"]
+        a, b = set_of(reviews, before), set_of(reviews, after)
+        self.assertEqual(a["reviews_sha256"], b["reviews_sha256"])
+        self.assertNotEqual(a["sha256"], b["sha256"])
+        reviewed = {**reviews, ("r3", "u", "p", "v", "u", "p", "w"): "the same fact"}
+        self.assertNotEqual(set_of(reviewed, before)["reviews_sha256"], a["reviews_sha256"])
+        self.assertNotEqual(set_of({}, before)["reviews_sha256"], a["reviews_sha256"])
+        # applied and sha256 may differ between repeats; reviews_sha256 may not
+        repeat = ("extraction (060) / settings / repeat", ["1", "2"])
+        for leaf in ("applied", "sha256"):
+            path = f"evaluation (070) / partial_pair_verdicts / {leaf}"
+            self.assertTrue(self.cr.repeat_only(path))
+            self.assertTrue(self.cr.only_repeats([(path, ["x", "y"]), repeat]))
+        path = "evaluation (070) / partial_pair_verdicts / reviews_sha256"
         self.assertFalse(self.cr.repeat_only(path))
-        self.assertFalse(self.cr.only_repeats([(path, ["x", "y"]), ("extraction (060) / settings / repeat", ["1", "2"])]))
+        self.assertFalse(self.cr.only_repeats([(path, ["x", "y"]), repeat]))
+
+    def test_repeats_with_different_verdicts_applied_group_together(self):
+        """helpers/held_out_results.py groups runs by recipe_key: two repeats whose runs met different verdicts of one
+        review set (applied, sha256) are one group; a changed review set (reviews_sha256) makes two groups. A run
+        without reviews_sha256 (kept before it was recorded) groups by the rest of its recipe."""
+        import importlib.util
+        from support import ROOT
+        spec = importlib.util.spec_from_file_location("held_out_results", ROOT / "helpers" / "held_out_results.py")
+        hor = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(hor)
+
+        def run(n, applied, reviews="set"):
+            r = CompareRuns.kept(f"R{n}", lambda i: 2, "claude-opus-5.5")
+            r["recipe"]["extraction (060)"]["settings"]["repeat"] = n
+            verdicts = {"applied": applied, "sha256": f"v{applied}"}
+            if reviews is not None:
+                verdicts["reviews_sha256"] = reviews
+            r["recipe"]["evaluation (070)"]["partial_pair_verdicts"] = verdicts
+            return r
+
+        same = [run(1, 3), run(2, 5)]
+        self.assertEqual(len(hor.groups_of(same)), 1)
+        self.assertTrue(self.cr.only_repeats(self.cr.differences(same)))
+        changed = [run(1, 3), run(2, 5, reviews="another set")]
+        self.assertEqual(len(hor.groups_of(changed)), 2)
+        self.assertFalse(self.cr.only_repeats(self.cr.differences(changed)))
+        older = [run(1, 3, reviews=None), run(2, 5, reviews=None)]
+        self.assertEqual(len(hor.groups_of(older)), 1)
 
     def test_records_scored_as_nothing_counted_per_run(self):
         kept = CompareRuns.kept

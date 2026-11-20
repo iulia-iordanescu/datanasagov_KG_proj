@@ -55,8 +55,9 @@ LIMITS = [
     "on another computer, or before 2026-11-16, has a line in `annotations/held_out_looks.csv` and no counts here.",
     "- **Only these records:** a range covers which records happened to be evaluated, not mistakes in the ground "
     "truth. Pooling over the repeats averages away part of the model's own variation and nothing else.",
-    "- **Partial pairs of the held-out part are never reviewed** (that would mean looking at it), so the partial "
-    "level may count pairs that aren't the same fact.",
+    "- **Partial pairs of the held-out part are reviewed only after the look** (a review before it would mean "
+    "looking at the held-out part): until they are, the partial level may count pairs that aren't the same fact, "
+    "and scoring again with the verdicts is logged as another look of the same extraction.",
     "- **The groups share their records:** two recipes' ranges that overlap don't show the recipes alike, and "
     "ranges apart don't prove them different; this helper tests no difference between recipes.",
     "- **Leaving records out is a second reading, not a new sample:** the records left are no longer the first "
@@ -331,7 +332,8 @@ def report(runs: list, log: list, leave_out: list = (), positions: dict | None =
         lines += ["", "## What differs between the groups", "",
                   "Every part of the recipes that isn't the same in every group (the first run of each), apart from "
                   "the repeat and the parts that change neither what the model is asked nor how its answers are "
-                  "scored (run ids, code versions, how the calls were sent and paid for). Groups meant to differ only in the extraction model differ only in "
+                  "scored (run ids, code versions, how the calls were sent and paid for, which verdicts of one "
+                  "partial-pair review set applied to a run's own pairs). Groups meant to differ only in the extraction model differ only in "
                   "the rows that name it.", "",
                   "| Part of the recipe | " + " | ".join(f"Group {g + 1}" for g in range(len(groups))) + " |",
                   "|---|" + "---|" * len(groups)]
