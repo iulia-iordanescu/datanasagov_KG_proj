@@ -1,0 +1,87 @@
+# schema	thinking	model	repeat	run of 070 (tuning)	run of 060
+ground truth	lowest	claude-haiku-5-5	1	070_evaluate_2026-11-19_1530	060_extract_2026-11-18_1835
+ground truth	lowest	claude-haiku-5-5	2	070_evaluate_2026-11-19_1531	060_extract_2026-11-18_1851
+ground truth	lowest	claude-haiku-5-5	3	070_evaluate_2026-11-19_1531-2	060_extract_2026-11-18_1843-3
+ground truth	lowest	claude-opus-5-5	1	070_evaluate_2026-11-19_1531-3	060_extract_2026-11-18_1836-2
+ground truth	lowest	claude-opus-5-5	2	070_evaluate_2026-11-19_1532	060_extract_2026-11-18_1840
+ground truth	lowest	claude-opus-5-5	3	070_evaluate_2026-11-19_1532-2	060_extract_2026-11-18_1845
+ground truth	lowest	claude-sonnet-5-5	1	070_evaluate_2026-11-19_1533	060_extract_2026-11-18_1836
+ground truth	lowest	claude-sonnet-5-5	2	070_evaluate_2026-11-19_1533-2	060_extract_2026-11-18_1839-3
+ground truth	lowest	claude-sonnet-5-5	3	070_evaluate_2026-11-19_1534	060_extract_2026-11-18_1844
+ground truth	lowest	gemini-3.1-flash-lite	1	070_evaluate_2026-11-19_1534-2	060_extract_2026-11-18_1838-2
+ground truth	lowest	gemini-3.1-flash-lite	2	070_evaluate_2026-11-19_1534-3	060_extract_2026-11-18_1842-3
+ground truth	lowest	gemini-3.1-flash-lite	3	070_evaluate_2026-11-19_1535	060_extract_2026-11-18_1848-2
+ground truth	lowest	gemini-3.1-pro-preview	1	070_evaluate_2026-11-19_1535-2	060_extract_2026-11-18_1839
+ground truth	lowest	gemini-3.1-pro-preview	2	070_evaluate_2026-11-19_1536	060_extract_2026-11-18_1843-2
+ground truth	lowest	gemini-3.1-pro-preview	3	070_evaluate_2026-11-19_1536-2	060_extract_2026-11-18_1852
+ground truth	lowest	gemini-3.8-flash	1	070_evaluate_2026-11-19_1536-3	060_extract_2026-11-18_1838-3
+ground truth	lowest	gemini-3.8-flash	2	070_evaluate_2026-11-19_1537	060_extract_2026-11-18_1843
+ground truth	lowest	gemini-3.8-flash	3	070_evaluate_2026-11-19_1537-2	060_extract_2026-11-18_1854
+ground truth	lowest	gpt-5.6-luna	1	070_evaluate_2026-11-19_1538	060_extract_2026-11-18_1837
+ground truth	lowest	gpt-5.6-luna	2	070_evaluate_2026-11-19_1538-2	060_extract_2026-11-18_1841
+ground truth	lowest	gpt-5.6-luna	3	070_evaluate_2026-11-19_1539	060_extract_2026-11-18_1846
+ground truth	lowest	gpt-5.6-sol	1	070_evaluate_2026-11-19_1539-2	060_extract_2026-11-18_1838
+ground truth	lowest	gpt-5.6-sol	2	070_evaluate_2026-11-19_1540	060_extract_2026-11-18_1842-2
+ground truth	lowest	gpt-5.6-sol	3	070_evaluate_2026-11-19_1540-2	060_extract_2026-11-18_1851-2
+ground truth	lowest	gpt-5.6-terra	1	070_evaluate_2026-11-19_1541	060_extract_2026-11-18_1837-2
+ground truth	lowest	gpt-5.6-terra	2	070_evaluate_2026-11-19_1541-2	060_extract_2026-11-18_1842
+ground truth	lowest	gpt-5.6-terra	3	070_evaluate_2026-11-19_1542	060_extract_2026-11-18_1847
+induced	lowest	claude-haiku-5-5	1	070_evaluate_2026-11-19_1542-2	060_extract_2026-11-18_1849
+induced	lowest	claude-haiku-5-5	2	070_evaluate_2026-11-19_1543	060_extract_2026-11-18_1849-5
+induced	lowest	claude-haiku-5-5	3	070_evaluate_2026-11-19_1543-2	060_extract_2026-11-18_1850-3
+induced	lowest	claude-opus-5-5	1	070_evaluate_2026-11-19_1543-3	060_extract_2026-11-18_1849-3
+induced	lowest	claude-opus-5-5	2	070_evaluate_2026-11-19_1544	060_extract_2026-11-18_1850
+induced	lowest	claude-opus-5-5	3	070_evaluate_2026-11-19_1545	060_extract_2026-11-18_1850-5
+induced	lowest	claude-sonnet-5-5	1	070_evaluate_2026-11-19_1545-2	060_extract_2026-11-18_1849-2
+induced	lowest	claude-sonnet-5-5	2	070_evaluate_2026-11-19_1546	060_extract_2026-11-18_1849-6
+induced	lowest	claude-sonnet-5-5	3	070_evaluate_2026-11-19_1547	060_extract_2026-11-18_1850-4
+induced	lowest	gemini-3.1-flash-lite	1	070_evaluate_2026-11-19_1548	060_extract_2026-11-18_2137
+induced	lowest	gemini-3.1-flash-lite	2	070_evaluate_2026-11-19_1548-2	060_extract_2026-11-18_2139
+induced	lowest	gemini-3.1-flash-lite	3	070_evaluate_2026-11-19_1549	060_extract_2026-11-18_2140
+induced	lowest	gemini-3.1-pro-preview	1	070_evaluate_2026-11-19_1549-2	060_extract_2026-11-18_2138
+induced	lowest	gemini-3.1-pro-preview	2	070_evaluate_2026-11-19_1550	060_extract_2026-11-18_2159
+induced	lowest	gemini-3.1-pro-preview	3	070_evaluate_2026-11-19_1551	060_extract_2026-11-18_2217
+induced	lowest	gemini-3.8-flash	1	070_evaluate_2026-11-19_1551-2	060_extract_2026-11-18_2141
+induced	lowest	gemini-3.8-flash	2	070_evaluate_2026-11-19_1552	060_extract_2026-11-18_2150
+induced	lowest	gemini-3.8-flash	3	070_evaluate_2026-11-19_1552-2	060_extract_2026-11-18_2206
+induced	lowest	gpt-5.6-luna	1	070_evaluate_2026-11-19_1553	060_extract_2026-11-18_1849-4
+induced	lowest	gpt-5.6-luna	2	070_evaluate_2026-11-19_1553-2	060_extract_2026-11-18_1850-2
+induced	lowest	gpt-5.6-luna	3	070_evaluate_2026-11-19_1554	060_extract_2026-11-18_1850-6
+induced	lowest	gpt-5.6-sol	1	070_evaluate_2026-11-19_1555	060_extract_2026-11-18_2242
+induced	lowest	gpt-5.6-sol	2	070_evaluate_2026-11-19_1556	060_extract_2026-11-19_0013
+induced	lowest	gpt-5.6-sol	3	070_evaluate_2026-11-19_1556-2	060_extract_2026-11-18_2354
+induced	lowest	gpt-5.6-terra	1	070_evaluate_2026-11-19_1557	060_extract_2026-11-18_2226
+induced	lowest	gpt-5.6-terra	2	070_evaluate_2026-11-19_1558	060_extract_2026-11-18_2255
+induced	lowest	gpt-5.6-terra	3	070_evaluate_2026-11-19_1559	060_extract_2026-11-18_2341
+ground truth	high	claude-haiku-5-5	1	070_evaluate_2026-11-19_1600	060_extract_2026-11-18_1338
+ground truth	high	claude-opus-5-5	1	070_evaluate_2026-11-19_1600-2	060_extract_2026-11-18_0019
+ground truth	high	claude-sonnet-5-5	1	070_evaluate_2026-11-19_1559-2	060_extract_2026-11-18_1337
+ground truth	high	gemini-3.8-flash	1	070_evaluate_2026-11-19_1601	060_extract_2026-11-18_1338-2
+# held-out looks (run of 070) scored after the held-out partial pair verdicts
+held-out	070_evaluate_2026-11-19_1704
+held-out	070_evaluate_2026-11-19_1704-2
+held-out	070_evaluate_2026-11-19_1705
+held-out	070_evaluate_2026-11-19_1705-2
+held-out	070_evaluate_2026-11-19_1705-3
+held-out	070_evaluate_2026-11-19_1705-4
+held-out	070_evaluate_2026-11-19_1706
+held-out	070_evaluate_2026-11-19_1706-2
+held-out	070_evaluate_2026-11-19_1706-3
+held-out	070_evaluate_2026-11-19_1707
+held-out	070_evaluate_2026-11-19_1707-2
+held-out	070_evaluate_2026-11-19_1707-3
+held-out	070_evaluate_2026-11-19_1708
+held-out	070_evaluate_2026-11-19_1708-2
+held-out	070_evaluate_2026-11-19_1708-3
+held-out	070_evaluate_2026-11-19_1709
+held-out	070_evaluate_2026-11-19_1709-2
+held-out	070_evaluate_2026-11-19_1709-3
+held-out	070_evaluate_2026-11-19_1710
+held-out	070_evaluate_2026-11-19_1710-2
+held-out	070_evaluate_2026-11-19_1710-3
+held-out	070_evaluate_2026-11-19_1711
+held-out	070_evaluate_2026-11-19_1711-2
+held-out	070_evaluate_2026-11-19_1712
+held-out	070_evaluate_2026-11-19_1713
+held-out	070_evaluate_2026-11-19_1713-2
+held-out	070_evaluate_2026-11-19_1714
